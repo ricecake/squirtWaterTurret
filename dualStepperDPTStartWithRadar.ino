@@ -7,21 +7,17 @@
 #include <queue>
 
 // Define pin connections
-const int stepPinA = 32;
-const int dirPinA = 33;
-const int stepPinB = 25;
-const int dirPinB = 26;
+const int stepPinB = 32;
+const int dirPinB = 33;
+const int stepPinA = 25;
+const int dirPinA = 26;
 
 // Define motor limits
-const int maxSpeed = 300;
+const int maxSpeed = 400;
 const int acceleration = 120;
 
 // Define other constants
 const int stepFraction = 16;  // The microstep fraction
-// const int h_max = 100;
-// const int v_max = 400;
-// const int h_min = -100;
-// const int v_min = -400;
 
 const int h_max = 500;
 const int v_max = 1000;
@@ -54,6 +50,94 @@ struct MoveCmd {
 
 std::deque<MoveCmd> positions;
 
+void initSpeedTest(){
+	for (auto i = 25; i < maxSpeed*2; i+=25) {
+		positions.push_back(MoveCmd(h_max, 0, i));
+		positions.push_back(MoveCmd(h_min, 0, i));
+		positions.push_back(MoveCmd(0, 0, maxSpeed, 100));
+
+		positions.push_back(MoveCmd(0, v_min, i));
+		positions.push_back(MoveCmd(0, v_max, i));
+		positions.push_back(MoveCmd(0, 0, maxSpeed, 100));
+	}
+}
+void initDemoTest(){
+	positions.push_back(MoveCmd(h_max, 0, maxSpeed/4, 750));
+	positions.push_back(MoveCmd(h_min, 0, maxSpeed/4, 750));
+	positions.push_back(MoveCmd(0, 0, maxSpeed/4, 750));
+	positions.push_back(MoveCmd(0, v_min, maxSpeed/4, 750));
+	positions.push_back(MoveCmd(0, v_max, maxSpeed/4, 750));
+	positions.push_back(MoveCmd(0, 0, maxSpeed/4, 1000));
+	
+	for (auto i = 0; i < 2; i++) {
+		positions.push_back(MoveCmd(h_max, 0, maxSpeed, 100));
+		positions.push_back(MoveCmd(h_min, 0, maxSpeed, 100));
+		positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
+		positions.push_back(MoveCmd(0, v_min, maxSpeed, 100));
+		positions.push_back(MoveCmd(0, v_max, maxSpeed, 100));
+		positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
+	}
+}
+
+void initRangeTest() {
+	positions.push_back(MoveCmd(h_max, v_max, maxSpeed/2));
+	positions.push_back(MoveCmd(h_max, v_min, maxSpeed/2));
+
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
+
+	positions.push_back(MoveCmd(0, v_min, maxSpeed/2));
+	positions.push_back(MoveCmd(0, v_max, maxSpeed/2));
+
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
+
+	positions.push_back(MoveCmd(h_min, v_max, maxSpeed/2));
+	positions.push_back(MoveCmd(h_min, v_min, maxSpeed/2));
+
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
+
+	positions.push_back(MoveCmd(h_max, v_max, maxSpeed/2));
+	positions.push_back(MoveCmd(h_min, v_max, maxSpeed/2));
+
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
+
+	positions.push_back(MoveCmd(h_min, 0, maxSpeed/2));
+	positions.push_back(MoveCmd(h_max, 0, maxSpeed/2));
+
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
+
+	positions.push_back(MoveCmd(h_max, v_min, maxSpeed/2));
+	positions.push_back(MoveCmd(h_min, v_min, maxSpeed/2));
+
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
+}
+
+void initOscilateTest() {
+	for (auto i = 0; i < 10; i++) {
+		positions.push_back(MoveCmd(0, v_min, maxSpeed, 0));
+		positions.push_back(MoveCmd(0, v_max, maxSpeed, 0));
+	}
+
+	for (auto i = 0; i < 10; i++) {
+		positions.push_back(MoveCmd(h_min, 0, maxSpeed, 0));
+		positions.push_back(MoveCmd(h_max, 0, maxSpeed, 0));
+	}
+
+}
+
+void initTestData() {
+	// initSpeedTest();
+	// positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
+
+	initRangeTest();
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
+
+	initOscilateTest();
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
+
+	initDemoTest();
+	positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
+}
+
 void setup() {
 	Serial.begin(9600);
 
@@ -84,81 +168,9 @@ void setup() {
 
 	Serial.println("SETUP_FINISHED");
 
-	// positions.push_back(MoveCmd(h_min, 0, 10, 250));
-	// positions.push_back(MoveCmd(h_max, 0, 10, 250));
-	// positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
-	// positions.push_back(MoveCmd(0, v_min, 10, 250));
-	// positions.push_back(MoveCmd(0, v_max, 10, 250));
-	// positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
 
-	// positions.push_back(MoveCmd(h_max, v_max, 250));
-	// positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
-	// positions.push_back(MoveCmd(h_max, v_min, 250));
-	// positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
-	// positions.push_back(MoveCmd(h_min, v_min, 250));
-	// positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
-	// positions.push_back(MoveCmd(h_min, v_max, 250));
-	// positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
+	initTestData();
 
-
-	// for (auto i =0; i < 10; i++){
-	// positions.push_back(MoveCmd(h_min, 0, 100));
-	// positions.push_back(MoveCmd(h_max, 0, 100));
-	// }
-
-	// for (auto i =0; i < 10; i++){
-	// positions.push_back(MoveCmd(0, v_min, 150));
-	// positions.push_back(MoveCmd(0, v_max, 150));
-	// }
-
-	// for (auto i =0; i < 100; i++){
-	// positions.push_back(MoveCmd(h_max, v_max));
-	// positions.push_back(MoveCmd(h_max, 0));
-	// positions.push_back(MoveCmd(h_max, v_min));
-	// positions.push_back(MoveCmd(0, v_min));
-	// positions.push_back(MoveCmd(0, 0));
-	// positions.push_back(MoveCmd(0, v_max));
-	// positions.push_back(MoveCmd(h_min, v_max));
-	// positions.push_back(MoveCmd(h_min, 0));
-	// positions.push_back(MoveCmd(h_min, v_min));
-
-	// positions.push_back(MoveCmd(h_max, v_max));
-	// positions.push_back(MoveCmd(0, v_max));
-	// positions.push_back(MoveCmd(h_min, v_max));
-
-	// positions.push_back(MoveCmd(h_min, 0));
-	// positions.push_back(MoveCmd(0, 0));
-	// positions.push_back(MoveCmd(h_max, 0));
-
-	// positions.push_back(MoveCmd(h_max, v_min));
-	// positions.push_back(MoveCmd(0, v_min));
-	// positions.push_back(MoveCmd(h_min, v_min));
-
-	// }
-
-	// for (auto i = 0; i < 10; i++) {
-	// positions.push_back(MoveCmd(0, v_min, 89));
-	// positions.push_back(MoveCmd(0, v_max, 89));
-	// }
-
-	positions.push_back(MoveCmd(h_max, 0, 30, 750));
-	positions.push_back(MoveCmd(h_min, 0, 30, 750));
-	positions.push_back(MoveCmd(0, 0, 30, 750));
-	positions.push_back(MoveCmd(0, v_min, 30, 750));
-	positions.push_back(MoveCmd(0, v_max, 30, 750));
-	positions.push_back(MoveCmd(0, 0, 30, 5000));
-	
-	for (auto i = 0; i < 2; i++) {
-		positions.push_back(MoveCmd(h_max, 0, maxSpeed, 100));
-		positions.push_back(MoveCmd(h_min, 0, maxSpeed, 100));
-		positions.push_back(MoveCmd(0, 0, maxSpeed, 100));
-		positions.push_back(MoveCmd(0, v_min, maxSpeed, 100));
-		positions.push_back(MoveCmd(0, v_max, maxSpeed, 100));
-		positions.push_back(MoveCmd(0, 0, maxSpeed, 50));
-	}
-
-	// positions.push_back(MoveCmd(0, 100*v_max, 150, 100));
-	// positions.push_back(MoveCmd(0, 0, 150, 100));
 
 	Serial.println("Ready!");
 
@@ -169,9 +181,38 @@ void setup() {
 long deltas[2];
 MoveCmd last;
 
+void findTarget() {}
+void executeMove() {}
+void executeIdle() {}
+
+enum ControlState {
+	Setup,
+	Running,
+	Homing,
+	Idle,
+};
+
+ControlState currentState = Setup;
+
 void loop() {
+	switch (currentState) {
+		case Setup:
+		break;
+		case Homing:
+		break;
+		case Idle:
+		break;
+	}
+	// if(!positions.empty() && (stepperA.distanceToGo() || stepperB.distanceToGo())) {
+	// 	Serial.println("Stopping");
+	// 	stepperA.stop();
+	// 	stepperB.stop();
+	// 	return;
+	// }
+
 	if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
 		if (positions.empty()) {
+			Serial.println("Target Check");
 			const int sensor_got_valid_targets = ld2450.read();
 			if (sensor_got_valid_targets > 0) {
 				// GET THE DETECTED TARGETS
@@ -181,11 +222,6 @@ void loop() {
 
 					if (result_target.valid && result_target.speed > 0)
 					{
-						// Serial.println(result_target.y);
-						// double x_offset = asin(double(result_target.x)/double(result_target.distance))* 180.0 / PI;
-						// double y_offset = asin(double(result_target.y)/double(result_target.distance))* 180.0 / PI;
-						// Serial.printf("X=%f deg, Y=%f deg V=%f - D=%i mm, X=%i mm, Y=%i mm\n", x_offset, y_offset, result_target.speed, result_target.distance, result_target.x, result_target.y);
-
 						double x_offset = atan(double(result_target.x)/double(result_target.y))* 180.0 / PI;
 						double y_offset = atan(double(1000)/double(result_target.distance))* 180.0 / PI;
 						
@@ -194,33 +230,31 @@ void loop() {
 						MoveCmd newCmd;
 						newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
 						newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
-						// newCmd.D = sensor_got_valid_targets > 1? 2500 : 0;
-						// newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
-						// newCmd.V = min(max(int(y_offset / -0.1125), h_min), h_max);
-						// newCmd.H = map(x_offset*100, -35*100, 35*100, -96*100, 96*100)/100;
-						// newCmd.V = map(y_offset*100, -60*100, 60*100, -400*100, 400*100)/100;
-						// newCmd.S = 20;
 						positions.push_back(newCmd);
-						// break;
 					}
 				}
 			}
 		}
 
+
 		if (positions.empty()) {
-			return;
+			// return;
 			if ((stepperA.currentPosition() == 0) && (stepperB.currentPosition() == 0)) {
 				return;
 			}
 
-			positions.push_back(MoveCmd(h_max, 0, 5, 1000));
-			positions.push_back(MoveCmd(h_min, 0, 5, 1000));
+			Serial.println("Homeing");
+			positions.push_back(MoveCmd(0, 0));
+
+			// positions.push_back(MoveCmd(h_max, 0, 5, 1000));
+			// positions.push_back(MoveCmd(h_min, 0, 5, 1000));
 		}
 
 		if (last.D > 0) {
 			delay(last.D);
 		}
 
+		Serial.println("Execute Move");
 		MoveCmd position = positions[0];
 
 		positions.pop_front();
@@ -242,9 +276,6 @@ void loop() {
 		stepperB.setMaxSpeed(iterMaxSpeed);
 		steppers.moveTo(deltas);
 		last = position;
-
-		// delay(1000);
 	}
-
 	steppers.run();
 }
