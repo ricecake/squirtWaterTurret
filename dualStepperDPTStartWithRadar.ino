@@ -48,6 +48,14 @@ struct MoveCmd {
 	  : H(h), V(v), S(s), D(d) {}
 };
 
+/*
+This should become a priority queue
+There should be some mechanism for an abstracted form of time keeping
+to allow it to sort tasks by when they need to run.
+Tasks should generally take the form of "start water gun", "stop water gun",
+"start move pause", "stop move pause" and so on.
+In a paused move state, for example, the system should disregard move commands.
+*/
 std::deque<MoveCmd> positions;
 
 void initSpeedTest(){
@@ -172,7 +180,12 @@ void setup() {
 	Serial.println("SETUP_FINISHED");
 
 
-	initTestData();
+	// initTestData();
+
+	Serial.println("Ready!");
+
+	delay(5000);
+	Serial.println("Starting!");
 
 	//create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
   xTaskCreatePinnedToCore(
@@ -195,11 +208,6 @@ void setup() {
 		&Task2,      /* Task handle to keep track of created task */
 		1            /* pin task to core 0 */       
 	);
-
-	Serial.println("Ready!");
-
-	delay(5000);
-	Serial.println("Starting!");
 }
 
 long deltas[2];
@@ -219,109 +227,170 @@ enum ControlState {
 ControlState currentState = Setup;
 
 void loop() {
-	switch (currentState) {
-		case Setup:
-		break;
-		case Homing:
-		break;
-		case Idle:
-		break;
-	}
-	// if(!positions.empty() && (stepperA.distanceToGo() || stepperB.distanceToGo())) {
-	// 	Serial.println("Stopping");
-	// 	stepperA.stop();
-	// 	stepperB.stop();
-	// 	return;
+	// switch (currentState) {
+	// 	case Setup:
+	// 	break;
+	// 	case Homing:
+	// 	break;
+	// 	case Idle:
+	// 	break;
 	// }
+	// // if(!positions.empty() && (stepperA.distanceToGo() || stepperB.distanceToGo())) {
+	// // 	Serial.println("Stopping");
+	// // 	stepperA.stop();
+	// // 	stepperB.stop();
+	// // 	return;
+	// // }
 
-	if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
-		if (positions.empty()) {
-			Serial.println("Target Check");
-			const int sensor_got_valid_targets = ld2450.read();
-			if (sensor_got_valid_targets > 0) {
-				// GET THE DETECTED TARGETS
-				for (int i = 0; i < sensor_got_valid_targets; i++)
-				{
-					LD2450::RadarTarget result_target = ld2450.getTarget(i);
+	// if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
+	// 	// if (positions.empty()) {
+	// 	// 	Serial.println("Target Check");
+	// 	// 	const int sensor_got_valid_targets = ld2450.read();
+	// 	// 	if (sensor_got_valid_targets > 0) {
+	// 	// 		// GET THE DETECTED TARGETS
+	// 	// 		for (int i = 0; i < sensor_got_valid_targets; i++)
+	// 	// 		{
+	// 	// 			LD2450::RadarTarget result_target = ld2450.getTarget(i);
 
-					if (result_target.valid && result_target.speed > 0)
-					{
-						double x_offset = atan(double(result_target.x)/double(result_target.y))* 180.0 / PI;
-						double y_offset = atan(double(1000)/double(result_target.distance))* 180.0 / PI;
+	// 	// 			if (result_target.valid && result_target.speed > 0)
+	// 	// 			{
+	// 	// 				double x_offset = atan(double(result_target.x)/double(result_target.y))* 180.0 / PI;
+	// 	// 				double y_offset = atan(double(1000)/double(result_target.distance))* 180.0 / PI;
 						
-						Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
+	// 	// 				Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
 
-						MoveCmd newCmd;
-						newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
-						newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
-						positions.push_back(newCmd);
-					}
-				}
-			}
-		}
+	// 	// 				MoveCmd newCmd;
+	// 	// 				newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
+	// 	// 				newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
+	// 	// 				positions.push_back(newCmd);
+	// 	// 			}
+	// 	// 		}
+	// 	// 	}
+	// 	// }
 
 
-		if (positions.empty()) {
-			// return;
-			if ((stepperA.currentPosition() == 0) && (stepperB.currentPosition() == 0)) {
-				return;
-			}
+	// 	if (positions.empty()) {
+	// 		// return;
+	// 		if ((stepperA.currentPosition() == 0) && (stepperB.currentPosition() == 0)) {
+	// 			return;
+	// 		}
 
-			Serial.println("Homeing");
-			positions.push_back(MoveCmd(0, 0));
+	// 		// Serial.println("Homeing");
+	// 		// positions.push_back(MoveCmd(0, 0));
 
-			// positions.push_back(MoveCmd(h_max, 0, 5, 1000));
-			// positions.push_back(MoveCmd(h_min, 0, 5, 1000));
-		}
+	// 		positions.push_back(MoveCmd(h_max, 0, maxSpeed/5, 1000));
+	// 		positions.push_back(MoveCmd(h_min, 0, maxSpeed/5, 1000));
+	// 	}
 
-		if (last.D > 0) {
-			delay(last.D);
-		}
+	// 	if (last.D > 0) {
+	// 		delay(last.D);
+	// 	}
 
-		Serial.println("Execute Move");
-		MoveCmd position = positions[0];
+	// 	Serial.println("Execute Move");
+	// 	MoveCmd position = positions[0];
 
-		positions.pop_front();
+	// 	positions.pop_front();
 
-		int H = position.H;
-		int V = position.V;
-		int iterMaxSpeed = position.S > 0 ? position.S : maxSpeed;
+	// 	int H = position.H;
+	// 	int V = position.V;
+	// 	int iterMaxSpeed = position.S > 0 ? position.S : maxSpeed;
 
-		iterMaxSpeed *= stepFraction;
+	// 	iterMaxSpeed *= stepFraction;
 
-		int delta_A = H + V;
-		int delta_B = V - H;
+	// 	int delta_A = H + V;
+	// 	int delta_B = V - H;
 
-		Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", position.H, position.V, position.H*0.225, position.V*0.225, position.S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
+	// 	Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", position.H, position.V, position.H*0.225, position.V*0.225, position.S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
 
-		deltas[0] = delta_A;
-		deltas[1] = delta_B;
-		stepperA.setMaxSpeed(iterMaxSpeed);
-		stepperB.setMaxSpeed(iterMaxSpeed);
-		steppers.moveTo(deltas);
-		last = position;
-	}
-	steppers.run();
+	// 	deltas[0] = delta_A;
+	// 	deltas[1] = delta_B;
+	// 	stepperA.setMaxSpeed(iterMaxSpeed);
+	// 	stepperB.setMaxSpeed(iterMaxSpeed);
+	// 	steppers.moveTo(deltas);
+	// 	last = position;
+	// }
+	// steppers.run();
 }
 
 
 
 void Task1code( void * pvParameters ){
-  Serial.print("Task1 running on core ");
-  Serial.println(xPortGetCoreID());
-
   for(;;){
-    delay(1000);
-		Serial.println("Task 1");
+		// uint64_t s = esp_timer_get_time();
+
+		const int sensor_got_valid_targets = ld2450.read();
+		if (sensor_got_valid_targets > 0) {
+			// GET THE DETECTED TARGETS
+			for (int i = 0; i < sensor_got_valid_targets; i++)
+			{
+				LD2450::RadarTarget result_target = ld2450.getTarget(i);
+
+				if (result_target.valid)// && result_target.speed > 0)
+				{
+					double x_offset = atan(double(result_target.x)/double(result_target.y))* 180.0 / PI;
+					double y_offset = atan(double(1000)/double(result_target.distance))* 180.0 / PI;
+					
+					Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
+
+					MoveCmd newCmd;
+					newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
+					newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
+					// positions.push_back(newCmd);
+				}
+			}
+		}
+
+		// uint64_t f = esp_timer_get_time();
+		// Serial.println(f-s);
   } 
 }
 
 void Task2code( void * pvParameters ){
-  Serial.print("Task2 running on core ");
-  Serial.println(xPortGetCoreID());
-
   for(;;){
-    delay(700);
-		Serial.println("Task 2");
-  }
+		switch (currentState) {
+			case Setup:
+			break;
+			case Homing:
+			break;
+			case Idle:
+			break;
+		}
+
+		if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
+			if (positions.empty()) {
+				positions.push_back(MoveCmd(h_max, 0, maxSpeed/8, 1000));
+				positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
+				positions.push_back(MoveCmd(h_min, 0, maxSpeed/8, 1000));
+				positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
+			}
+
+			if (last.D > 0) {
+				delay(last.D);
+			}
+
+			// Serial.println("Execute Move");
+			MoveCmd position = positions[0];
+
+			positions.pop_front();
+
+			int H = position.H;
+			int V = position.V;
+			int iterMaxSpeed = position.S > 0 ? position.S : maxSpeed;
+
+			iterMaxSpeed *= stepFraction;
+
+			int delta_A = H + V;
+			int delta_B = V - H;
+
+			Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", position.H, position.V, position.H*0.225, position.V*0.225, position.S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
+
+			deltas[0] = delta_A;
+			deltas[1] = delta_B;
+			stepperA.setMaxSpeed(iterMaxSpeed);
+			stepperB.setMaxSpeed(iterMaxSpeed);
+			steppers.moveTo(deltas);
+			last = position;
+		}
+		steppers.run();
+	}
 }

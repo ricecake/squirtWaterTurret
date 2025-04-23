@@ -99,7 +99,7 @@ int LD2450::read()
         return -2;
     }
 
-    if (LD2450::radar_uart->available())
+    if (LD2450::radar_uart->available() >= 30)
     {   
         
         byte rec_buf[LD2450_SERIAL_BUFFER] = "";
@@ -181,14 +181,14 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
                     }
 
                     // Add target information to the string
-                    LD2450::last_target_data += 
-                        "TARGET ID=" + String(targetCounter + 1) +
-                        " X=" + String(LD2450::radarTargets[targetCounter].x) +
-                        "mm, Y=" + String(LD2450::radarTargets[targetCounter].y) +
-                        "mm, SPEED=" + String(LD2450::radarTargets[targetCounter].speed) +
-                        "cm/s, RESOLUTION=" + String(LD2450::radarTargets[targetCounter].resolution) +
-                        "mm, DISTANCE=" + String(LD2450::radarTargets[targetCounter].distance) +
-                        "mm, VALID=" + String(LD2450::radarTargets[targetCounter].valid) + "\n";
+                    // LD2450::last_target_data += 
+                    //     "TARGET ID=" + String(targetCounter + 1) +
+                    //     " X=" + String(LD2450::radarTargets[targetCounter].x) +
+                    //     "mm, Y=" + String(LD2450::radarTargets[targetCounter].y) +
+                    //     "mm, SPEED=" + String(LD2450::radarTargets[targetCounter].speed) +
+                    //     "cm/s, RESOLUTION=" + String(LD2450::radarTargets[targetCounter].resolution) +
+                    //     "mm, DISTANCE=" + String(LD2450::radarTargets[targetCounter].distance) +
+                    //     "mm, VALID=" + String(LD2450::radarTargets[targetCounter].valid) + "\n";
 
                     index += 8; // Move to the start of the next target data
 
