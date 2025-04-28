@@ -212,6 +212,7 @@ void setup() {
 
 long deltas[2];
 MoveCmd last;
+MoveCmd next;
 
 void findTarget() {}
 void executeMove() {}
@@ -325,7 +326,7 @@ void Task1code( void * pvParameters ){
 			{
 				LD2450::RadarTarget result_target = ld2450.getTarget(i);
 
-				if (result_target.valid)// && result_target.speed > 0)
+				if (result_target.valid && result_target.speed == 0)
 				{
 					double x_offset = atan(double(result_target.x)/double(result_target.y))* 180.0 / PI;
 					double y_offset = atan(double(1000)/double(result_target.distance))* 180.0 / PI;
@@ -336,6 +337,7 @@ void Task1code( void * pvParameters ){
 					newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
 					newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
 					// positions.push_back(newCmd);
+					next = newCmd;
 				}
 			}
 		}
@@ -343,6 +345,24 @@ void Task1code( void * pvParameters ){
 		// uint64_t f = esp_timer_get_time();
 		// Serial.println(f-s);
   } 
+}
+
+void doMoveOrder(int H, int V, int S) {
+			int iterMaxSpeed = S > 0 ? S : maxSpeed;
+
+			iterMaxSpeed *= stepFraction;
+
+			int delta_A = H + V;
+			int delta_B = V - H;
+
+			Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", H, V, H*0.225, V*0.225, S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
+
+			deltas[0] = delta_A;
+			deltas[1] = delta_B;
+			stepperA.setMaxSpeed(iterMaxSpeed);
+			stepperB.setMaxSpeed(iterMaxSpeed);
+			steppers.moveTo(deltas);
+
 }
 
 void Task2code( void * pvParameters ){
@@ -358,38 +378,33 @@ void Task2code( void * pvParameters ){
 
 		if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
 			if (positions.empty()) {
-				positions.push_back(MoveCmd(h_max, 0, maxSpeed/8, 1000));
-				positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
-				positions.push_back(MoveCmd(h_min, 0, maxSpeed/8, 1000));
-				positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
+				if ((next.H != last.H) && (next.V != last.V)) {
+					positions.push_back(next);
+				}
+				else {
+					// positions.push_back(MoveCmd(h_max, 0, maxSpeed/8, 1000));
+					// positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
+					// positions.push_back(MoveCmd(h_min, 0, maxSpeed/8, 1000));
+					// positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
+				}
 			}
 
 			if (last.D > 0) {
 				delay(last.D);
 			}
 
+			if (positions.empty()) {
+				continue;
+			}
+
 			// Serial.println("Execute Move");
 			MoveCmd position = positions[0];
+			last = position;
 
 			positions.pop_front();
 
-			int H = position.H;
-			int V = position.V;
-			int iterMaxSpeed = position.S > 0 ? position.S : maxSpeed;
+			doMoveOrder(position.H, position.V, position.S);
 
-			iterMaxSpeed *= stepFraction;
-
-			int delta_A = H + V;
-			int delta_B = V - H;
-
-			Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", position.H, position.V, position.H*0.225, position.V*0.225, position.S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
-
-			deltas[0] = delta_A;
-			deltas[1] = delta_B;
-			stepperA.setMaxSpeed(iterMaxSpeed);
-			stepperB.setMaxSpeed(iterMaxSpeed);
-			steppers.moveTo(deltas);
-			last = position;
 		}
 		steppers.run();
 	}
