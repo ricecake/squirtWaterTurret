@@ -4,31 +4,8 @@
 #include <HardwareSerial.h>
 #include "LD2450.h"
 #include <vector>
-#include <queue>
 
-// Define pin connections
-const int stepPinB = 32;
-const int dirPinB = 33;
-const int stepPinA = 25;
-const int dirPinA = 26;
-
-// Define motor limits
-const int maxSpeed = 400;
-const int acceleration = 120;
-
-// Define other constants
-const int stepFraction = 16;  // The microstep fraction
-
-const int h_max = 500;
-const int v_max = 1000;
-const int h_min = -500;
-const int v_min = -1000;
-
-
-const float angleToStep = 360/200/1/16; // circle / steps per circle / gear ratio / step division
-
-// Define motor interface type
-#define motorInterfaceType 1
+#include "DptHelpers.h"
 
 // Creates an instance
 AccelStepper stepperA(motorInterfaceType, stepPinA, dirPinA);
@@ -38,131 +15,28 @@ MultiStepper steppers;
 HardwareSerial RadarSerial(1);
 LD2450 ld2450;
 
+SemaphoreHandle_t xMutex;
+TaskHandle_t targeting;
+TaskHandle_t systemControl;
 
-struct MoveCmd {
-	int H;
-	int V;
-	int S;
-	int D;
-	MoveCmd(int h = 0, int v = 0, int s = maxSpeed, int d = 50)
-	  : H(h), V(v), S(s), D(d) {}
-};
-
-/*
-This should become a priority queue
-There should be some mechanism for an abstracted form of time keeping
-to allow it to sort tasks by when they need to run.
-Tasks should generally take the form of "start water gun", "stop water gun",
-"start move pause", "stop move pause" and so on.
-In a paused move state, for example, the system should disregard move commands.
-*/
-std::deque<MoveCmd> positions;
-
-void initSpeedTest(){
-	for (auto i = 25; i < maxSpeed*2; i+=25) {
-		positions.push_back(MoveCmd(h_max, 0, i));
-		positions.push_back(MoveCmd(h_min, 0, i));
-		positions.push_back(MoveCmd(0, 0, maxSpeed, 100));
-
-		positions.push_back(MoveCmd(0, v_min, i));
-		positions.push_back(MoveCmd(0, v_max, i));
-		positions.push_back(MoveCmd(0, 0, maxSpeed, 100));
-	}
-}
-void initDemoTest(){
-	positions.push_back(MoveCmd(h_max, 0, maxSpeed/4, 750));
-	positions.push_back(MoveCmd(h_min, 0, maxSpeed/4, 750));
-	positions.push_back(MoveCmd(0, 0, maxSpeed/4, 750));
-	positions.push_back(MoveCmd(0, v_min, maxSpeed/4, 750));
-	positions.push_back(MoveCmd(0, v_max, maxSpeed/4, 750));
-	positions.push_back(MoveCmd(0, 0, maxSpeed/4, 1000));
-	
-	for (auto i = 0; i < 2; i++) {
-		positions.push_back(MoveCmd(h_max, 0, maxSpeed, 100));
-		positions.push_back(MoveCmd(h_min, 0, maxSpeed, 100));
-		positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
-		positions.push_back(MoveCmd(0, v_min, maxSpeed, 100));
-		positions.push_back(MoveCmd(0, v_max, maxSpeed, 100));
-		positions.push_back(MoveCmd(0, 0, maxSpeed, 250));
-	}
-}
-
-void initRangeTest() {
-	positions.push_back(MoveCmd(h_max, v_max, maxSpeed/2));
-	positions.push_back(MoveCmd(h_max, v_min, maxSpeed/2));
-
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
-
-	positions.push_back(MoveCmd(0, v_min, maxSpeed/2));
-	positions.push_back(MoveCmd(0, v_max, maxSpeed/2));
-
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
-
-	positions.push_back(MoveCmd(h_min, v_max, maxSpeed/2));
-	positions.push_back(MoveCmd(h_min, v_min, maxSpeed/2));
-
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
-
-	positions.push_back(MoveCmd(h_max, v_max, maxSpeed/2));
-	positions.push_back(MoveCmd(h_min, v_max, maxSpeed/2));
-
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
-
-	positions.push_back(MoveCmd(h_min, 0, maxSpeed/2));
-	positions.push_back(MoveCmd(h_max, 0, maxSpeed/2));
-
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
-
-	positions.push_back(MoveCmd(h_max, v_min, maxSpeed/2));
-	positions.push_back(MoveCmd(h_min, v_min, maxSpeed/2));
-
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 500));
-}
-
-void initOscilateTest() {
-	for (auto i = 0; i < 10; i++) {
-		positions.push_back(MoveCmd(0, v_min, maxSpeed, 0));
-		positions.push_back(MoveCmd(0, v_max, maxSpeed, 0));
-	}
-
-	for (auto i = 0; i < 10; i++) {
-		positions.push_back(MoveCmd(h_min, 0, maxSpeed, 0));
-		positions.push_back(MoveCmd(h_max, 0, maxSpeed, 0));
-	}
-
-}
-
-void initTestData() {
-	// initSpeedTest();
-	// positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
-
-	initRangeTest();
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
-
-	initOscilateTest();
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
-
-	initDemoTest();
-	positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
-}
-
-TaskHandle_t Task1;
-TaskHandle_t Task2;
-
-void setup() {
+void setup()
+{
 	Serial.begin(9600);
 
-	while (!Serial) {
-		;  // wait for serial port to connect. Needed for native USB
+	while (!Serial)
+	{
+		; // wait for serial port to connect. Needed for native USB
 	}
 
 	RadarSerial.begin(256000, SERIAL_8N1, 16, 17);
 	ld2450.begin(RadarSerial, false);
 
-
-	if (!ld2450.waitForSensorMessage()) {
+	if (!ld2450.waitForSensorMessage(true))
+	{
 		Serial.println("SENSOR CONNECTION SEEMS OK");
-	} else {
+	}
+	else
+	{
 		Serial.println("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
 	}
 
@@ -177,149 +51,176 @@ void setup() {
 	steppers.addStepper(stepperA);
 	steppers.addStepper(stepperB);
 
-	Serial.println("SETUP_FINISHED");
+	xMutex = xSemaphoreCreateMutex();
 
+	Serial.println("SETUP_FINISHED");
 
 	// initTestData();
 
 	Serial.println("Ready!");
 
 	delay(5000);
+
 	Serial.println("Starting!");
 
-	//create a task that will be executed in the Task1code() function, with priority 1 and executed on core 0
-  xTaskCreatePinnedToCore(
-		Task1code,   /* Task function. */
-		"Targeting", /* name of task. */
-		10000,       /* Stack size of task */
-		NULL,        /* parameter of the task */
-		1,           /* priority of the task */
-		&Task1,      /* Task handle to keep track of created task */
-		0            /* pin task to core 0 */       
+	// create a task that will be executed in the targetingLoop() function, with priority 1 and executed on core 0
+	xTaskCreatePinnedToCore(
+		targetingLoop, /* Task function. */
+		"Targeting",   /* name of task. */
+		10000,		   /* Stack size of task */
+		NULL,		   /* parameter of the task */
+		1,			   /* priority of the task */
+		&targeting,	   /* Task handle to keep track of created task */
+		0			   /* pin task to core 0 */
 	);
 
-	//create a task that will be executed in the Task2code() function, with priority 1 and executed on core 1
-  xTaskCreatePinnedToCore(
-		Task2code,   /* Task function. */
-		"Control",   /* name of task. */
-		10000,       /* Stack size of task */
-		NULL,        /* parameter of the task */
-		1,           /* priority of the task */
-		&Task2,      /* Task handle to keep track of created task */
-		1            /* pin task to core 0 */       
+	// create a task that will be executed in the systemControlLoop() function, with priority 1 and executed on core 1
+	xTaskCreatePinnedToCore(
+		systemControlLoop, /* Task function. */
+		"Control",		   /* name of task. */
+		10000,			   /* Stack size of task */
+		NULL,			   /* parameter of the task */
+		1,				   /* priority of the task */
+		&systemControl,	   /* Task handle to keep track of created task */
+		1				   /* pin task to core 0 */
 	);
+	// vTaskStartScheduler();
 }
 
 long deltas[2];
 MoveCmd last;
 MoveCmd next;
 
-void findTarget() {}
-void executeMove() {}
-void executeIdle() {}
+void loop()
+{
+	vTaskDelay(1000);
+}
 
-enum ControlState {
-	Setup,
-	Running,
-	Homing,
-	Idle,
-};
+void doMoveOrder(int H, int V, int S)
+{
+	int delta_A = H + V;
+	int delta_B = V - H;
 
-ControlState currentState = Setup;
+	long moveA = delta_A - stepperA.currentPosition();
+	long moveB = delta_B - stepperB.currentPosition();
+	long distance = (moveA * moveA) + (moveB * moveB);
+	// Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", H, V, H*0.225, V*0.225, S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
 
-void loop() {}
+	if (distance <= 50)
+	{
+		// Serial.printf("Skipping [%i %i] [%i %i] [%i %i] [%i %i])\n", H, V, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition(), moveA, moveB);
+		return;
+	}
 
-void Task1code( void * pvParameters ){
-  for(;;){
-		// uint64_t s = esp_timer_get_time();
+	float iterMaxSpeed = S > 0 ? S : maxSpeed;
 
-		const int sensor_got_valid_targets = ld2450.read();
-		if (sensor_got_valid_targets > 0) {
-			// GET THE DETECTED TARGETS
-			for (int i = 0; i < sensor_got_valid_targets; i++)
+	iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
+
+	// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));
+	iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
+
+	Serial.printf("Moving to (%i, %i) [%f, %f] at %f via delta (%i, %i) -> %i\n", H, V, H * 0.225, V * 0.225, iterMaxSpeed, moveA, moveB, distance);
+
+	iterMaxSpeed *= stepFraction;
+
+	deltas[0] = delta_A;
+	deltas[1] = delta_B;
+/*
+	// This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
+		Basically take multiple target positions over time, and try to match the targets velocity, and also their positiono.
+		I think that's something that a pid controller does?
+		Yes, pid controller.  
+		Pitch and yaw each get a controller, and it should output a movement speed for each motor.
+		We should set the speed for each of them and use runSpeed to move at that velocity.
+		It's inputs should be the current position in the respective dimension.
+*/
+	stepperA.setMaxSpeed(iterMaxSpeed);
+	stepperB.setMaxSpeed(iterMaxSpeed);
+	steppers.moveTo(deltas);
+	// stepperA.moveTo(delta_A);
+	// stepperB.moveTo(delta_B);
+}
+
+void systemControlLoop(void *pvParameters)
+{
+	for (;;)
+	{
+		/*
+		Change the flow to be fetching from the command queue while the commands are scheduled for now or earlier.
+		Each command will get a reference to the state, and can mutate it.
+		Then we actualize the state.
+		set firing pin to the set state.
+		load move orders
+
+		This means that targeting system finds targets and updates the state
+		the command queue contains updates on which target to select
+
+		later, when pose estimation is in place, it can send data and the targeter can tweak the specific coordinates of each target as appropriate
+		*/
+
+		// if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
+		// Serial.println("DONE");
+		if ((next.H != last.H) && (next.V != last.V))
+		{
+			if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
 			{
-				LD2450::RadarTarget result_target = ld2450.getTarget(i);
-
-				if (result_target.valid && result_target.speed == 0)
-				{
-					double x_offset = atan(double(result_target.x)/double(result_target.y))* 180.0 / PI;
-					double y_offset = atan(double(1000)/double(result_target.distance))* 180.0 / PI;
-					
-					Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
-
-					MoveCmd newCmd;
-					newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
-					newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
-					// positions.push_back(newCmd);
-					next = newCmd;
-				}
+				MoveCmd position = next;
+				last = position;
+				xSemaphoreGive(xMutex);
+				doMoveOrder(position.H, position.V, position.S);
 			}
 		}
-
-		// uint64_t f = esp_timer_get_time();
-		// Serial.println(f-s);
-  } 
-}
-
-void doMoveOrder(int H, int V, int S) {
-			int iterMaxSpeed = S > 0 ? S : maxSpeed;
-
-			iterMaxSpeed *= stepFraction;
-
-			int delta_A = H + V;
-			int delta_B = V - H;
-
-			Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", H, V, H*0.225, V*0.225, S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
-
-			deltas[0] = delta_A;
-			deltas[1] = delta_B;
-			stepperA.setMaxSpeed(iterMaxSpeed);
-			stepperB.setMaxSpeed(iterMaxSpeed);
-			steppers.moveTo(deltas);
-
-}
-
-void Task2code( void * pvParameters ){
-  for(;;){
-		switch (currentState) {
-			case Setup:
-			break;
-			case Homing:
-			break;
-			case Idle:
-			break;
-		}
-
-		if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
-			if (positions.empty()) {
-				if ((next.H != last.H) && (next.V != last.V)) {
-					positions.push_back(next);
-				}
-				else {
-					// positions.push_back(MoveCmd(h_max, 0, maxSpeed/8, 1000));
-					// positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
-					// positions.push_back(MoveCmd(h_min, 0, maxSpeed/8, 1000));
-					// positions.push_back(MoveCmd(0, 0, maxSpeed/8, 1000));
-				}
-			}
-
-			if (last.D > 0) {
-				delay(last.D);
-			}
-
-			if (positions.empty()) {
-				continue;
-			}
-
-			// Serial.println("Execute Move");
-			MoveCmd position = positions[0];
-			last = position;
-
-			positions.pop_front();
-
-			doMoveOrder(position.H, position.V, position.S);
-
-		}
+		// }
 		steppers.run();
+		// stepperA.run();
+		// stepperB.run();
+		// vTaskDelay(1);
+		taskYIELD();
+	}
+}
+
+bool seekTarget(MoveCmd &newCmd)
+{
+	// GET THE DETECTED TARGETS
+	for (int i = 0; i < LD2450_MAX_SENSOR_TARGETS; i++)
+	{
+		LD2450::RadarTarget result_target = ld2450.getTarget(i);
+
+		if (result_target.valid)
+		{
+			double x_offset = atan(double(result_target.x) / double(result_target.y)) * 180.0 / PI;
+			double y_offset = atan(double(1000) / double(result_target.distance)) * 180.0 / PI;
+
+			// Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
+
+			newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
+			newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
+			return true;
+		}
+	}
+}
+
+void targetingLoop(void *pvParameters)
+{
+	for (;;)
+	{
+		uint64_t s = esp_timer_get_time();
+		const int sensor_got_valid_targets = ld2450.read();
+		if (sensor_got_valid_targets > 0)
+		{
+			// uint64_t f = esp_timer_get_time();
+			// Serial.println(f-s);
+			MoveCmd newCmd;
+			if (seekTarget(newCmd))
+			{
+				if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
+				{
+					next = newCmd;
+					xSemaphoreGive(xMutex);
+				}
+			}
+		}
+		vTaskDelay(1);
+		// taskYIELD();
 	}
 }

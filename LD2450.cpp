@@ -1,3 +1,4 @@
+#include <stdint.h>
 /*
  *	An Arduino library for the Hi-Link LD2450 24Ghz FMCW radar sensor.
  *
@@ -99,11 +100,12 @@ int LD2450::read()
         return -2;
     }
 
-    if (LD2450::radar_uart->available() >= 30)
+    unsigned int available = LD2450::radar_uart->available();
+    if (available >= 30)
     {   
         
         byte rec_buf[LD2450_SERIAL_BUFFER] = "";
-        const int len = LD2450::radar_uart->readBytes(rec_buf, sizeof(rec_buf));
+        const int len = LD2450::radar_uart->readBytes(rec_buf, min(available, sizeof(rec_buf)));
         // IF WE GOT DATA PARSE THEM
         if (len > 0)
         {
