@@ -134,21 +134,16 @@ LD2450::RadarTarget LD2450::getTarget(uint16_t _target_id){
 int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
 {
     int redreshed_targets = 0;
-
     for (int i = 0; i < len; i++)
     {
         // Checking the header and footer
         if (rec_buf[i] == 0xAA && rec_buf[i + 1] == 0xFF && rec_buf[i + 2] == 0x03 && rec_buf[i + 3] == 0x00 && rec_buf[i + 28] == 0x55 && rec_buf[i + 29] == 0xCC)
         {
-
             int index = i + 4; // Skip header and in-frame data length fields
             LD2450::last_target_data = "";
 
             for (uint16_t targetCounter = 0; targetCounter < LD2450_MAX_SENSOR_TARGETS; targetCounter++)
             {
-
-                
-                
                 if (index + 7 < len)
                 {
                     LD2450::radarTargets[targetCounter].id = targetCounter + 1;
@@ -203,9 +198,6 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
                 }else{
                     LD2450::radarTargets[targetCounter].valid = false;
                 }
-                
-
-
             }
             i = index; // Updating the index of an external loop
         }

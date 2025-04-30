@@ -94,6 +94,7 @@ MoveCmd next;
 void loop()
 {
 	vTaskDelay(1000);
+	// uart_enable_intr_mask(uart_port_t uart_num, uint32_t enable_mask)
 }
 
 void doMoveOrder(int H, int V, int S)
@@ -114,12 +115,11 @@ void doMoveOrder(int H, int V, int S)
 
 	float iterMaxSpeed = S > 0 ? S : maxSpeed;
 
-	iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
-
+	// iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
 	// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));
-	iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
+	// iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
 
-	// Serial.printf("Moving to (%i, %i) [%f, %f] at %f via delta (%i, %i) -> %i\n", H, V, H * angleToStep, V * angleToStep, iterMaxSpeed, moveA, moveB, distance);
+	Serial.printf("Moving to (%i, %i) [%f, %f] at %f via delta (%i, %i) -> %i\n", H, V, H * angleToStep, V * angleToStep, iterMaxSpeed, moveA, moveB, distance);
 
 	iterMaxSpeed *= stepFraction;
 
@@ -179,17 +179,18 @@ void systemControlLoop(void *pvParameters)
 		// y_Setpoint = next.V * 0.1125;
 		// x_Input = (a_pos - b_pos) / 2;
 		// y_Input = (a_pos + b_pos) / 2;
-		// if (millis() - last_time > 1000) {
-		// 	last_time += 1000;
-		// 	long a_pos = stepperA.currentPosition();
-		// 	long b_pos = stepperB.currentPosition();
-		// 	Serial.printf("Target: [%0.2f %0.2f] At: [[%0.2f %0.2f]]\n", next.H *-0.1125, next.V * 0.1125, angleToStep*float(b_pos - a_pos) / 2, angleToStep*float(a_pos + b_pos) / 2);
-		// }
+		int interval = 2000;
+		if (millis() - last_time > interval) {
+			last_time += interval;
+			long a_pos = stepperA.currentPosition();
+			long b_pos = stepperB.currentPosition();
+			Serial.printf("Target: [%0.2f %0.2f] At: [[%0.2f %0.2f]]\n", next.H *-0.1125, next.V * 0.1125, angleToStep*float(b_pos - a_pos) / 2, angleToStep*float(a_pos + b_pos) / 2);
+		}
 
 		// stepperA.run();
 		// stepperB.run();
-		// vTaskDelay(1);
-		taskYIELD();
+		vTaskDelay(1);
+		// taskYIELD();
 	}
 }
 
@@ -202,12 +203,12 @@ bool seekTarget(MoveCmd &newCmd)
 
 		if (result_target.valid)
 		{
-			double x_offset = atan(double(result_target.x) / double(result_target.y)) * 180.0 / PI;
-			double y_offset = atan(double(1000) / double(result_target.distance)) * 180.0 / PI;
+			double x_offset = atan(double(result_target.x) / double(result_target.y)) * -180.0 / PI;
+			double y_offset = atan(double(1000) / double(result_target.distance)) * -180.0 / PI; // Height of default target - height of turret = angle to aim at (table height is 1320)
 
-			// Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
+			Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
 
-			newCmd.H = min(max(int(x_offset / -0.1125), h_min), h_max);
+			newCmd.H = min(max(int(x_offset / 0.1125), h_min), h_max);
 			newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
 			return true;
 		}
@@ -218,7 +219,7 @@ void targetingLoop(void *pvParameters)
 {
 	for (;;)
 	{
-		uint64_t s = esp_timer_get_time();
+		// uint64_t s = esp_timer_get_time();
 		const int sensor_got_valid_targets = ld2450.read();
 		if (sensor_got_valid_targets > 0)
 		{
@@ -234,7 +235,8 @@ void targetingLoop(void *pvParameters)
 				}
 			}
 		}
-		vTaskDelay(1);
+		// vTaskDelay(100);
+		vTaskDelay(50/portTICK_PERIOD_MS);
 		// taskYIELD();
 	}
 }
