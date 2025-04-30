@@ -119,7 +119,7 @@ void doMoveOrder(int H, int V, int S)
 	// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));
 	iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
 
-	Serial.printf("Moving to (%i, %i) [%f, %f] at %f via delta (%i, %i) -> %i\n", H, V, H * 0.225, V * 0.225, iterMaxSpeed, moveA, moveB, distance);
+	// Serial.printf("Moving to (%i, %i) [%f, %f] at %f via delta (%i, %i) -> %i\n", H, V, H * angleToStep, V * angleToStep, iterMaxSpeed, moveA, moveB, distance);
 
 	iterMaxSpeed *= stepFraction;
 
@@ -141,6 +141,7 @@ void doMoveOrder(int H, int V, int S)
 	// stepperB.moveTo(delta_B);
 }
 
+int last_time = 0;
 void systemControlLoop(void *pvParameters)
 {
 	for (;;)
@@ -172,6 +173,19 @@ void systemControlLoop(void *pvParameters)
 		}
 		// }
 		steppers.run();
+
+
+		// x_Setpoint = next.H *-0.1125;
+		// y_Setpoint = next.V * 0.1125;
+		// x_Input = (a_pos - b_pos) / 2;
+		// y_Input = (a_pos + b_pos) / 2;
+		// if (millis() - last_time > 1000) {
+		// 	last_time += 1000;
+		// 	long a_pos = stepperA.currentPosition();
+		// 	long b_pos = stepperB.currentPosition();
+		// 	Serial.printf("Target: [%0.2f %0.2f] At: [[%0.2f %0.2f]]\n", next.H *-0.1125, next.V * 0.1125, angleToStep*float(b_pos - a_pos) / 2, angleToStep*float(a_pos + b_pos) / 2);
+		// }
+
 		// stepperA.run();
 		// stepperB.run();
 		// vTaskDelay(1);

@@ -22,7 +22,7 @@ const int v_max = 1000;
 const int h_min = -500;
 const int v_min = -1000;
 
-const float angleToStep = 360 / 200 / 1 / 16; // circle / steps per circle / gear ratio / step division
+const float angleToStep = 0.1125; //(360 / 200) / 1 / 16; // circle / steps per circle / gear ratio / step division
 
 // Define motor interface type
 #define motorInterfaceType 1
