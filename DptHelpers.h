@@ -18,7 +18,7 @@ public:
 	uint64_t seen;
 	long X_coord = 0;
 	long Y_coord = 0;
-	long Z_coord = 0;
+	long Z_coord = 1000;
 	bool valid = false;
 	long speed = 0;
 
@@ -61,7 +61,7 @@ private:
 
 public:
 	// Define motor limits
-	const int maxSpeed = maxSpeed; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
+	// const int maxSpeed = maxSpeed; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
 	const int acceleration = 120;
 
 	// Define other constants
@@ -89,7 +89,7 @@ private:
 	bool fireState = false;
 	bool needTrackingUpdate = false;
 	uint8_t trackingSpeed = 255;
-	uint8_t selectedTarget = 0;
+	uint8_t selectedTarget = 1;
 
 private:
 	Target target[4]; // Target zero is for special overrides, without messing with radar targets

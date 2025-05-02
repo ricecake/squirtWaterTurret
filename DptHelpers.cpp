@@ -17,6 +17,7 @@ Target SystemState::currentTarget() {
 }
 
 void SystemState::updateTarget(Target& newTarget) {
+	// Serial.printf("Target %i at %f by %f\n", newTarget.index, newTarget.Pitch(), newTarget.Yaw());
 	target[newTarget.index] = newTarget;
 	needTrackingUpdate = true;
 }
@@ -36,12 +37,15 @@ void SystemState::queueLinger(uint8_t milliseconds)
 
 void SystemState::processCommandQueue() {
 	auto now = esp_timer_get_time();
-	if (!commandQueue.empty()){
-		auto comm = commandQueue.top();
-		while(now > comm->run_after) {
-			comm->Execute(this);
-			commandQueue.pop();
+	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+		if (!commandQueue.empty()){
+			auto comm = commandQueue.top();
+			while(now > comm->run_after) {
+				comm->Execute(this);
+				commandQueue.pop();
+			}
 		}
+		xSemaphoreGive(xMutex);
 	}
 }
 
@@ -54,16 +58,17 @@ void SystemState::actualizePosition()
 {
 	auto target = currentTarget();
 	if(needTrackingUpdate && target.valid) {
-
-		auto pitch = min(max(int(target.Pitch() / 0.1125), h_min), h_max);
-		auto yaw   = min(max(int(target.Yaw() / 0.1125), v_min), v_max);
+		// auto pitch = min(max(int(target.Pitch() / angleToStep), h_min), h_max);
+		// auto yaw   = min(max(int(target.Yaw() / angleToStep), v_min), v_max);
+		auto pitch = long(min(max(target.Pitch(), -60.0), 60.0)/angleToStep);
+		auto yaw   = long(min(max(target.Yaw(), -70.0), 70.0)/angleToStep);
 
 		int delta_A = pitch + yaw;
 		int delta_B = yaw - pitch;
 
 		long moveA = delta_A - stepperA.currentPosition();
 		long moveB = delta_B - stepperB.currentPosition();
-		long distance = (moveA * moveA) + (moveB * moveB);
+		long distance = pow(moveA, 2) + pow(moveB, 2);
 		// Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", H, V, H*0.225, V*0.225, S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
 
 		if (distance <= 50)
@@ -72,15 +77,16 @@ void SystemState::actualizePosition()
 			return;
 		}
 
-		float iterMaxSpeed = trackingSpeed/double(255) * maxSpeed;
+		double iterMaxSpeed = trackingSpeed/double(0xFF) * maxSpeed;
 
 		// iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
 		// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));
 		// iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
 
-		// Serial.printf("Moving to (%i, %i) [%f, %f] at %f via delta (%i, %i) -> %i\n", H, V, H * angleToStep, V * angleToStep, iterMaxSpeed, moveA, moveB, distance);
-
 		iterMaxSpeed *= stepFraction;
+		// Serial.println(maxSpeed);
+		// Serial.printf("%f -> %i -> %i\n", iterMaxSpeed, delta_A, delta_B);
+		// Serial.printf("Moving to (%f, %f) [%i, %i] at %f via delta (%i, %i) -> %i\n", target.Pitch(), target.Yaw(), pitch, yaw, iterMaxSpeed, moveA, moveB, distance);
 
 	/*
 		// This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
