@@ -168,7 +168,7 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
 
 
                     //CALCULATE DISTANCE
-                    LD2450::radarTargets[targetCounter].distance = sqrt(pow(LD2450::radarTargets[targetCounter].x, 2) +  pow(LD2450::radarTargets[targetCounter].y, 2));
+                    // LD2450::radarTargets[targetCounter].distance = sqrt(pow(LD2450::radarTargets[targetCounter].x, 2) +  pow(LD2450::radarTargets[targetCounter].y, 2));
 
                     // IF A RESOLUTION IS PRESENT THEN WE CAN ASSUME THAT A TARGET WAS FOUND
                     if(LD2450::radarTargets[targetCounter].resolution != 0){

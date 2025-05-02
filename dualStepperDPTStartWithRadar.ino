@@ -7,15 +7,11 @@
 
 #include "DptHelpers.h"
 
-// Creates an instance
-AccelStepper stepperA(motorInterfaceType, stepPinA, dirPinA);
-AccelStepper stepperB(motorInterfaceType, stepPinB, dirPinB);
-
-MultiStepper steppers;
 HardwareSerial RadarSerial(1);
 LD2450 ld2450;
 
-SemaphoreHandle_t xMutex;
+SystemState dptState;
+
 TaskHandle_t targeting;
 TaskHandle_t systemControl;
 
@@ -41,17 +37,8 @@ void setup()
 	}
 
 	randomSeed(analogRead(0));
-	// set the maximum speed, acceleration factor,
-	// initial speed and the target position
-	stepperA.setMaxSpeed(maxSpeed);
-	stepperB.setMaxSpeed(maxSpeed);
-	stepperA.setAcceleration(acceleration);
-	stepperB.setAcceleration(acceleration);
 
-	steppers.addStepper(stepperA);
-	steppers.addStepper(stepperB);
-
-	xMutex = xSemaphoreCreateMutex();
+	// dptState = SystemState();
 
 	Serial.println("SETUP_FINISHED");
 
@@ -88,8 +75,6 @@ void setup()
 }
 
 long deltas[2];
-MoveCmd last;
-MoveCmd next;
 
 void loop()
 {
@@ -97,49 +82,6 @@ void loop()
 	// uart_enable_intr_mask(uart_port_t uart_num, uint32_t enable_mask)
 }
 
-void doMoveOrder(int H, int V, int S)
-{
-	int delta_A = H + V;
-	int delta_B = V - H;
-
-	long moveA = delta_A - stepperA.currentPosition();
-	long moveB = delta_B - stepperB.currentPosition();
-	long distance = (moveA * moveA) + (moveB * moveB);
-	// Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", H, V, H*0.225, V*0.225, S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
-
-	if (distance <= 50)
-	{
-		// Serial.printf("Skipping [%i %i] [%i %i] [%i %i] [%i %i])\n", H, V, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition(), moveA, moveB);
-		return;
-	}
-
-	float iterMaxSpeed = S > 0 ? S : maxSpeed;
-
-	// iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
-	// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));
-	// iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
-
-	Serial.printf("Moving to (%i, %i) [%f, %f] at %f via delta (%i, %i) -> %i\n", H, V, H * angleToStep, V * angleToStep, iterMaxSpeed, moveA, moveB, distance);
-
-	iterMaxSpeed *= stepFraction;
-
-	deltas[0] = delta_A;
-	deltas[1] = delta_B;
-/*
-	// This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
-		Basically take multiple target positions over time, and try to match the targets velocity, and also their positiono.
-		I think that's something that a pid controller does?
-		Yes, pid controller.  
-		Pitch and yaw each get a controller, and it should output a movement speed for each motor.
-		We should set the speed for each of them and use runSpeed to move at that velocity.
-		It's inputs should be the current position in the respective dimension.
-*/
-	stepperA.setMaxSpeed(iterMaxSpeed);
-	stepperB.setMaxSpeed(iterMaxSpeed);
-	steppers.moveTo(deltas);
-	// stepperA.moveTo(delta_A);
-	// stepperB.moveTo(delta_B);
-}
 
 int last_time = 0;
 void systemControlLoop(void *pvParameters)
@@ -148,19 +90,22 @@ void systemControlLoop(void *pvParameters)
 	{
 		/*
 		Change the flow to be fetching from the command queue while the commands are scheduled for now or earlier.
-		Each command will get a reference to the state, and can mutate it.
-		Then we actualize the state.
-		set firing pin to the set state.
+		Each command will get a reference to the dptState, and can mutate it.
+		Then we actualize the dptState.
+		set firing pin to the set dptState.
 		load move orders
 
-		This means that targeting system finds targets and updates the state
+		This means that targeting system finds targets and updates the dptState
 		the command queue contains updates on which target to select
 
 		later, when pose estimation is in place, it can send data and the targeter can tweak the specific coordinates of each target as appropriate
 		*/
 
-		// if (!(stepperA.distanceToGo() || stepperB.distanceToGo())) {
+		// if (!(dptState.stepperA.distanceToGo() || dptState.stepperB.distanceToGo())) {
 		// Serial.println("DONE");
+
+
+/*
 		if ((next.H != last.H) && (next.V != last.V))
 		{
 			if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
@@ -172,9 +117,13 @@ void systemControlLoop(void *pvParameters)
 			}
 		}
 		// }
-		steppers.run();
+*/
+		dptState.processCommandQueue();
+		dptState.actualizeState();
+		dptState.steppers.run();
+		vTaskDelay(1);
 
-
+/*
 		// x_Setpoint = next.H *-0.1125;
 		// y_Setpoint = next.V * 0.1125;
 		// x_Input = (a_pos - b_pos) / 2;
@@ -182,18 +131,15 @@ void systemControlLoop(void *pvParameters)
 		int interval = 2000;
 		if (millis() - last_time > interval) {
 			last_time += interval;
-			long a_pos = stepperA.currentPosition();
-			long b_pos = stepperB.currentPosition();
-			Serial.printf("Target: [%0.2f %0.2f] At: [[%0.2f %0.2f]]\n", next.H *-0.1125, next.V * 0.1125, angleToStep*float(b_pos - a_pos) / 2, angleToStep*float(a_pos + b_pos) / 2);
+			long a_pos = dptState.stepperA.currentPosition();
+			long b_pos = dptState.stepperB.currentPosition();
+			Serial.printf("Target: [%0.2f %0.2f] At: [[%0.2f %0.2f]]\n", next.H *-0.1125, next.V * 0.1125, dptState.angleToStep*float(b_pos - a_pos) / 2, dptState.angleToStep*float(a_pos + b_pos) / 2);
 		}
-
-		// stepperA.run();
-		// stepperB.run();
-		vTaskDelay(1);
-		// taskYIELD();
+*/
 	}
 }
 
+/*
 bool seekTarget(MoveCmd &newCmd)
 {
 	// GET THE DETECTED TARGETS
@@ -214,27 +160,31 @@ bool seekTarget(MoveCmd &newCmd)
 		}
 	}
 }
+*/
+
+void refreshTargets() {
+	const int sensor_got_valid_targets = ld2450.read();
+	if (sensor_got_valid_targets > 0)
+	{
+		// GET THE DETECTED TARGETS
+		for (int i = 0; i < sensor_got_valid_targets; i++)
+		{
+			LD2450::RadarTarget result_target = ld2450.getTarget(i);
+
+			if (result_target.valid)
+			{
+				auto newTarget = Target(result_target.id, result_target.x, result_target.y, result_target.speed, result_target.valid);
+				dptState.updateTarget(newTarget);
+			}
+		}
+	}
+}
 
 void targetingLoop(void *pvParameters)
 {
 	for (;;)
 	{
-		// uint64_t s = esp_timer_get_time();
-		const int sensor_got_valid_targets = ld2450.read();
-		if (sensor_got_valid_targets > 0)
-		{
-			// uint64_t f = esp_timer_get_time();
-			// Serial.println(f-s);
-			MoveCmd newCmd;
-			if (seekTarget(newCmd))
-			{
-				if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-				{
-					next = newCmd;
-					xSemaphoreGive(xMutex);
-				}
-			}
-		}
+		refreshTargets();
 		// vTaskDelay(100);
 		vTaskDelay(50/portTICK_PERIOD_MS);
 		// taskYIELD();
