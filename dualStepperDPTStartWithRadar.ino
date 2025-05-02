@@ -2,9 +2,9 @@
 #include <AccelStepper.h>
 #include <MultiStepper.h>
 #include <HardwareSerial.h>
-#include "LD2450.h"
 #include <vector>
 
+#include "LD2450.h"
 #include "DptHelpers.h"
 
 HardwareSerial RadarSerial(1);
@@ -38,8 +38,6 @@ void setup()
 
 	randomSeed(analogRead(0));
 
-	// dptState = SystemState();
-
 	Serial.println("SETUP_FINISHED");
 
 	// initTestData();
@@ -50,36 +48,30 @@ void setup()
 
 	Serial.println("Starting!");
 
-	// create a task that will be executed in the targetingLoop() function, with priority 1 and executed on core 0
 	xTaskCreatePinnedToCore(
-		targetingLoop, /* Task function. */
-		"Targeting",   /* name of task. */
-		10000,		   /* Stack size of task */
-		NULL,		   /* parameter of the task */
-		1,			   /* priority of the task */
-		&targeting,	   /* Task handle to keep track of created task */
-		0			   /* pin task to core 0 */
+		targetingLoop,
+		"Targeting",
+		10000,
+		NULL,
+		1,
+		&targeting,
+		0
 	);
 
-	// create a task that will be executed in the systemControlLoop() function, with priority 1 and executed on core 1
 	xTaskCreatePinnedToCore(
-		systemControlLoop, /* Task function. */
-		"Control",		   /* name of task. */
-		10000,			   /* Stack size of task */
-		NULL,			   /* parameter of the task */
-		1,				   /* priority of the task */
-		&systemControl,	   /* Task handle to keep track of created task */
-		1				   /* pin task to core 0 */
+		systemControlLoop,
+		"Control",
+		10000,
+		NULL,
+		1,
+		&systemControl,
+		1
 	);
-	// vTaskStartScheduler();
 }
-
-long deltas[2];
 
 void loop()
 {
 	vTaskDelay(1000);
-	// uart_enable_intr_mask(uart_port_t uart_num, uint32_t enable_mask)
 }
 
 
@@ -100,24 +92,6 @@ void systemControlLoop(void *pvParameters)
 
 		later, when pose estimation is in place, it can send data and the targeter can tweak the specific coordinates of each target as appropriate
 		*/
-
-		// if (!(dptState.stepperA.distanceToGo() || dptState.stepperB.distanceToGo())) {
-		// Serial.println("DONE");
-
-
-/*
-		if ((next.H != last.H) && (next.V != last.V))
-		{
-			if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-			{
-				MoveCmd position = next;
-				last = position;
-				xSemaphoreGive(xMutex);
-				doMoveOrder(position.H, position.V, position.S);
-			}
-		}
-		// }
-*/
 		dptState.processCommandQueue();
 		dptState.actualizeState();
 		dptState.steppers.run();
@@ -138,29 +112,6 @@ void systemControlLoop(void *pvParameters)
 */
 	}
 }
-
-/*
-bool seekTarget(MoveCmd &newCmd)
-{
-	// GET THE DETECTED TARGETS
-	for (int i = 0; i < LD2450_MAX_SENSOR_TARGETS; i++)
-	{
-		LD2450::RadarTarget result_target = ld2450.getTarget(i);
-
-		if (result_target.valid)
-		{
-			double x_offset = atan(double(result_target.x) / double(result_target.y)) * -180.0 / PI;
-			double y_offset = atan(double(1000) / double(result_target.distance)) * -180.0 / PI; // Height of default target - height of turret = angle to aim at (table height is 1320)
-
-			Serial.printf("Target %i at %f by %f, %i mm away going %i cm/s\n", i, x_offset, y_offset, result_target.distance, result_target.speed);
-
-			newCmd.H = min(max(int(x_offset / 0.1125), h_min), h_max);
-			newCmd.V = min(max(int(y_offset / 0.1125), v_min), v_max);
-			return true;
-		}
-	}
-}
-*/
 
 void refreshTargets() {
 	const int sensor_got_valid_targets = ld2450.read();
@@ -185,8 +136,6 @@ void targetingLoop(void *pvParameters)
 	for (;;)
 	{
 		refreshTargets();
-		// vTaskDelay(100);
 		vTaskDelay(50/portTICK_PERIOD_MS);
-		// taskYIELD();
 	}
 }

@@ -1,6 +1,6 @@
-#include "esp_timer.h"
 #include <stdint.h>
 #include <Arduino.h>
+#include "esp_timer.h"
 #include "DptHelpers.h"
 
 SystemState::SystemState() {
@@ -58,8 +58,16 @@ void SystemState::actualizePosition()
 {
 	auto target = currentTarget();
 	if(needTrackingUpdate && target.valid) {
-		// auto pitch = min(max(int(target.Pitch() / angleToStep), h_min), h_max);
-		// auto yaw   = min(max(int(target.Yaw() / angleToStep), v_min), v_max);
+		/*
+		This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
+		Basically take multiple target positions over time, and try to match the targets velocity, and also their positiono.
+		I think that's something that a pid controller does?
+		Yes, pid controller.  
+		Pitch and yaw each get a controller, and it should output a movement speed for each motor.
+		We should set the speed for each of them and use runSpeed to move at that velocity.
+		It's inputs should be the current position in the respective dimension.
+		*/
+
 		auto pitch = long(min(max(target.Pitch(), -60.0), 60.0)/angleToStep);
 		auto yaw   = long(min(max(target.Yaw(), -70.0), 70.0)/angleToStep);
 
@@ -69,34 +77,19 @@ void SystemState::actualizePosition()
 		long moveA = delta_A - stepperA.currentPosition();
 		long moveB = delta_B - stepperB.currentPosition();
 		long distance = pow(moveA, 2) + pow(moveB, 2);
-		// Serial.printf("Moving to (%i, %i) [%f, %f] at %u via delta (%i, %i)  [%i, %i]\n", H, V, H*0.225, V*0.225, S, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition());
 
 		if (distance <= 50)
 		{
-			// Serial.printf("Skipping [%i %i] [%i %i] [%i %i] [%i %i])\n", H, V, delta_A, delta_B, stepperA.currentPosition(), stepperB.currentPosition(), moveA, moveB);
 			return;
 		}
 
-		double iterMaxSpeed = trackingSpeed/double(0xFF) * maxSpeed;
+		double iterMaxSpeed = trackingSpeed/double(0xFF) * maxSpeed * stepFraction;
 
 		// iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
 		// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));
 		// iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
 
-		iterMaxSpeed *= stepFraction;
-		// Serial.println(maxSpeed);
-		// Serial.printf("%f -> %i -> %i\n", iterMaxSpeed, delta_A, delta_B);
 		// Serial.printf("Moving to (%f, %f) [%i, %i] at %f via delta (%i, %i) -> %i\n", target.Pitch(), target.Yaw(), pitch, yaw, iterMaxSpeed, moveA, moveB, distance);
-
-	/*
-		// This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
-			Basically take multiple target positions over time, and try to match the targets velocity, and also their positiono.
-			I think that's something that a pid controller does?
-			Yes, pid controller.  
-			Pitch and yaw each get a controller, and it should output a movement speed for each motor.
-			We should set the speed for each of them and use runSpeed to move at that velocity.
-			It's inputs should be the current position in the respective dimension.
-	*/
 
 		long delta[2] = {
 			delta_A,
