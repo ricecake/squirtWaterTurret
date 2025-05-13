@@ -39,7 +39,7 @@ public:
 class Command
 {
 public:
-	uint32_t id = 0;
+	int64_t id = 0;
 	int64_t run_after = 0;
 	bool operator<(const Command &other) const;
 
@@ -89,7 +89,7 @@ private:
 	bool fireState = false;
 	bool needTrackingUpdate = false;
 	uint8_t trackingSpeed = 255;
-	uint8_t selectedTarget = 1;
+	uint8_t selectedTarget = 0;
 
 private:
 	Target target[4]; // Target zero is for special overrides, without messing with radar targets
@@ -99,8 +99,8 @@ public:
 	SystemState();
 	Target currentTarget();
 	void updateTarget(Target&);
-	void setTarget(uint8_t index);
-	void queueSelectTarget(uint8_t index, uint8_t milliseconds);
+	void setTarget(uint8_t index, uint8_t speed = 0xFF);
+	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
 	void queueFire(uint8_t milliseconds);
 	void queueLinger(uint8_t milliseconds);
 	void processCommandQueue();
@@ -110,11 +110,12 @@ private:
 	void actualizePosition();
 };
 
-class TargetSelection : Command
+class TargetSelection : public Command
 {
 	uint8_t target_id;
 	int speed = maxSpeed;
-	void Execute(SystemState &state);
+	public:
+	void Execute(SystemState* state);
 	TargetSelection(uint8_t, int, int64_t);
 
 	// This should actually just be speed and target index.
@@ -124,13 +125,13 @@ class TargetSelection : Command
 class FireControl : Command
 {
 	bool active = false;
-	void Execute(SystemState &state);
+	void Execute(SystemState* state);
 	FireControl(bool, int64_t);
 };
 
 class MovementControl : Command
 {
 	bool active = false;
-	void Execute(SystemState &state);
+	void Execute(SystemState* state);
 	MovementControl(bool, int64_t);
 };

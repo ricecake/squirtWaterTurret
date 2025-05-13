@@ -22,8 +22,9 @@ void SystemState::updateTarget(Target& newTarget) {
 	needTrackingUpdate = true;
 }
 
-void SystemState::setTarget(uint8_t index) {
+void SystemState::setTarget(uint8_t index, uint8_t speed) {
 	selectedTarget = index;
+	trackingSpeed = speed;
 	needTrackingUpdate = true;
 }
 
@@ -35,14 +36,22 @@ void SystemState::queueLinger(uint8_t milliseconds)
 {
 }
 
+void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
+	commandQueue.push(new TargetSelection(
+		index, 0xFF, milliseconds*1000
+	));
+}
+
 void SystemState::processCommandQueue() {
 	auto now = esp_timer_get_time();
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
 		if (!commandQueue.empty()){
 			auto comm = commandQueue.top();
 			while(now > comm->run_after) {
-				comm->Execute(this);
 				commandQueue.pop();
+				comm->Execute(this);
+				delete comm;
+				comm = commandQueue.top();
 			}
 		}
 		xSemaphoreGive(xMutex);
@@ -101,7 +110,7 @@ void SystemState::actualizePosition()
 	}
 
 	if (stepperA.distanceToGo() || stepperB.distanceToGo()) {
-				steppers.run();
+		steppers.run();
 	}
 }
 
@@ -115,14 +124,24 @@ bool Command::operator<(const Command &other) const
 	return this->run_after < other.run_after;
 }
 
-Command::Command(int64_t run_after) : run_after(run_after)
+Command::Command(int64_t run_after)
 {
 	id = esp_timer_get_time();
+	this->run_after = id + run_after;
 }
 
 
-void TargetSelection::Execute(SystemState &state)
+void TargetSelection::Execute(SystemState* state)
 {
+	state->setTarget(target_id, speed);
+	auto currTarget = state->currentTarget();
+
+	uint16_t timeout = 0;
+	if (currTarget.valid) {
+		timeout = 1*1000;
+	}
+
+	state->queueSelectTarget(((target_id+1)%4), timeout);
 }
 TargetSelection::TargetSelection(uint8_t target_id, int speed, int64_t run_after) : Command(run_after), target_id(target_id), speed(speed)
 {
@@ -167,7 +186,7 @@ double Target::Pitch(){
 }
 double Target::Yaw(){
 	if(!yaw) {
-		yaw = atan(double(Z_coord) / double(Distance())) * -180.0 / PI; // Height of default target - height of turret = angle to aim at (table height is 1320)	
+		yaw = atan(double(1320-Z_coord) / double(Distance())) * 180.0 / PI; // Height of default target - height of turret = angle to aim at (table height is 1320)	
 	}
 	return yaw;
 }

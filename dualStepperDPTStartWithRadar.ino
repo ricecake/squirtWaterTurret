@@ -42,6 +42,9 @@ void setup()
 
 	// initTestData();
 
+	dptState.setTarget(1);
+	dptState.queueSelectTarget(1, 5*1000);
+
 	Serial.println("Ready!");
 
 	delay(5000);
