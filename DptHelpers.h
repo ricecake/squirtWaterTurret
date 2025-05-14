@@ -6,6 +6,27 @@
 #include <AccelStepper.h>
 #include <MultiStepper.h>
 
+
+// inline int64_t milliseconds(int64_t millis);
+// inline int64_t seconds(int64_t seconds);
+
+// template<typename T>
+// int64_t milliseconds(T millis, int64_t offset = 0);
+
+// template<typename T>
+// int64_t seconds(T seconds, int64_t offset = 0);
+
+template<typename T>
+int64_t milliseconds(T millis, int64_t offset=0) {
+	return offset + int64_t(1000*millis);
+}
+
+template<typename T>
+int64_t seconds(T seconds, int64_t offset=0) {
+	return offset + int64_t(1000 * 1000 * seconds);
+}
+
+
 // Define motor interface type
 const int motorInterfaceType = 1;
 const int maxSpeed = 400; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
@@ -15,7 +36,8 @@ class SystemState;
 class Target {
 public:
 	uint8_t index;
-	uint64_t seen;
+	int64_t seen;
+	int64_t last_action;
 	long X_coord = 0;
 	long Y_coord = 0;
 	long Z_coord = 1000;
@@ -34,6 +56,10 @@ public:
 	double Pitch();
 	double Yaw();
 	long Distance();
+	int64_t timeSinceLastAction();
+	bool actionIdleExceeds(int64_t limit);
+	void IncrementAction();
+	void Update(Target& updated);
 };
 
 class Command
@@ -41,7 +67,6 @@ class Command
 public:
 	int64_t id = 0;
 	int64_t run_after = 0;
-	bool operator<(const Command &other) const;
 
 	virtual void Execute(SystemState* state) = 0;
 	Command(int64_t run_after);
@@ -58,6 +83,8 @@ private:
 	const int dirPinB = 33;
 	const int stepPinA = 25;
 	const int dirPinA = 26;
+
+	const int firePin = 2;
 
 public:
 	// Define motor limits
@@ -93,28 +120,34 @@ private:
 
 private:
 	Target target[4]; // Target zero is for special overrides, without messing with radar targets
-	std::priority_queue<Command*, std::vector<Command*>, std::greater<Command*>> commandQueue;
+	std::priority_queue<Command*, std::vector<Command*>, decltype([](auto left, auto right){
+		return left->run_after >= right->run_after;
+	})> commandQueue;
 
 public:
 	SystemState();
-	Target currentTarget();
-	void updateTarget(Target&);
+	Target& currentTarget();
+	void updateTarget(Target&, uint16_t indifferenceMargin = 0);
 	void setTarget(uint8_t index, uint8_t speed = 0xFF);
+	void setFire(bool active);
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
 	void queueFire(uint8_t milliseconds);
 	void queueLinger(uint8_t milliseconds);
 	void processCommandQueue();
 	void actualizeState();
+	long targetTravelDistance();
 
 private:
 	void actualizePosition();
+	void actualizeFiring();
 };
 
 class TargetSelection : public Command
 {
 	uint8_t target_id;
 	int speed = maxSpeed;
-	public:
+
+public:
 	void Execute(SystemState* state);
 	TargetSelection(uint8_t, int, int64_t);
 
@@ -122,16 +155,10 @@ class TargetSelection : public Command
 	// The radar will set the targets as it finds them, and then we schedule which one we're interested in.
 };
 
-class FireControl : Command
+class FireControl : public Command
 {
-	bool active = false;
+	bool active;
+public:
 	void Execute(SystemState* state);
 	FireControl(bool, int64_t);
-};
-
-class MovementControl : Command
-{
-	bool active = false;
-	void Execute(SystemState* state);
-	MovementControl(bool, int64_t);
 };

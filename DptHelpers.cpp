@@ -1,3 +1,6 @@
+#include "HardwareSerial.h"
+#include <climits>
+#include "esp32-hal-gpio.h"
 #include <stdint.h>
 #include <Arduino.h>
 #include "esp_timer.h"
@@ -9,17 +12,31 @@ SystemState::SystemState() {
 	steppers.addStepper(stepperA);
 	steppers.addStepper(stepperB);
 
+	pinMode(firePin, OUTPUT);
+
 	xMutex = xSemaphoreCreateMutex();
 }
 
-Target SystemState::currentTarget() {
+Target& SystemState::currentTarget() {
 	return target[selectedTarget];
 }
 
-void SystemState::updateTarget(Target& newTarget) {
-	// Serial.printf("Target %i at %f by %f\n", newTarget.index, newTarget.Pitch(), newTarget.Yaw());
-	target[newTarget.index] = newTarget;
-	needTrackingUpdate = true;
+void SystemState::updateTarget(Target& newTarget, uint16_t indifferenceMargin) {
+	bool doUpdate = true;
+	if (indifferenceMargin > 0) {
+		auto oldTarget = target[newTarget.index];
+		auto distance = pow(newTarget.X_coord - oldTarget.X_coord, 2) + pow(newTarget.Y_coord - oldTarget.Y_coord, 2);
+		doUpdate = distance >= indifferenceMargin;
+		if (doUpdate) {
+			Serial.println(distance);
+			Serial.println(doUpdate? "Move" : "No Move");
+		}
+	}
+
+	if (doUpdate) {
+		target[newTarget.index].Update(newTarget);
+		needTrackingUpdate = true;
+	}
 }
 
 void SystemState::setTarget(uint8_t index, uint8_t speed) {
@@ -28,8 +45,20 @@ void SystemState::setTarget(uint8_t index, uint8_t speed) {
 	needTrackingUpdate = true;
 }
 
-void SystemState::queueFire(uint8_t milliseconds)
+void SystemState::setFire(bool active) {
+	fireState = active;
+}
+
+void SystemState::queueFire(uint8_t fireDuration)
 {
+	auto start = milliseconds(5);
+	auto end   = milliseconds(fireDuration, start);
+
+	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+		commandQueue.push(new FireControl(true, start));
+		commandQueue.push(new FireControl(false, end));
+		xSemaphoreGive(xMutex);
+	}
 }
 
 void SystemState::queueLinger(uint8_t milliseconds)
@@ -45,14 +74,26 @@ void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
 void SystemState::processCommandQueue() {
 	auto now = esp_timer_get_time();
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		if (!commandQueue.empty()){
+		// if (!newQueue.empty()) {
+		// Serial.println("BEGIN QUEUE DUMP");
+		// auto newQueue = commandQueue;
+		// while(!newQueue.empty()) {
+		// 	auto i = newQueue.top();
+		// 	newQueue.pop();
+		// 	Serial.printf("\t\tDUMP %lld: %lld %lld\n", now, i->run_after, i->id);
+		// }
+		// Serial.println("END QUEUE DUMP");
+		// }
+		while(!commandQueue.empty()) {
 			auto comm = commandQueue.top();
-			while(now > comm->run_after) {
-				commandQueue.pop();
-				comm->Execute(this);
-				delete comm;
-				comm = commandQueue.top();
+
+			if (now <= comm->run_after) {
+				break;
 			}
+
+			commandQueue.pop();
+			comm->Execute(this);
+			delete comm;
 		}
 		xSemaphoreGive(xMutex);
 	}
@@ -60,6 +101,11 @@ void SystemState::processCommandQueue() {
 
 void SystemState::actualizeState() {
 	actualizePosition();
+	actualizeFiring();
+}
+
+void SystemState::actualizeFiring() {
+	digitalWrite(firePin, fireState ? HIGH : LOW);
 }
 
 
@@ -83,14 +129,14 @@ void SystemState::actualizePosition()
 		int delta_A = pitch + yaw;
 		int delta_B = yaw - pitch;
 
-		long moveA = delta_A - stepperA.currentPosition();
-		long moveB = delta_B - stepperB.currentPosition();
-		long distance = pow(moveA, 2) + pow(moveB, 2);
+		// long moveA = delta_A - stepperA.currentPosition();
+		// long moveB = delta_B - stepperB.currentPosition();
+		// long distance = pow(moveA, 2) + pow(moveB, 2);
 
-		if (distance <= 50)
-		{
-			return;
-		}
+		// if (distance <= 50)
+		// {
+		// 	return;
+		// }
 
 		double iterMaxSpeed = trackingSpeed/double(0xFF) * maxSpeed * stepFraction;
 
@@ -114,15 +160,24 @@ void SystemState::actualizePosition()
 	}
 }
 
+long SystemState::targetTravelDistance() {
+	auto target = currentTarget();
+	if(!target.valid) {
+		return INT_MAX;
+	}
 
+	auto yaw = angleToStep*(stepperA.currentPosition() + stepperB.currentPosition())/2;
+	auto pitch = angleToStep*(stepperA.currentPosition() - stepperB.currentPosition())/2;
 
+	// Serial.printf("At %f %f Want %f %f\n", pitch, yaw, target.Pitch(), target.Yaw());
 
-
-
-bool Command::operator<(const Command &other) const
-{
-	return this->run_after < other.run_after;
+	return pow(yaw - target.Yaw(), 2) + pow(pitch - target.Pitch(), 2);
 }
+
+
+
+
+
 
 Command::Command(int64_t run_after)
 {
@@ -145,6 +200,15 @@ void TargetSelection::Execute(SystemState* state)
 }
 TargetSelection::TargetSelection(uint8_t target_id, int speed, int64_t run_after) : Command(run_after), target_id(target_id), speed(speed)
 {
+}
+
+FireControl::FireControl(bool active, int64_t run_after) : Command(run_after), active(active) {
+}
+void FireControl::Execute(SystemState* state) {
+	state->setFire(active);
+
+	Target& curr = state->currentTarget();
+	curr.IncrementAction();
 }
 
 
@@ -177,6 +241,30 @@ Target::Target(uint8_t index, long X, long Y, long Z, long speed, bool valid) : 
 	seen = esp_timer_get_time();
 }
 
+void Target::Update(Target & updated) {
+	valid = updated.valid;
+	seen  = updated.seen;
+
+	if (updated.X_coord) {
+		X_coord = updated.X_coord;
+	}
+	if (updated.Y_coord) {
+		Y_coord = updated.Y_coord;
+	}
+	if (updated.Z_coord) {
+		Z_coord = updated.Z_coord;
+	}
+	if (updated.speed) {
+		speed = updated.speed;
+	}
+
+	if (updated.X_coord || updated.Y_coord) {
+		distance = updated.distance;
+		pitch = updated.pitch;
+		yaw = updated.yaw;
+	}
+}
+
 
 double Target::Pitch(){
 	if(!pitch) {
@@ -197,4 +285,16 @@ long Target::Distance() {
 	return distance;
 }
 
+int64_t Target::timeSinceLastAction() {
+	auto now = esp_timer_get_time();
+	return now - last_action;
+}
+
+bool Target::actionIdleExceeds(int64_t limit) {
+	return timeSinceLastAction() >= limit;
+}
+
+void Target::IncrementAction() {
+	last_action = esp_timer_get_time();
+}
 

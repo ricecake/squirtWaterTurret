@@ -128,9 +128,18 @@ void refreshTargets() {
 			if (result_target.valid)
 			{
 				auto newTarget = Target(result_target.id, result_target.x, result_target.y, result_target.speed, result_target.valid);
-				dptState.updateTarget(newTarget);
+				dptState.updateTarget(newTarget, 50);
 			}
 		}
+	}
+}
+
+void generateFireActions() {
+	Target& target = dptState.currentTarget();
+
+	if (target.actionIdleExceeds(seconds(5)) && dptState.targetTravelDistance() < 10) {
+		dptState.queueFire(250);
+		target.IncrementAction();
 	}
 }
 
@@ -139,6 +148,8 @@ void targetingLoop(void *pvParameters)
 	for (;;)
 	{
 		refreshTargets();
-		vTaskDelay(50/portTICK_PERIOD_MS);
+		generateFireActions();
+		vTaskDelay(10/portTICK_PERIOD_MS);
+		// vTaskDelay(1);
 	}
 }
