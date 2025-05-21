@@ -6,7 +6,6 @@
 #include <AccelStepper.h>
 #include <MultiStepper.h>
 
-
 // inline int64_t milliseconds(int64_t millis);
 // inline int64_t seconds(int64_t seconds);
 
@@ -16,24 +15,27 @@
 // template<typename T>
 // int64_t seconds(T seconds, int64_t offset = 0);
 
-template<typename T>
-int64_t milliseconds(T millis, int64_t offset=0) {
-	return offset + int64_t(1000*millis);
+template <typename T>
+int64_t milliseconds(T millis, int64_t offset = 0)
+{
+	return offset + int64_t(1000 * millis);
 }
 
-template<typename T>
-int64_t seconds(T seconds, int64_t offset=0) {
+template <typename T>
+int64_t seconds(T seconds, int64_t offset = 0)
+{
 	return offset + int64_t(1000 * 1000 * seconds);
 }
 
-
 // Define motor interface type
 const int motorInterfaceType = 1;
-const int maxSpeed = 400; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
+const int maxSpeed = 1000;	   // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
+const int acceleration = 3000; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
 
 class SystemState;
 
-class Target {
+class Target
+{
 public:
 	uint8_t index;
 	int64_t seen;
@@ -48,8 +50,8 @@ private:
 	long distance = 0;
 	double pitch = 0;
 	double yaw = 0;
-public:
 
+public:
 	Target();
 	Target(uint8_t index, long X, long Y, long Z = 1000, long speed = 0, bool valid = true);
 	Target(uint8_t index, long X, long Y, long speed, bool valid = true);
@@ -59,7 +61,7 @@ public:
 	int64_t timeSinceLastAction();
 	bool actionIdleExceeds(int64_t limit);
 	void IncrementAction();
-	void Update(Target& updated);
+	void Update(Target &updated);
 };
 
 class Command
@@ -68,10 +70,9 @@ public:
 	int64_t id = 0;
 	int64_t run_after = 0;
 
-	virtual void Execute(SystemState* state) = 0;
+	virtual void Execute(SystemState *state) = 0;
 	Command(int64_t run_after);
 };
-
 
 class SystemState
 {
@@ -89,7 +90,7 @@ private:
 public:
 	// Define motor limits
 	// const int maxSpeed = maxSpeed; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
-	const int acceleration = 120;
+	// const int acceleration = 120;
 
 	// Define other constants
 	const int stepFraction = 16; // The microstep fraction
@@ -101,7 +102,7 @@ public:
 
 	const float angleToStep = 0.1125; //(360 / 200) / 1 / 16; // circle / steps per circle / gear ratio / step division
 
-private:	
+private:
 	int altitude = 1320;
 
 public:
@@ -120,14 +121,14 @@ private:
 
 private:
 	Target target[4]; // Target zero is for special overrides, without messing with radar targets
-	std::priority_queue<Command*, std::vector<Command*>, decltype([](auto left, auto right){
-		return left->run_after >= right->run_after;
-	})> commandQueue;
+	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
+																	{ return left->run_after >= right->run_after; })>
+		commandQueue;
 
 public:
 	SystemState();
-	Target& currentTarget();
-	void updateTarget(Target&, uint16_t indifferenceMargin = 0);
+	Target &currentTarget();
+	void updateTarget(Target &, uint16_t indifferenceMargin = 0);
 	void setTarget(uint8_t index, uint8_t speed = 0xFF);
 	void setFire(bool active);
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
@@ -148,7 +149,7 @@ class TargetSelection : public Command
 	int speed = maxSpeed;
 
 public:
-	void Execute(SystemState* state);
+	void Execute(SystemState *state);
 	TargetSelection(uint8_t, int, int64_t);
 
 	// This should actually just be speed and target index.
@@ -158,7 +159,8 @@ public:
 class FireControl : public Command
 {
 	bool active;
+
 public:
-	void Execute(SystemState* state);
+	void Execute(SystemState *state);
 	FireControl(bool, int64_t);
 };

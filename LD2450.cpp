@@ -23,7 +23,6 @@ LD2450::~LD2450() // Destructor function
 {
 }
 
-
 void LD2450::begin(Stream &radarStream)
 {
     LD2450::radar_uart = &radarStream;
@@ -43,19 +42,18 @@ void LD2450::begin(HardwareSerial &radarStream, bool already_initialized)
 }
 
 #ifdef ENABLE_SOFTWARESERIAL_SUPPORT
-    void LD2450::begin(SoftwareSerial &radarStream, bool already_initialized)
+void LD2450::begin(SoftwareSerial &radarStream, bool already_initialized)
+{
+    if (!already_initialized)
     {
-        if (!already_initialized)
-        {
-            radarStream.begin(LD2450_SERIAL_SPEED);
-        }
-    
-        LD2450::radar_uart = &radarStream;
-    
-        LD2450::last_target_data = "";
+        radarStream.begin(LD2450_SERIAL_SPEED);
     }
-#endif
 
+    LD2450::radar_uart = &radarStream;
+
+    LD2450::last_target_data = "";
+}
+#endif
 
 void LD2450::setNumberOfTargets(uint16_t _numTargets)
 {
@@ -72,26 +70,27 @@ String LD2450::getLastTargetMessage()
     return LD2450::last_target_data;
 }
 
-
-bool LD2450::waitForSensorMessage(bool wait_forever){
+bool LD2450::waitForSensorMessage(bool wait_forever)
+{
 
     uint8_t read_result = 0;
-    for(long i = 0; i < LD2450_DEFAULT_RETRY_COUNT_FOR_WAIT_FOR_MSG; i++){
+    for (long i = 0; i < LD2450_DEFAULT_RETRY_COUNT_FOR_WAIT_FOR_MSG; i++)
+    {
         read_result = LD2450::read();
-        if(read_result >= 0){
+        if (read_result >= 0)
+        {
             return true;
         }
         delay(1);
-        
+
         //.... :)
-        if(wait_forever){
+        if (wait_forever)
+        {
             i = 0;
         }
     }
     return false;
 }
-
-
 
 int LD2450::read()
 {
@@ -102,8 +101,8 @@ int LD2450::read()
 
     unsigned int available = LD2450::radar_uart->available();
     if (available >= 30)
-    {   
-        
+    {
+
         byte rec_buf[LD2450_SERIAL_BUFFER] = "";
         const int len = LD2450::radar_uart->readBytes(rec_buf, min(available, sizeof(rec_buf)));
         // IF WE GOT DATA PARSE THEM
@@ -115,16 +114,20 @@ int LD2450::read()
     return -1;
 }
 
-uint16_t LD2450::getSensorSupportedTargetCount(){
-    if(LD2450::numTargets < LD2450_MAX_SENSOR_TARGETS){
+uint16_t LD2450::getSensorSupportedTargetCount()
+{
+    if (LD2450::numTargets < LD2450_MAX_SENSOR_TARGETS)
+    {
         return LD2450::numTargets;
     }
-    
+
     return LD2450_MAX_SENSOR_TARGETS;
 }
 
-LD2450::RadarTarget LD2450::getTarget(uint16_t _target_id){
-    if (_target_id >= LD2450_MAX_SENSOR_TARGETS){
+LD2450::RadarTarget LD2450::getTarget(uint16_t _target_id)
+{
+    if (_target_id >= LD2450_MAX_SENSOR_TARGETS)
+    {
         LD2450::RadarTarget tmp;
         tmp.valid = false;
         return tmp;
@@ -166,19 +169,21 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
                     else
                         LD2450::radarTargets[targetCounter].speed = -LD2450::radarTargets[targetCounter].speed;
 
-
-                    //CALCULATE DISTANCE
-                    // LD2450::radarTargets[targetCounter].distance = sqrt(pow(LD2450::radarTargets[targetCounter].x, 2) +  pow(LD2450::radarTargets[targetCounter].y, 2));
+                    // CALCULATE DISTANCE
+                    //  LD2450::radarTargets[targetCounter].distance = sqrt(pow(LD2450::radarTargets[targetCounter].x, 2) +  pow(LD2450::radarTargets[targetCounter].y, 2));
 
                     // IF A RESOLUTION IS PRESENT THEN WE CAN ASSUME THAT A TARGET WAS FOUND
-                    if(LD2450::radarTargets[targetCounter].resolution != 0){
+                    if (LD2450::radarTargets[targetCounter].resolution != 0)
+                    {
                         LD2450::radarTargets[targetCounter].valid = true;
-                    }else{
-                       LD2450::radarTargets[targetCounter].valid = false;
+                    }
+                    else
+                    {
+                        LD2450::radarTargets[targetCounter].valid = false;
                     }
 
                     // Add target information to the string
-                    // LD2450::last_target_data += 
+                    // LD2450::last_target_data +=
                     //     "TARGET ID=" + String(targetCounter + 1) +
                     //     " X=" + String(LD2450::radarTargets[targetCounter].x) +
                     //     "mm, Y=" + String(LD2450::radarTargets[targetCounter].y) +
@@ -191,11 +196,14 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
 
                     redreshed_targets++;
 
-                    //SKIP IF USER ONLY REQUESTED X VALID TARGETS
-                    if(redreshed_targets >= LD2450::numTargets){
+                    // SKIP IF USER ONLY REQUESTED X VALID TARGETS
+                    if (redreshed_targets >= LD2450::numTargets)
+                    {
                         break;
                     }
-                }else{
+                }
+                else
+                {
                     LD2450::radarTargets[targetCounter].valid = false;
                 }
             }
