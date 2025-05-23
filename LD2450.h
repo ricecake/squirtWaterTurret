@@ -28,22 +28,6 @@
 #define LD2450_SERIAL_SPEED 256000
 #define LD2450_DEFAULT_RETRY_COUNT_FOR_WAIT_FOR_MSG 1000
 
-#pragma pack(push, 1)
-struct RadarFrameTarget
-{
-    int16_t x;           // X mm
-    int16_t y;           // Y mm
-    int16_t speed;       // cm/s
-    uint16_t resolution; // mm
-};
-struct RadarFrame
-{
-    uint32_t header;
-    RadarFrameTarget targets[3];
-    uint16_t footer;
-};
-#pragma pack(pop)
-
 class LD2450
 {
 
@@ -75,7 +59,6 @@ public:
     int ProcessSerialDataIntoRadarData(byte rec_buf[], int len);
     RadarTarget getTarget(uint16_t _target_id);
     uint16_t getSensorSupportedTargetCount();
-    String getLastTargetMessage();
     int read();
 
 protected:
@@ -83,6 +66,5 @@ private:
     Stream *radar_uart = nullptr;
     RadarTarget_t radarTargets[LD2450_MAX_SENSOR_TARGETS]; // Stores the target of the current frame
     uint16_t numTargets = LD2450_MAX_SENSOR_TARGETS;
-    String last_target_data = "";
 };
 #endif

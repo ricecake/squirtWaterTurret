@@ -6,6 +6,8 @@
 
 #include "LD2450.h"
 #include "DptHelpers.h"
+#include "state.h"
+#include "utilities.h"
 
 HardwareSerial RadarSerial(1);
 LD2450 ld2450;
@@ -137,7 +139,7 @@ void refreshTargets() {
 void generateFireActions() {
 	Target& target = dptState.currentTarget();
 
-	if (target.actionIdleExceeds(seconds(0.25)) && dptState.targetTravelDistance() < 10) {
+	if (target.actionIdleExceeds(seconds(1)) && dptState.targetTravelDistance() < 10) {
 		dptState.queueFire(250);
 		target.IncrementAction();
 	}

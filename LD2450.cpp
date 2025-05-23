@@ -26,7 +26,6 @@ LD2450::~LD2450() // Destructor function
 void LD2450::begin(Stream &radarStream)
 {
     LD2450::radar_uart = &radarStream;
-    LD2450::last_target_data = "";
 }
 
 void LD2450::begin(HardwareSerial &radarStream, bool already_initialized)
@@ -37,8 +36,6 @@ void LD2450::begin(HardwareSerial &radarStream, bool already_initialized)
     }
 
     LD2450::radar_uart = &radarStream;
-
-    LD2450::last_target_data = "";
 }
 
 #ifdef ENABLE_SOFTWARESERIAL_SUPPORT
@@ -50,8 +47,6 @@ void LD2450::begin(SoftwareSerial &radarStream, bool already_initialized)
     }
 
     LD2450::radar_uart = &radarStream;
-
-    LD2450::last_target_data = "";
 }
 #endif
 
@@ -63,11 +58,6 @@ void LD2450::setNumberOfTargets(uint16_t _numTargets)
     }
 
     LD2450::numTargets = _numTargets;
-}
-
-String LD2450::getLastTargetMessage()
-{
-    return LD2450::last_target_data;
 }
 
 bool LD2450::waitForSensorMessage(bool wait_forever)
@@ -143,7 +133,6 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
         if (rec_buf[i] == 0xAA && rec_buf[i + 1] == 0xFF && rec_buf[i + 2] == 0x03 && rec_buf[i + 3] == 0x00 && rec_buf[i + 28] == 0x55 && rec_buf[i + 29] == 0xCC)
         {
             int index = i + 4; // Skip header and in-frame data length fields
-            LD2450::last_target_data = "";
 
             for (uint16_t targetCounter = 0; targetCounter < LD2450_MAX_SENSOR_TARGETS; targetCounter++)
             {
@@ -169,28 +158,9 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
                     else
                         LD2450::radarTargets[targetCounter].speed = -LD2450::radarTargets[targetCounter].speed;
 
-                    // CALCULATE DISTANCE
-                    //  LD2450::radarTargets[targetCounter].distance = sqrt(pow(LD2450::radarTargets[targetCounter].x, 2) +  pow(LD2450::radarTargets[targetCounter].y, 2));
 
                     // IF A RESOLUTION IS PRESENT THEN WE CAN ASSUME THAT A TARGET WAS FOUND
-                    if (LD2450::radarTargets[targetCounter].resolution != 0)
-                    {
-                        LD2450::radarTargets[targetCounter].valid = true;
-                    }
-                    else
-                    {
-                        LD2450::radarTargets[targetCounter].valid = false;
-                    }
-
-                    // Add target information to the string
-                    // LD2450::last_target_data +=
-                    //     "TARGET ID=" + String(targetCounter + 1) +
-                    //     " X=" + String(LD2450::radarTargets[targetCounter].x) +
-                    //     "mm, Y=" + String(LD2450::radarTargets[targetCounter].y) +
-                    //     "mm, SPEED=" + String(LD2450::radarTargets[targetCounter].speed) +
-                    //     "cm/s, RESOLUTION=" + String(LD2450::radarTargets[targetCounter].resolution) +
-                    //     "mm, DISTANCE=" + String(LD2450::radarTargets[targetCounter].distance) +
-                    //     "mm, VALID=" + String(LD2450::radarTargets[targetCounter].valid) + "\n";
+                    LD2450::radarTargets[targetCounter].valid = LD2450::radarTargets[targetCounter].resolution != 0;
 
                     index += 8; // Move to the start of the next target data
 

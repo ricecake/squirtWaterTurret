@@ -1,4 +1,4 @@
-void initSpeedTest()
+/*void initSpeedTest()
 {
 	for (auto i = 25; i < maxSpeed * 2; i += 25)
 	{
@@ -93,3 +93,4 @@ void initTestData()
 	initDemoTest();
 	positions.push_back(MoveCmd(0, 0, maxSpeed, 2000));
 }
+*/
