@@ -26,7 +26,7 @@ void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord) {
 	last_X_coord  = this->X_coord;
 	last_Y_coord  = this->Y_coord;
 	last_Z_coord  = this->Z_coord;
-	last_velocity = this->velocity;
+	last_velocity = this->_velocity;
 
 	valid = true;
 	seen = esp_timer_get_time();
@@ -46,9 +46,9 @@ void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord) {
 
 	if (new_X_coord || new_Y_coord)
 	{
-		distance = 0;
-		pitch = 0;
-		yaw = 0;
+		_distance = 0;
+		_pitch = 0;
+		_yaw = 0;
 	}
 }
 
@@ -62,35 +62,35 @@ void Target::Update(Target &updated)
 
 	if (updated.X_coord || updated.Y_coord)
 	{
-		distance = updated.distance;
-		pitch = updated.pitch;
-		yaw = updated.yaw;
+		_distance = updated._distance;
+		_pitch = updated._pitch;
+		_yaw = updated._yaw;
 	}
 }
 
 double Target::Pitch()
 {
-	if (!pitch)
+	if (!_pitch)
 	{
-		pitch = atan(double(X_coord) / double(Y_coord)) * -180.0 / PI;
+		_pitch = atan(double(X_coord) / double(Y_coord)) * -180.0 / PI;
 	}
-	return pitch;
+	return _pitch;
 }
 double Target::Yaw()
 {
-	if (!yaw)
+	if (!_yaw)
 	{
-		yaw = atan(double(Z_coord) / double(Distance())) * 180.0 / PI; // Height of default target - height of turret = angle to aim at (table height is 1320)
+		_yaw = atan(double(Z_coord) / double(Distance())) * 180.0 / PI; // Height of default target - height of turret = angle to aim at (table height is 1320)
 	}
-	return yaw;
+	return _yaw;
 }
 long Target::Distance()
 {
-	if (!distance)
+	if (!_distance)
 	{
-		distance = sqrt(pow(X_coord, 2) + pow(Y_coord, 2));
+		_distance = sqrt(pow(X_coord, 2) + pow(Y_coord, 2));
 	}
-	return distance;
+	return _distance;
 }
 
 int64_t Target::timeSinceLastAction()

@@ -6,48 +6,55 @@
 #include <queue>
 #include <AccelStepper.h>
 #include <MultiStepper.h>
+#include "vector.hpp"
+#include "fpm/fixed.hpp"
 
-struct Velocity {
-	double dir = 0;
-	long magnitude = 0;
-};
+using fixed = fpm::fixed_16_16;
+using Velocity = Vector3D<fixed>;
 
-class Target
+class Target : public Vector3D<fixed>
 {
-public:
-	uint8_t index;
-	int64_t seen;
-	int64_t last_action;
-	long X_coord = 0;
-	long Y_coord = 0;
-	long Z_coord = 1000;
-	bool valid = false;
-	long speed = 0;
-
-private:
-	long distance = 0;
-	double pitch = 0;
-	double yaw = 0;
-
-	Velocity velocity;
-
-	long last_X_coord = 0;
-	long last_Y_coord = 0;
-	long last_Z_coord = -400;
-	Velocity last_velocity;
-
 public:
 	Target();
 	Target(uint8_t index, long X, long Y, long Z = 1000, long speed = 0, bool valid = true);
 	Target(uint8_t index, long X, long Y, long speed, bool valid = true);
+
+public:
+	void Update(Target &updated);
+	void Update(long int, long int, long int);
+
+public:
 	double Pitch();
 	double Yaw();
 	long Distance();
+	Velocity velocity();
+
 	int64_t timeSinceLastAction();
 	bool actionIdleExceeds(int64_t limit);
 	void IncrementAction();
-	void Update(Target &updated);
-	void Update(long int, long int, long int);
-	void Velocity();
 	void PredictedPositionAtTime();
+
+public:
+	uint8_t index;
+	int64_t seen;
+	int64_t last_action;
+	bool valid = false;
+
+public:
+	long X_coord = 0;
+	long Y_coord = 0;
+	long Z_coord = -400;
+	long speed = 0;
+
+private:
+	long _distance = 0;
+	double _pitch = 0;
+	double _yaw = 0;
+	Velocity _velocity;
+
+private:
+	long last_X_coord = 0;
+	long last_Y_coord = 0;
+	long last_Z_coord = 0;
+	Velocity last_velocity;
 };

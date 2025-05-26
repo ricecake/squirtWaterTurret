@@ -23,3 +23,4 @@ int64_t seconds(T seconds, int64_t offset = 0)
 {
 	return offset + int64_t(1000 * 1000 * seconds);
 }
+
