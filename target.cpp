@@ -6,6 +6,8 @@
 
 #include "target.h"
 #include <math.h>
+#include "fpm/fixed.hpp"
+#include "aproximate_math.hpp"
 
 Target::Target() : index(0), X_coord(0), Y_coord(0), Z_coord(0), speed(0), valid(false)
 {
@@ -47,8 +49,8 @@ void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord) {
 	if (new_X_coord || new_Y_coord)
 	{
 		_distance = 0;
-		_pitch = 0;
-		_yaw = 0;
+		_pitch = static_cast<fixed>(0);
+		_yaw = static_cast<fixed>(0);
 	}
 }
 
@@ -68,19 +70,19 @@ void Target::Update(Target &updated)
 	}
 }
 
-double Target::Pitch()
+fixed Target::Pitch()
 {
 	if (!_pitch)
 	{
-		_pitch = atan(double(X_coord) / double(Y_coord)) * -180.0 / PI;
+		_pitch = atan(fixed(X_coord) / fixed(Y_coord)) * -180 / FIXEDPI;
 	}
 	return _pitch;
 }
-double Target::Yaw()
+fixed Target::Yaw()
 {
 	if (!_yaw)
 	{
-		_yaw = atan(double(Z_coord) / double(Distance())) * 180.0 / PI; // Height of default target - height of turret = angle to aim at (table height is 1320)
+		_yaw = atan(fixed(Z_coord) / fixed(Distance())) * 180 / FIXEDPI; // Height of default target - height of turret = angle to aim at (table height is 1320)
 	}
 	return _yaw;
 }

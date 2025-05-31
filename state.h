@@ -8,6 +8,9 @@
 
 #include "command.h"
 #include "target.h"
+#include "fpm/fixed.hpp"
+
+using fixed = fpm::fixed_16_16;
 
 class Command;
 
@@ -37,7 +40,7 @@ public:
 	const int h_min = -500;
 	const int v_min = -1000;
 
-	const float angleToStep = 0.1125; //(360 / 200) / 1 / 16; // circle / steps per circle / gear ratio / step division
+	const fixed angleToStep { 0.1125 }; //(360 / 200) / 1 / 16; // circle / steps per circle / gear ratio / step division
 
 private:
 	int altitude = 1320;
@@ -73,7 +76,7 @@ public:
 	void queueLinger(uint8_t milliseconds);
 	void processCommandQueue();
 	void actualizeState();
-	long targetTravelDistance();
+	fixed targetTravelDistance();
 
 private:
 	void actualizePosition();

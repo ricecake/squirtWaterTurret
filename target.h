@@ -9,8 +9,10 @@
 #include "vector.hpp"
 #include "fpm/fixed.hpp"
 
+const auto FIXEDPI = fpm::fixed_16_16::pi();
+
 using fixed = fpm::fixed_16_16;
-using Velocity = Vector3D<fixed>;
+using VelocityVector = Vector3D<fixed>;
 
 class Target : public Vector3D<fixed>
 {
@@ -24,10 +26,10 @@ public:
 	void Update(long int, long int, long int);
 
 public:
-	double Pitch();
-	double Yaw();
+	fixed Pitch();
+	fixed Yaw();
 	long Distance();
-	Velocity velocity();
+	VelocityVector Velocity();
 
 	int64_t timeSinceLastAction();
 	bool actionIdleExceeds(int64_t limit);
@@ -48,13 +50,13 @@ public:
 
 private:
 	long _distance = 0;
-	double _pitch = 0;
-	double _yaw = 0;
-	Velocity _velocity;
+	fixed _pitch {0};
+	fixed _yaw {0};
+	VelocityVector _velocity;
 
 private:
 	long last_X_coord = 0;
 	long last_Y_coord = 0;
 	long last_Z_coord = 0;
-	Velocity last_velocity;
+	VelocityVector last_velocity;
 };

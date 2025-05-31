@@ -1,5 +1,11 @@
 #include "fpm/math.hpp"
 
+/*
+If it feels worth it to make this actually type agnostic, can add a template parameter that accepts
+a struct containing the functions that do the different sqrt/etc methods.
+The default for the types could be fixed and the fixed sqrt, and it could also be filled in for float and double.
+*/
+
 template <typename T>
 class Vector3D {
 public:

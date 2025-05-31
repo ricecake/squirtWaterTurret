@@ -2,6 +2,9 @@
 #include "state.h"
 #include "firecontrol.h"
 #include "target_selection.h"
+#include "fpm/fixed.hpp"
+#include "fpm/math.hpp"
+
 
 SystemState::SystemState()
 {
@@ -142,8 +145,8 @@ void SystemState::actualizePosition()
 		It's inputs should be the current position in the respective dimension.
 		*/
 
-		auto pitch = long(min(max(target.Pitch(), -60.0), 60.0) / angleToStep);
-		auto yaw = long(min(max(target.Yaw(), -70.0), 70.0) / angleToStep);
+		auto pitch = long(min(max(target.Pitch(), static_cast<fixed>(-60)), static_cast<fixed>(60)) / angleToStep);
+		auto yaw = long(min(max(target.Yaw(), static_cast<fixed>(-70)), static_cast<fixed>(70)) / angleToStep);
 
 		int delta_A = pitch + yaw;
 		int delta_B = yaw - pitch;
@@ -187,12 +190,12 @@ void SystemState::actualizePosition()
 	}
 }
 
-long SystemState::targetTravelDistance()
+fixed SystemState::targetTravelDistance()
 {
 	auto target = currentTarget();
 	if (!target.valid)
 	{
-		return INT_MAX;
+		return static_cast<fixed>(INT_MAX);
 	}
 
 	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
@@ -200,5 +203,5 @@ long SystemState::targetTravelDistance()
 
 	// Serial.printf("At %f %f Want %f %f\n", pitch, yaw, target.Pitch(), target.Yaw());
 
-	return pow(yaw - target.Yaw(), 2) + pow(pitch - target.Pitch(), 2);
+	return fpm::sqrt(fpm::pow(yaw - target.Yaw(), 2) + fpm::pow(pitch - target.Pitch(), 2));
 }

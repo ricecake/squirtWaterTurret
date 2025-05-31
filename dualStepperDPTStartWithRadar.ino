@@ -139,7 +139,7 @@ void refreshTargets() {
 void generateFireActions() {
 	Target& target = dptState.currentTarget();
 
-	if (target.actionIdleExceeds(seconds(1)) && dptState.targetTravelDistance() < 10) {
+	if (target.actionIdleExceeds(seconds(1)) && dptState.targetTravelDistance() < fixed(10)) {
 		dptState.queueFire(250);
 		target.IncrementAction();
 	}
