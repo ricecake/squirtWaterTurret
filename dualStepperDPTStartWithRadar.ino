@@ -99,7 +99,7 @@ void systemControlLoop(void *pvParameters)
 		*/
 		dptState.processCommandQueue();
 		dptState.actualizeState();
-		dptState.steppers.run();
+		// dptState.steppers.run();
 		vTaskDelay(1);
 
 /*
