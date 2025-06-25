@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fpm_adapter.hpp"
 #include <functional>
 #include <stdint.h>
 #include <queue>

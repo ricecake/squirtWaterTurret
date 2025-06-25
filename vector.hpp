@@ -1,5 +1,3 @@
-#include "fpm/math.hpp"
-
 /*
 If it feels worth it to make this actually type agnostic, can add a template parameter that accepts
 a struct containing the functions that do the different sqrt/etc methods.
@@ -46,7 +44,7 @@ public:
 
     // Magnitude
     T magnitude() const {
-        return fpm::sqrt(x * x + y * y + z * z);
+        return sqrt(x * x + y * y + z * z);
     }
 
     // Normalize

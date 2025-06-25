@@ -6,7 +6,7 @@
 
 #include "target.h"
 #include <math.h>
-#include "fpm/fixed.hpp"
+#include "fpm_adapter.hpp"
 #include "aproximate_math.hpp"
 
 Target::Target() : index(0), X_coord(0), Y_coord(0), Z_coord(0), speed(0), valid(false)
@@ -49,8 +49,8 @@ void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord) {
 	if (new_X_coord || new_Y_coord)
 	{
 		_distance = 0;
-		_pitch = static_cast<fixed>(0);
-		_yaw = static_cast<fixed>(0);
+		_pitch = 0;
+		_yaw = 0;
 	}
 }
 

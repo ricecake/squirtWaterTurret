@@ -1,9 +1,11 @@
+#pragma once
+
 #include <sys/_types.h>
 #include <functional>
 #include <stdint.h>
-#include "fpm/math.hpp"
+#include "fpm_adapter.hpp"
 
-using fixed = fpm::fixed_16_16;
+using fixed = fixed_16_16;
 
 namespace Approximate
 {
@@ -28,7 +30,7 @@ namespace Approximate
 		uint8_t round = 0;
 
 		// Find the interval containing first root
-		while ((fpm::signbit(leftValue) == fpm::signbit(rightValue)) && (round < rounds))
+		while ((signbit(leftValue) == signbit(rightValue)) && (round < rounds))
 		{
 			leftInput = rightInput;
 			leftValue = rightValue;
@@ -46,7 +48,7 @@ namespace Approximate
 			}
 			midValue = func(midInput);
 
-			if (fpm::signbit(leftValue) == fpm::signbit(midValue))
+			if (signbit(leftValue) == signbit(midValue))
 			{
 				leftInput = midInput;
 				leftValue = midValue;

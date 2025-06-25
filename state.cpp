@@ -2,9 +2,7 @@
 #include "state.h"
 #include "firecontrol.h"
 #include "target_selection.h"
-#include "fpm/fixed.hpp"
-#include "fpm/math.hpp"
-
+#include "fpm_adapter.hpp"
 
 SystemState::SystemState()
 {
@@ -134,7 +132,7 @@ void SystemState::actualizePosition()
 	auto target = currentTarget();
 	if (needTrackingUpdate && target.valid)
 	{
-    // Serial.println("Updating Tracking");
+		// Serial.println("Updating Tracking");
 		/*
 		This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
 		Basically take multiple target positions over time, and try to match the targets velocity, and also their positiono.
@@ -145,8 +143,8 @@ void SystemState::actualizePosition()
 		It's inputs should be the current position in the respective dimension.
 		*/
 
-		auto pitch = long(min(max(target.Pitch(), static_cast<fixed>(-60)), static_cast<fixed>(60)) / angleToStep);
-		auto yaw = long(min(max(target.Yaw(), static_cast<fixed>(-70)), static_cast<fixed>(70)) / angleToStep);
+		auto pitch = long(min(max(target.Pitch(), -60), 60) / angleToStep);
+		auto yaw = long(min(max(target.Yaw(), -70), 70) / angleToStep);
 
 		int delta_A = pitch + yaw;
 		int delta_B = yaw - pitch;
@@ -179,7 +177,7 @@ void SystemState::actualizePosition()
 		stepperB.moveTo(delta_B);
 
 		// steppers.moveTo(delta);
-    needTrackingUpdate = false;
+		needTrackingUpdate = false;
 	}
 
 	if (stepperA.distanceToGo() || stepperB.distanceToGo())
@@ -195,7 +193,7 @@ fixed SystemState::targetTravelDistance()
 	auto target = currentTarget();
 	if (!target.valid)
 	{
-		return static_cast<fixed>(INT_MAX);
+		return INT_MAX;
 	}
 
 	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
@@ -203,5 +201,5 @@ fixed SystemState::targetTravelDistance()
 
 	// Serial.printf("At %f %f Want %f %f\n", pitch, yaw, target.Pitch(), target.Yaw());
 
-	return fpm::sqrt(fpm::pow(yaw - target.Yaw(), 2) + fpm::pow(pitch - target.Pitch(), 2));
+	return sqrt(pow(yaw - target.Yaw(), 2) + pow(pitch - target.Pitch(), 2));
 }

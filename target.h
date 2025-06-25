@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <functional>
@@ -7,11 +6,11 @@
 #include <AccelStepper.h>
 #include <MultiStepper.h>
 #include "vector.hpp"
-#include "fpm/fixed.hpp"
+#include "fpm_adapter.hpp"
 
-const auto FIXEDPI = fpm::fixed_16_16::pi();
+const auto FIXEDPI = fixed_16_16::pi();
 
-using fixed = fpm::fixed_16_16;
+using fixed = fixed_16_16;
 using VelocityVector = Vector3D<fixed>;
 
 class Target : public Vector3D<fixed>

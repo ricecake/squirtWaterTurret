@@ -8,9 +8,9 @@
 
 #include "command.h"
 #include "target.h"
-#include "fpm/fixed.hpp"
+#include "fpm_adapter.hpp"
 
-using fixed = fpm::fixed_16_16;
+using fixed = fixed_16_16;
 
 class Command;
 
