@@ -3,12 +3,14 @@
 #include "fpm/fixed.hpp"
 #include "fpm/math.hpp"
 
-template <typename B, typename I, unsigned int F, bool E = true>
+template <
+	typename B, typename I, unsigned int F, bool E = true>
 class FixedAdapter : public fpm::fixed<B, I, F, E>
 {
 public:
-	template <typename T>
-	constexpr inline FixedAdapter(T val) noexcept
+	template <
+		typename NonFixedType>
+	constexpr inline FixedAdapter(NonFixedType val) noexcept
 		: fpm::fixed<B, I, F, E>(val)
 	{
 	}
@@ -16,170 +18,208 @@ public:
 
 namespace std
 {
-	template <typename T,
-	typename B, typename I, unsigned int F, bool R,
-	typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr
-	>
-	const fpm::fixed<B,I,F,R> &max(const fpm::fixed<B,I,F,R> &a, const T &b)
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value> * = nullptr>
+	constexpr FixedType max(const FixedType &a, const NonFixedType &b)
 	{
-		return (a < b) ? fpm::fixed<B,I,F,R>(b) : a;
+		return (a < b) ? FixedType(b) : a;
 	}
 
-	template <typename T,
-	typename B, typename I, unsigned int F, bool R,
-	typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr
-	>
-	const fpm::fixed<B,I,F,R> &min(const fpm::fixed<B,I,F,R> &a, const T &b)
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value> * = nullptr>
+	constexpr FixedType min(const FixedType &a, const NonFixedType &b)
 	{
-		return (a >= b) ? fpm::fixed<B,I,F,R>(b) : a;
+		return (a >= b) ? FixedType(b) : a;
 	}
 }
 
 namespace fpm
 {
-	template <typename B, typename I, unsigned int F, bool R,
-			  typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator+=(fixed<B, I, F, R> &x, const T &y) noexcept
+	template <typename BaseType, typename IntermediateType, unsigned int FractionBits, bool EnableRounding>
+	struct is_fixed<FixedAdapter<BaseType, IntermediateType, FractionBits, EnableRounding>> : std::true_type
 	{
-		return x += fixed<B, I, F, R>(y);
-	}
-	template <typename B, typename I, unsigned int F, bool R,
-			  typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator-=(fixed<B, I, F, R> &x, const T &y) noexcept
+	};
+
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator+=(FixedType &x, const NonFixedType &y) noexcept
 	{
-		return x -= fixed<B, I, F, R>(y);
-	}
-	template <typename B, typename I, unsigned int F, bool R,
-			  typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator*=(fixed<B, I, F, R> &x, const T &y) noexcept
-	{
-		return x *= fixed<B, I, F, R>(y);
-	}
-	template <typename B, typename I, unsigned int F, bool R,
-			  typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator/=(fixed<B, I, F, R> &x, const T &y) noexcept
-	{
-		return x /= fixed<B, I, F, R>(y);
+		return x += FixedType(y);
 	}
 
-	template <typename B, typename I, unsigned int F, bool R, typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator+(const fixed<B, I, F, R> &x, T y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator-=(FixedType &x, const NonFixedType &y) noexcept
 	{
-		return x + fixed<B, I, F, R>(y);
+		return x -= FixedType(y);
 	}
 
-	template <typename B, typename I, unsigned int F, bool R, typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator+(T x, const fixed<B, I, F, R> &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator*=(FixedType &x, const NonFixedType &y) noexcept
 	{
-		return y + fixed<B, I, F, R>(x);
+		return x *= FixedType(y);
 	}
 
-	template <typename B, typename I, unsigned int F, bool R, typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator-(const fixed<B, I, F, R> &x, T y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator/=(FixedType &x, const NonFixedType &y) noexcept
 	{
-		return x - fixed<B, I, F, R>(y);
+		return x /= FixedType(y);
 	}
 
-	template <typename B, typename I, unsigned int F, bool R, typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator-(T x, const fixed<B, I, F, R> &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator+(const FixedType &x, NonFixedType y) noexcept
 	{
-		return y - fixed<B, I, F, R>(x);
+		return x + FixedType(y);
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator+(NonFixedType x, const FixedType &y) noexcept
+	{
+		return y + FixedType(x);
 	}
 
-	template <typename B, typename I, unsigned int F, bool R, typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator*(const fixed<B, I, F, R> &x, T y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator-(const FixedType &x, NonFixedType y) noexcept
 	{
-		return x * fixed<B, I, F, R>(y);
+		return x - FixedType(y);
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator-(NonFixedType x, const FixedType &y) noexcept
+	{
+		return y - FixedType(x);
 	}
 
-	template <typename B, typename I, unsigned int F, bool R, typename T, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator*(T x, const fixed<B, I, F, R> &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator*(const FixedType &x, NonFixedType y) noexcept
 	{
-		return y * fixed<B, I, F, R>(x);
+		return x * FixedType(y);
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator*(NonFixedType x, const FixedType &y) noexcept
+	{
+		return y * FixedType(x);
 	}
 
-	template <typename B, typename I, unsigned int F, typename T, bool R, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator/(const fixed<B, I, F, R> &x, T y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator/(const FixedType &x, NonFixedType y) noexcept
 	{
-		return x / fixed<B, I, F, R>(y);
+		return x / FixedType(y);
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
+	constexpr inline FixedType operator/(NonFixedType x, const FixedType &y) noexcept
+	{
+		return y / FixedType(x);
 	}
 
-	template <typename B, typename I, unsigned int F, typename T, bool R, typename std::enable_if<std::is_floating_point<T>::value>::type * = nullptr>
-	constexpr inline fixed<B, I, F, R> operator/(T x, const fixed<B, I, F, R> &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator==(const FixedType &x, const NonFixedType &y) noexcept
 	{
-		return y / fixed<B, I, F, R>(x);
+		return x.raw_value() == FixedType(y).raw_value();
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator==(const NonFixedType &y, const FixedType &x) noexcept
+	{
+		return x.raw_value() == FixedType(y).raw_value();
 	}
 
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator==(const fixed<B, I, F, R> &x, const T &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator!=(const FixedType &x, const NonFixedType &y) noexcept
 	{
-		return x.raw_value() == fixed<B, I, F, R>(y).raw_value();
+		return x.raw_value() != FixedType(y).raw_value();
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator!=(const NonFixedType &y, const FixedType &x) noexcept
+	{
+		return x.raw_value() != FixedType(y).raw_value();
 	}
 
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator!=(const fixed<B, I, F, R> &x, const T &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator<(const FixedType &x, const NonFixedType &y) noexcept
 	{
-		return x.raw_value() != fixed<B, I, F, R>(y).raw_value();
+		return x.raw_value() < FixedType(y).raw_value();
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator<(const NonFixedType &y, const FixedType &x) noexcept
+	{
+		return x.raw_value() < FixedType(y).raw_value();
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator<=(const FixedType &x, const NonFixedType &y) noexcept
+	{
+		return x.raw_value() <= FixedType(y).raw_value();
+	}
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator<=(const NonFixedType &y, const FixedType &x) noexcept
+	{
+		return x.raw_value() <= FixedType(y).raw_value();
 	}
 
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator<(const fixed<B, I, F, R> &x, const T &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator>(const FixedType &x, const NonFixedType &y) noexcept
 	{
-		return x.raw_value() < fixed<B, I, F, R>(y).raw_value();
+		return x.raw_value() > FixedType(y).raw_value();
 	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator>(const fixed<B, I, F, R> &x, const T &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator>(const NonFixedType &y, const FixedType &x) noexcept
 	{
-		return x.raw_value() > fixed<B, I, F, R>(y).raw_value();
+		return x.raw_value() > FixedType(y).raw_value();
 	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator<=(const fixed<B, I, F, R> &x, const T &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator>=(const FixedType &x, const NonFixedType &y) noexcept
 	{
-		return x.raw_value() <= fixed<B, I, F, R>(y).raw_value();
+		return x.raw_value() >= FixedType(y).raw_value();
 	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator>=(const fixed<B, I, F, R> &x, const T &y) noexcept
+	template <
+		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
+		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value>::type * = nullptr>
+	constexpr inline bool operator>=(const NonFixedType &y, const FixedType &x) noexcept
 	{
-		return x.raw_value() >= fixed<B, I, F, R>(y).raw_value();
-	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator==(const T &y, const fixed<B, I, F, R> &x) noexcept
-	{
-		return x.raw_value() == fixed<B, I, F, R>(y).raw_value();
-	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator!=(const T &y, const fixed<B, I, F, R> &x) noexcept
-	{
-		return x.raw_value() != fixed<B, I, F, R>(y).raw_value();
-	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator<(const T &y, const fixed<B, I, F, R> &x) noexcept
-	{
-		return x.raw_value() < fixed<B, I, F, R>(y).raw_value();
-	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator>(const T &y, const fixed<B, I, F, R> &x) noexcept
-	{
-		return x.raw_value() > fixed<B, I, F, R>(y).raw_value();
-	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator<=(const T &y, const fixed<B, I, F, R> &x) noexcept
-	{
-		return x.raw_value() <= fixed<B, I, F, R>(y).raw_value();
-	}
-
-	template <typename B, typename I, typename T, unsigned int F, bool R, typename std::enable_if<!std::is_base_of<fpm::fixed<B, I, F, R>, T>::value>::type * = nullptr>
-	constexpr inline bool operator>=(const T &y, const fixed<B, I, F, R> &x) noexcept
-	{
-		return x.raw_value() >= fixed<B, I, F, R>(y).raw_value();
+		return x.raw_value() >= FixedType(y).raw_value();
 	}
 }
 
