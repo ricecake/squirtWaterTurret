@@ -77,14 +77,14 @@ namespace fpm
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator+(const FixedType &x, NonFixedType y) noexcept
+	constexpr inline FixedType operator+(const FixedType &x, const NonFixedType &y) noexcept
 	{
 		return x + FixedType(y);
 	}
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator+(NonFixedType x, const FixedType &y) noexcept
+	constexpr inline FixedType operator+(const NonFixedType &x, const FixedType &y) noexcept
 	{
 		return y + FixedType(x);
 	}
@@ -92,14 +92,14 @@ namespace fpm
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator-(const FixedType &x, NonFixedType y) noexcept
+	constexpr inline FixedType operator-(const FixedType &x, const NonFixedType &y) noexcept
 	{
 		return x - FixedType(y);
 	}
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator-(NonFixedType x, const FixedType &y) noexcept
+	constexpr inline FixedType operator-(const NonFixedType &x, const FixedType &y) noexcept
 	{
 		return y - FixedType(x);
 	}
@@ -107,14 +107,14 @@ namespace fpm
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator*(const FixedType &x, NonFixedType y) noexcept
+	constexpr inline FixedType operator*(const FixedType &x, const NonFixedType &y) noexcept
 	{
 		return x * FixedType(y);
 	}
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator*(NonFixedType x, const FixedType &y) noexcept
+	constexpr inline FixedType operator*(const NonFixedType &x, const FixedType &y) noexcept
 	{
 		return y * FixedType(x);
 	}
@@ -122,14 +122,14 @@ namespace fpm
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator/(const FixedType &x, NonFixedType y) noexcept
+	constexpr inline FixedType operator/(const FixedType &x, const NonFixedType &y) noexcept
 	{
 		return x / FixedType(y);
 	}
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<std::is_floating_point<NonFixedType>::value>::type * = nullptr>
-	constexpr inline FixedType operator/(NonFixedType x, const FixedType &y) noexcept
+	constexpr inline FixedType operator/(const NonFixedType &x, const FixedType &y) noexcept
 	{
 		return y / FixedType(x);
 	}
