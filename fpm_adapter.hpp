@@ -8,6 +8,8 @@ template <
 class FixedAdapter : public fpm::fixed<B, I, F, E>
 {
 public:
+    inline FixedAdapter() noexcept = default;
+
 	template <
 		typename NonFixedType>
 	constexpr inline FixedAdapter(NonFixedType val) noexcept

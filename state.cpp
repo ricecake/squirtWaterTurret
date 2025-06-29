@@ -3,6 +3,7 @@
 #include "firecontrol.h"
 #include "target_selection.h"
 #include "fpm_adapter.hpp"
+#include "aproximate_math.hpp"
 
 SystemState::SystemState()
 {
@@ -129,7 +130,7 @@ void SystemState::actualizeFiring()
 
 void SystemState::actualizePosition()
 {
-	auto target = currentTarget();
+	auto target = targetAimpoint();
 	if (needTrackingUpdate && target.valid)
 	{
 		// Serial.println("Updating Tracking");
@@ -190,7 +191,7 @@ void SystemState::actualizePosition()
 
 fixed SystemState::targetTravelDistance()
 {
-	auto target = currentTarget();
+	auto target = targetAimpoint();
 	if (!target.valid)
 	{
 		return INT_MAX;
@@ -202,4 +203,25 @@ fixed SystemState::targetTravelDistance()
 	// Serial.printf("At %f %f Want %f %f\n", pitch, yaw, target.Pitch(), target.Yaw());
 
 	return sqrt(pow(yaw - target.Yaw(), 2) + pow(pitch - target.Pitch(), 2));
+}
+
+Target SystemState::targetAimpoint()
+{
+	auto P = currentTarget();
+	const auto V = P.Velocity();
+
+	auto cT4 = fixed(0.25) * G.dot(G);
+	const auto cT3 = V.dot(G);
+	const auto cT2 = P.dot(G) + V.dot(V) - pow(projectileSpeed, 2);
+	const auto cT1 = 2 * P.dot(V);
+	const auto cT0 = P.dot(P);
+
+	std::function<fixed(fixed)> movingTargetInterceptQuartic = [=](const fixed t) -> fixed
+	{
+		return cT4 * pow(t, 4) + cT3 * pow(t, 3) + cT2 * pow(t, 2) + cT1 * t + cT0;
+	};
+
+	fixed intercept = 0;
+	Approximate::small_root(intercept, movingTargetInterceptQuartic);
+	return P + Target(V * intercept);
 }

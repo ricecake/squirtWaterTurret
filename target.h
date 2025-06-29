@@ -12,11 +12,12 @@ const auto FIXEDPI = fixed_16_16::pi();
 
 using fixed = fixed_16_16;
 using VelocityVector = Vector3D<fixed>;
-
+class Target;
 class Target : public Vector3D<fixed>
 {
 public:
 	Target();
+	Target(Vector3D<fixed> vec);
 	Target(uint8_t index, long X, long Y, long Z = 1000, long speed = 0, bool valid = true);
 	Target(uint8_t index, long X, long Y, long speed, bool valid = true);
 
@@ -57,5 +58,6 @@ private:
 	long last_X_coord = 0;
 	long last_Y_coord = 0;
 	long last_Z_coord = 0;
+	int64_t last_seen = 0;
 	VelocityVector last_velocity;
 };

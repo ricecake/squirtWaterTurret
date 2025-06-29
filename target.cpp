@@ -14,6 +14,10 @@ Target::Target() : index(0), X_coord(0), Y_coord(0), Z_coord(0), speed(0), valid
 	seen = esp_timer_get_time();
 }
 
+Target::Target(Vector3D<fixed> vec) : Vector3D<fixed>(vec) {
+	seen = esp_timer_get_time();
+}
+
 Target::Target(uint8_t index, long X, long Y, long speed, bool valid) : index(index), X_coord(X), Y_coord(Y), speed(speed), valid(valid)
 {
 	seen = esp_timer_get_time();
@@ -24,10 +28,12 @@ Target::Target(uint8_t index, long X, long Y, long Z, long speed, bool valid) : 
 	seen = esp_timer_get_time();
 }
 
-void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord) {
-	last_X_coord  = this->X_coord;
-	last_Y_coord  = this->Y_coord;
-	last_Z_coord  = this->Z_coord;
+void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord)
+{
+	last_seen = this->seen;
+	last_X_coord = this->X_coord;
+	last_Y_coord = this->Y_coord;
+	last_Z_coord = this->Z_coord;
 	last_velocity = this->_velocity;
 
 	valid = true;
@@ -46,18 +52,18 @@ void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord) {
 		Z_coord = new_Z_coord;
 	}
 
-	if (new_X_coord || new_Y_coord)
+	if (new_X_coord || new_Y_coord || new_Z_coord)
 	{
 		_distance = 0;
 		_pitch = 0;
 		_yaw = 0;
+		_velocity = VelocityVector();
 	}
 }
 
 void Target::Update(Target &updated)
 {
-
-  this->Update(updated.X_coord, updated.Y_coord, updated.Z_coord);
+	this->Update(updated.X_coord, updated.Y_coord, updated.Z_coord);
 
 	valid = updated.valid;
 	seen = updated.seen;
@@ -93,6 +99,14 @@ long Target::Distance()
 		_distance = sqrt(pow(X_coord, 2) + pow(Y_coord, 2));
 	}
 	return _distance;
+}
+
+VelocityVector Target::Velocity() {
+	if (!_velocity) {
+		Target lastState(last_X_coord, last_Y_coord, last_Z_coord);
+		_velocity = (*this - lastState)/fixed(seen - last_seen);
+	}
+	return _velocity;
 }
 
 int64_t Target::timeSinceLastAction()

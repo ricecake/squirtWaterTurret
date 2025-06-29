@@ -6,6 +6,7 @@
 #include <AccelStepper.h>
 #include <MultiStepper.h>
 
+#include "vector.hpp"
 #include "command.h"
 #include "target.h"
 #include "fpm_adapter.hpp"
@@ -40,10 +41,12 @@ public:
 	const int h_min = -500;
 	const int v_min = -1000;
 
-	const fixed angleToStep { 0.1125 }; //(360 / 200) / 1 / 16; // circle / steps per circle / gear ratio / step division
+	const fixed angleToStep{0.1125}; //(360 / 200) / 1 / 16; // circle / steps per circle / gear ratio / step division
 
 private:
-	int altitude = 1320;
+	const int altitude = 1320;
+	const fixed projectileSpeed = 20;
+	const Vector3D<fixed> G = {0, 0, 9.814};
 
 public:
 	AccelStepper stepperA;
@@ -60,8 +63,9 @@ private:
 	uint8_t selectedTarget = 0;
 
 private:
+	Target targetAimpoint();
 	Target target[4]; // Target zero is for special overrides, without messing with radar targets
-	std::priority_queue<Command*, std::vector<Command*>, decltype([](auto left, auto right)
+	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
 																	{ return left->run_after >= right->run_after; })>
 		commandQueue;
 
