@@ -15,6 +15,20 @@ const uint16_t magicFoot = 0xFACE;
 
 namespace cerializer
 {
+	template <class T, typename V = int, typename N = int>
+	concept Indexable = requires(T obj, V, N idx) {
+		typename T::value_type;
+		requires std::is_same_v<V, typename T::value_type>;
+		{ obj.data() } -> std::same_as<V*>;
+		{ obj[idx] } -> std::same_as<V&>;
+	};
+
+	// template <typename T>
+	// concept Indexable = requires(T obj) {
+	// 	T::value_type;
+	// 	requires Indexable<T, typename T::value_type>;
+	// };
+
 	// Custom type trait to check for std::array
 	template <typename T>
 	struct is_std_array : std::false_type
@@ -36,13 +50,13 @@ namespace cerializer
 
 	template <typename... Ts>
 		requires(std::is_trivially_copyable_v<Ts> && ...)
-	constexpr inline typename std::array<std::byte, (sizeof(Ts) + ...)> pack(const Ts &...args)
+	constexpr inline std::array<std::byte, (sizeof(Ts) + ...)> pack(const Ts &...args)
 	{
 		std::array<std::byte, (sizeof(Ts) + ...)> dest;
 		auto offset = 0;
 		([&]()
 		 {
-			if constexpr ((std::endian::native == std::endian::big) && sizeof(Ts) > 1 && !is_std_array<Ts>::value) {
+			if constexpr ((std::endian::native == std::endian::big) && sizeof(Ts) > 1 && !Indexable<Ts>) {
 				auto bits = std::bit_cast<std::array<std::byte, sizeof(Ts)>>(args);
 				std::copy(bits.rbegin(), bits.rend(), dest.data()+offset);
 			}
@@ -54,7 +68,11 @@ namespace cerializer
 	};
 
 	template <typename Dest, typename... Ts, typename Cont>
-		requires(std::is_trivially_copyable_v<Ts> && ...) && (std::is_trivially_constructible_v<Ts> && ...)
+	requires
+		(std::is_trivially_copyable_v<Ts> && ...)
+		&& (std::is_trivially_constructible_v<Ts> && ...)
+		&& (std::is_constructible_v<Dest, Ts...>)
+		&& Indexable<Cont, std::byte>
 	constexpr inline Dest unpack(const Cont &binaryData)
 	{
 		if (sizeof...(Ts) < 1)
@@ -88,7 +106,7 @@ namespace cerializer
 		{
 			std::span<std::byte> dataView(binaryData);
 			uint16_t headCheck = unpack<uint16_t>(dataView.first(sizeof(magicHead)));
-			uint16_t footCheck = unpack<uint16_t, uint16_t>(dataView.last(sizeof(footCheck)));
+			uint16_t footCheck = unpack<uint16_t>(dataView.last(sizeof(footCheck)));
 
 			std::cout << headCheck << "\t" << magicHead << std::endl;
 			std::cout << footCheck << "\t" << magicFoot << std::endl;
