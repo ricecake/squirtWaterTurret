@@ -1,4 +1,6 @@
 *.gch
 *.o
+*.s
 a.out
-test.cpp
+test*.cpp
+example*
