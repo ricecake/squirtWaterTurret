@@ -10,6 +10,13 @@ using fixed = fixed_16_16;
 namespace Approximate
 {
 
+	template <typename T>
+	struct ApproximateResult
+	{
+		bool converged = false;
+		T result;
+	};
+
 	fixed sin(fixed);
 	fixed cos(fixed);
 	fixed tan(fixed);
@@ -17,7 +24,7 @@ namespace Approximate
 	fixed sqrt(fixed);
 
 	template <typename T>
-	bool small_root(T &result, std::function<T(T)> func, T error = T(0.001), uint8_t rounds = 16)
+	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16)
 	{
 		T leftInput = 0;
 		T rightInput = 1;
@@ -62,13 +69,11 @@ namespace Approximate
 			// This should check if proportional error is less than the threshold
 			if ((rightInput - leftInput) / rightInput < error)
 			{
-				result = midInput;
-				return true;
+				return ApproximateResult<T>(true, midInput);
 			}
 			// need a block to see if the convergence rate has dropped below some threshold, and return if we're not making progress, but we're close enough.
 
 		} while (round++ < rounds);
-		result = midInput;
-		return false;
+		return ApproximateResult<T>(false, midInput);
 	}
 }

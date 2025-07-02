@@ -29,6 +29,7 @@ public:
 	fixed Pitch();
 	fixed Yaw();
 	long Distance();
+	const VelocityVector Velocity() const;
 	VelocityVector Velocity();
 
 	int64_t timeSinceLastAction();

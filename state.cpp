@@ -207,21 +207,20 @@ fixed SystemState::targetTravelDistance()
 
 Target SystemState::targetAimpoint()
 {
-	auto P = currentTarget();
+	const auto P = currentTarget();
 	const auto V = P.Velocity();
 
-	auto cT4 = fixed(0.25) * G.dot(G);
+	const auto cT4 = fixed(0.25) * G.dot(G);
 	const auto cT3 = V.dot(G);
 	const auto cT2 = P.dot(G) + V.dot(V) - pow(projectileSpeed, 2);
 	const auto cT1 = 2 * P.dot(V);
 	const auto cT0 = P.dot(P);
 
-	std::function<fixed(fixed)> movingTargetInterceptQuartic = [=](const fixed t) -> fixed
+	std::function<const fixed(const fixed)> movingTargetInterceptQuartic = [=](const fixed t) -> const fixed
 	{
 		return cT4 * pow(t, 4) + cT3 * pow(t, 3) + cT2 * pow(t, 2) + cT1 * t + cT0;
 	};
 
-	fixed intercept = 0;
-	Approximate::small_root(intercept, movingTargetInterceptQuartic);
+	auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
 	return P + Target(V * intercept);
 }

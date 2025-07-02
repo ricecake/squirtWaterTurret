@@ -101,6 +101,11 @@ long Target::Distance()
 	return _distance;
 }
 
+const VelocityVector Target::Velocity() const {
+	Target lastState(last_X_coord, last_Y_coord, last_Z_coord);
+	return (*this - lastState)/fixed(seen - last_seen);
+}
+
 VelocityVector Target::Velocity() {
 	if (!_velocity) {
 		Target lastState(last_X_coord, last_Y_coord, last_Z_coord);
