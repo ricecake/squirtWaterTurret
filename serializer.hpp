@@ -1,15 +1,9 @@
 #pragma once
 #include <stdint.h>
-// #include <cstddef>
 #include <array>
 #include <bit>
 #include <cstring>
-// #include <concepts>
-// #include <ranges>
 #include <span>
-
-#include <iostream>
-#include <bitset>
 
 const uint16_t magicHead = 0xCAFE;
 const uint16_t magicFoot = 0xFACE;
@@ -67,7 +61,11 @@ namespace cerializer
 	};
 
 	template <typename Dest, typename... Ts, typename Cont>
-		requires(std::is_trivially_copyable_v<Ts> && ...) && (std::is_trivially_constructible_v<Ts> && ...) && (std::is_constructible_v<Dest, Ts...>) && Container<Cont, std::byte>
+		requires
+			(std::is_trivially_copyable_v<Ts> && ...)
+			&& (std::is_trivially_constructible_v<Ts> && ...)
+			&& (std::is_constructible_v<Dest, Ts...>)
+			&& Container<Cont, std::byte>
 	constexpr inline Dest unpack(const Cont &binaryData)
 	{
 		if (sizeof...(Ts) < 1)
