@@ -1,0 +1,4 @@
+*.gch
+*.o
+a.out
+test.cpp
