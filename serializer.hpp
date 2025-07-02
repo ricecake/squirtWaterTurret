@@ -9,35 +9,34 @@
 #include <span>
 
 #include <iostream>
+#include <bitset>
 
 const uint16_t magicHead = 0xCAFE;
 const uint16_t magicFoot = 0xFACE;
 
 namespace cerializer
 {
-	template <class T, typename V = int, typename N = int>
-	concept Indexable = requires(T obj, V, N idx) {
-		typename T::value_type;
-		requires std::is_same_v<V, typename T::value_type>;
-		{ obj.data() } -> std::same_as<V*>;
-		{ obj[idx] } -> std::same_as<V&>;
-	};
-
-	// template <typename T>
-	// concept Indexable = requires(T obj) {
-	// 	T::value_type;
-	// 	requires Indexable<T, typename T::value_type>;
-	// };
-
-	// Custom type trait to check for std::array
 	template <typename T>
 	struct is_std_array : std::false_type
 	{
 	};
-
 	template <typename T, std::size_t N>
 	struct is_std_array<std::array<T, N>> : std::true_type
 	{
+	};
+	template <typename T>
+	constexpr bool is_std_array_v = is_std_array<T>::value;
+
+	template <class T>
+	concept Indexable = requires {
+		requires std::is_array_v<T> || is_std_array_v<T>;
+	};
+
+	template <class T, typename V = nullptr_t, typename N = int>
+	concept Container = requires(T obj, V, N idx) {
+		typename T::value_type;
+		{ obj.data() } -> std::same_as<std::conditional_t<!std::is_same_v<V, nullptr_t>, V, typename T::value_type> *>;
+		{ obj[idx] } -> std::same_as<std::conditional_t<!std::is_same_v<V, nullptr_t>, V, typename T::value_type> &>;
 	};
 
 	template <std::integral T, std::integral Y>
@@ -68,11 +67,7 @@ namespace cerializer
 	};
 
 	template <typename Dest, typename... Ts, typename Cont>
-	requires
-		(std::is_trivially_copyable_v<Ts> && ...)
-		&& (std::is_trivially_constructible_v<Ts> && ...)
-		&& (std::is_constructible_v<Dest, Ts...>)
-		&& Indexable<Cont, std::byte>
+		requires(std::is_trivially_copyable_v<Ts> && ...) && (std::is_trivially_constructible_v<Ts> && ...) && (std::is_constructible_v<Dest, Ts...>) && Container<Cont, std::byte>
 	constexpr inline Dest unpack(const Cont &binaryData)
 	{
 		if (sizeof...(Ts) < 1)
@@ -108,10 +103,9 @@ namespace cerializer
 			uint16_t headCheck = unpack<uint16_t>(dataView.first(sizeof(magicHead)));
 			uint16_t footCheck = unpack<uint16_t>(dataView.last(sizeof(footCheck)));
 
-			std::cout << headCheck << "\t" << magicHead << std::endl;
-			std::cout << footCheck << "\t" << magicFoot << std::endl;
 			assert(headCheck == magicHead);
 			assert(footCheck == magicFoot);
+
 			auto body = std::span(binaryData.begin() + sizeof(uint16_t) + sizeof(uint8_t), Size());
 			return unpack<Derived, FieldTypes...>(dataView.subspan(sizeof(uint16_t) + sizeof(uint8_t), Size()));
 		}
