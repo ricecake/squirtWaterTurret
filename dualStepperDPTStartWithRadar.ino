@@ -8,6 +8,7 @@
 #include "DptHelpers.h"
 #include "state.h"
 #include "utilities.h"
+#include "serializer.hpp"
 
 HardwareSerial RadarSerial(1);
 LD2450 ld2450;
@@ -129,6 +130,7 @@ void refreshTargets() {
 
 			if (result_target.valid)
 			{
+				// Serial.printf("%i   %i\n", result_target.x, result_target.y);
 				auto newTarget = Target(result_target.id, result_target.x, result_target.y, result_target.speed, result_target.valid);
 				dptState.updateTarget(newTarget, 16);
 			}
@@ -139,7 +141,8 @@ void refreshTargets() {
 void generateFireActions() {
 	Target& target = dptState.currentTarget();
 
-	if (target.actionIdleExceeds(seconds(1)) && dptState.targetTravelDistance() < 10) {
+	if (target.actionIdleExceeds(seconds(3)) && dptState.targetTravelDistance() < 10) {
+		Serial.println("Fire");
 		dptState.queueFire(250);
 		target.IncrementAction();
 	}

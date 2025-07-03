@@ -1,6 +1,6 @@
 #include <climits>
 #include <stdint.h>
-#include <Arduino.h>
+// #include <Arduino.h>
 #include "esp_timer.h"
 #include "DptHelpers.h"
 
@@ -9,26 +9,32 @@
 #include "fpm_adapter.hpp"
 #include "aproximate_math.hpp"
 
-Target::Target() : index(0), X_coord(0), Y_coord(0), Z_coord(0), speed(0), valid(false)
+Target::Target() : index(0), Vector3D<fixed, Target>(), valid(false)
 {
 	seen = esp_timer_get_time();
 }
 
-Target::Target(Vector3D<fixed> vec) : Vector3D<fixed>(vec) {
-	seen = esp_timer_get_time();
-}
-
-Target::Target(uint8_t index, long X, long Y, long speed, bool valid) : index(index), X_coord(X), Y_coord(Y), speed(speed), valid(valid)
+Target::Target(Vector3D<fixed> vec) : Vector3D<fixed, Target>(vec.X_coord, vec.Y_coord, vec.Z_coord)
 {
 	seen = esp_timer_get_time();
 }
 
-Target::Target(uint8_t index, long X, long Y, long Z, long speed, bool valid) : index(index), X_coord(X), Y_coord(Y), Z_coord(Z), speed(speed), valid(valid)
+Target::Target(fixed X, fixed Y, fixed Z) : Vector3D<fixed, Target>(X, Y, Z)
 {
 	seen = esp_timer_get_time();
 }
 
-void Target::Update(long new_X_coord, long new_Y_coord, long new_Z_coord)
+Target::Target(uint8_t index, fixed X, fixed Y, fixed speed, bool valid) : index(index), Vector3D<fixed, Target>(X, Y, 1000), speed(speed), valid(valid)
+{
+	seen = esp_timer_get_time();
+}
+
+Target::Target(uint8_t index, fixed X, fixed Y, fixed Z, fixed speed, bool valid) : index(index), Vector3D<fixed, Target>(X, Y, Z), speed(speed), valid(valid)
+{
+	seen = esp_timer_get_time();
+}
+
+void Target::Update(fixed new_X_coord, fixed new_Y_coord, fixed new_Z_coord)
 {
 	last_seen = this->seen;
 	last_X_coord = this->X_coord;
@@ -88,28 +94,50 @@ fixed Target::Yaw()
 {
 	if (!_yaw)
 	{
-		_yaw = atan(fixed(Z_coord) / fixed(Distance())) * 180 / FIXEDPI; // Height of default target - height of turret = angle to aim at (table height is 1320)
+		auto dist = Distance();
+		if (!dist) {
+			return 0;
+		}
+		_yaw = atan(Z_coord / Distance()) * 180 / FIXEDPI; // Height of default target - height of turret = angle to aim at (table height is 1320)
 	}
 	return _yaw;
 }
-long Target::Distance()
+fixed Target::Distance()
 {
 	if (!_distance)
 	{
+		if (!Y_coord) {
+			return 1;
+		}
 		_distance = sqrt(pow(X_coord, 2) + pow(Y_coord, 2));
 	}
 	return _distance;
 }
 
-const VelocityVector Target::Velocity() const {
+const VelocityVector Target::Velocity() const
+{
+	auto span = fixed(seen - last_seen);
+	if (span == 0)
+	{
+		return VelocityVector(0, 0, 0);
+	}
 	Target lastState(last_X_coord, last_Y_coord, last_Z_coord);
-	return (*this - lastState)/fixed(seen - last_seen);
+	Target vel = (*this - lastState) / span;
+	return VelocityVector(vel.X_coord, vel.Y_coord, vel.Z_coord);
 }
 
-VelocityVector Target::Velocity() {
-	if (!_velocity) {
+VelocityVector Target::Velocity()
+{
+	if (!_velocity)
+	{
+		auto span = fixed(seen - last_seen);
+		if (span == 0)
+		{
+			return VelocityVector(0, 0, 0);
+		}
 		Target lastState(last_X_coord, last_Y_coord, last_Z_coord);
-		_velocity = (*this - lastState)/fixed(seen - last_seen);
+		Target vel = (*this - lastState) / span;
+		_velocity = VelocityVector(vel.X_coord, vel.Y_coord, vel.Z_coord);
 	}
 	return _velocity;
 }
@@ -118,6 +146,7 @@ int64_t Target::timeSinceLastAction()
 {
 	auto now = esp_timer_get_time();
 	return now - last_action;
+	// return 0;
 }
 
 bool Target::actionIdleExceeds(int64_t limit)

@@ -1,3 +1,4 @@
+#include "HardwareSerial.h"
 #include "utilities.h"
 #include "state.h"
 #include "firecontrol.h"
@@ -33,8 +34,8 @@ void SystemState::updateTarget(Target &newTarget, uint16_t indifferenceMargin)
 	{
 		auto oldTarget = target[newTarget.index];
 		auto distance = pow(newTarget.X_coord - oldTarget.X_coord, 2) + pow(newTarget.Y_coord - oldTarget.Y_coord, 2);
-		indifferenceMargin += max(abs(newTarget.speed), abs(oldTarget.speed));
-		doUpdate = distance >= indifferenceMargin;
+		
+		doUpdate = distance >= indifferenceMargin + max(abs(newTarget.speed), abs(oldTarget.speed));;
 		// if (doUpdate) {
 		// 	Serial.println(distance);
 		// 	Serial.println(newTarget.speed);
@@ -131,6 +132,11 @@ void SystemState::actualizeFiring()
 void SystemState::actualizePosition()
 {
 	auto target = targetAimpoint();
+	// Serial.println(target.valid);
+	// Serial.println(target.X_coord);
+	// Serial.println(target.Y_coord);
+	// Serial.println(target.Z_coord);
+	// Serial.printf("V: %i    loc: %f    %f\n", target.valid, float(target.Pitch()), float(target.Yaw()));
 	if (needTrackingUpdate && target.valid)
 	{
 		// Serial.println("Updating Tracking");
@@ -144,6 +150,8 @@ void SystemState::actualizePosition()
 		It's inputs should be the current position in the respective dimension.
 		*/
 
+
+		// Serial.printf("loc: %f    %f\n", float(target.Pitch()), float(target.Yaw()));
 		auto pitch = long(min(max(target.Pitch(), -60), 60) / angleToStep);
 		auto yaw = long(min(max(target.Yaw(), -70), 70) / angleToStep);
 
@@ -222,5 +230,23 @@ Target SystemState::targetAimpoint()
 	};
 
 	auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
-	return P + Target(V * intercept);
+
+	// Serial.println("Position");
+	// Serial.println(P.valid);
+	// Serial.println(float(P.X_coord));
+	// Serial.println(float(P.Y_coord));
+	// Serial.println(float(P.Z_coord));
+
+	// Serial.println("Velocity");
+	// Serial.println(float(V.X_coord));
+	// Serial.println(float(V.Y_coord));
+	// Serial.println(float(V.Z_coord));
+
+	// Serial.println(float(intercept));
+	auto dis = V * intercept;
+	auto res = P + Target(dis);
+	res.valid = P.valid;
+	// Serial.printf("Target: %i %f %f %f\n", res.valid, float(res.X_coord), float(res.Y_coord), float(res.Z_coord));
+	return res;
+	// return P + Target(V * intercept);
 }

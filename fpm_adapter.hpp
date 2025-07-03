@@ -2,6 +2,7 @@
 
 #include "fpm/fixed.hpp"
 #include "fpm/math.hpp"
+#include "fpm/ios.hpp"
 
 template <
 	typename B, typename I, unsigned int F, bool E = true>

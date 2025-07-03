@@ -1,6 +1,7 @@
 *.gch
 *.o
 *.s
+*.xpp
 a.out
 test*.cpp
 example*

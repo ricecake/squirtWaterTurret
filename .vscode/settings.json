@@ -58,5 +58,6 @@
 	},
 	"cSpell.words": [
 		"cerializer"
-	]
+	],
+	"C_Cpp.errorSquiggles": "enabled"
 }
