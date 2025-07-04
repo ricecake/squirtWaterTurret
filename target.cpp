@@ -1,7 +1,7 @@
 #include <climits>
 #include <stdint.h>
 // #include <Arduino.h>
-#include "esp_timer.h"
+// #include "esp_timer.h"
 #include "DptHelpers.h"
 
 #include "target.h"
@@ -9,6 +9,119 @@
 #include "fpm_adapter.hpp"
 #include "aproximate_math.hpp"
 
+DistanceVector::DistanceVector(VelocityVector, ChronoDuration auto interval)
+{
+}
+
+PositionVector::PositionVector(PositionVector, DistanceVector)
+{
+}
+
+PositionVector::PositionVector(PositionVector, VelocityVector, ChronoDuration auto interval)
+{
+}
+
+fixed PositionVector::Pitch()
+{
+	if (!_pitch)
+	{
+		_pitch = pitch();
+	}
+	return _pitch;
+}
+
+fixed PositionVector::Yaw()
+{
+	if (!_yaw)
+	{
+		_yaw = yaw(); // Height of default target - height of turret = angle to aim at (table height is 1320)
+	}
+	return _yaw;
+}
+
+fixed PositionVector::Distance()
+{
+	if (!_distance)
+	{
+		_distance = magnitudeXY();
+	}
+	return _distance;
+}
+
+VelocityVector::VelocityVector(DistanceVector, ChronoDuration auto interval)
+{
+}
+
+VelocityVector::VelocityVector(PositionVector P2, PositionVector P1, ChronoDuration auto interval)
+{
+	auto duration = std::chrono::duration_cast<std::chrono::seconds>(interval).count();
+	if (duration)
+	{
+		X_coord = (P2.X_coord - P1.X_coord) / duration;
+		Y_coord = (P2.Y_coord - P1.Y_coord) / duration;
+		Z_coord = (P2.Z_coord - P1.Z_coord) / duration;
+	}
+}
+
+// DistanceVector VelocityVector::operator*(const ChronoDuration auto &interval)
+// {
+// 	auto scale = AsSeconds(interval).count();
+// 	return DistanceVector(X_coord, Y_coord, Z_coord) * scale;
+// }
+
+Target::Target(PositionVector P, VelocityVector V) : position(P), velocity(V)
+{
+}
+
+Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V) : index(index), valid(valid), position(P), velocity(V)
+{
+}
+
+void Target::Update(PositionVector P)
+{
+	last_seen = seen;
+	seen = Clock::now();
+	velocity = VelocityVector();
+	last_position = position;
+	position = P;
+}
+
+PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval)
+{
+	return PositionVector();
+}
+
+const VelocityVector Target::Velocity() const
+{
+	if (velocity)
+	{
+		return velocity;
+	}
+
+	return VelocityVector(position, last_position, seen - last_seen);
+}
+
+const PositionVector Target::Position() const
+{
+	return position;
+}
+
+Duration Target::timeSinceLastAction()
+{
+	return Clock::now() - last_action;
+}
+
+bool Target::actionIdleExceeds(ChronoDuration auto limit)
+{
+	return timeSinceLastAction() > limit;
+}
+
+void Target::IncrementAction()
+{
+	last_action = Clock::now();
+}
+
+/****
 Target::Target() : index(0), Vector3D<fixed, Target>(), valid(false)
 {
 	seen = esp_timer_get_time();
@@ -82,38 +195,6 @@ void Target::Update(Target &updated)
 	}
 }
 
-fixed Target::Pitch()
-{
-	if (!_pitch)
-	{
-		_pitch = atan(fixed(X_coord) / fixed(Y_coord)) * -180 / FIXEDPI;
-	}
-	return _pitch;
-}
-fixed Target::Yaw()
-{
-	if (!_yaw)
-	{
-		auto dist = Distance();
-		if (!dist) {
-			return 0;
-		}
-		_yaw = atan(Z_coord / Distance()) * 180 / FIXEDPI; // Height of default target - height of turret = angle to aim at (table height is 1320)
-	}
-	return _yaw;
-}
-fixed Target::Distance()
-{
-	if (!_distance)
-	{
-		if (!Y_coord) {
-			return 1;
-		}
-		_distance = sqrt(pow(X_coord, 2) + pow(Y_coord, 2));
-	}
-	return _distance;
-}
-
 const VelocityVector Target::Velocity() const
 {
 	auto span = fixed(seen - last_seen);
@@ -157,4 +238,30 @@ bool Target::actionIdleExceeds(int64_t limit)
 void Target::IncrementAction()
 {
 	last_action = esp_timer_get_time();
+}
+ */
+constexpr  VelocityVector const inline operator/(const DistanceVector & D, const ChronoDuration auto &interval)
+{
+	auto scale = interval.count();
+	// auto scale = AsSeconds(interval).count();
+	return VelocityVector(
+		D.X_coord / scale,
+		D.Y_coord / scale,
+		D.Z_coord / scale);
+}
+
+constexpr const DistanceVector operator*(const VelocityVector &V, const TimeInterval<>& interval)
+{
+	auto scale = interval.count();
+	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
+}
+
+constexpr PositionVector const operator+(const PositionVector &, const DistanceVector &)
+{
+	return PositionVector();
+}
+
+constexpr DistanceVector const operator-(const PositionVector &, const PositionVector &)
+{
+	return DistanceVector();
 }

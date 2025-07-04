@@ -34,7 +34,7 @@ void SystemState::updateTarget(Target &newTarget, uint16_t indifferenceMargin)
 	{
 		auto oldTarget = target[newTarget.index];
 		auto distance = pow(newTarget.X_coord - oldTarget.X_coord, 2) + pow(newTarget.Y_coord - oldTarget.Y_coord, 2);
-		
+
 		doUpdate = distance >= indifferenceMargin + max(abs(newTarget.speed), abs(oldTarget.speed));;
 		// if (doUpdate) {
 		// 	Serial.println(distance);
@@ -215,8 +215,9 @@ fixed SystemState::targetTravelDistance()
 
 Target SystemState::targetAimpoint()
 {
-	const auto P = currentTarget();
-	const auto V = P.Velocity();
+	const auto target = currentTarget();
+	const auto P = target.Position();
+	const auto V = target.Velocity();
 
 	const auto cT4 = fixed(0.25) * G.dot(G);
 	const auto cT3 = V.dot(G);
