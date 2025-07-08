@@ -42,13 +42,20 @@ public:
 	constexpr static NumericType rad2DegFactor = NumericType(57.2957795131);
 
 public:
+	constexpr static Vector3D<Numeric> Up = Vector3D<Numeric>(0,0,1);
+	constexpr static Vector3D<Numeric> Down = Vector3D<Numeric>(0,0,-1);
+	constexpr static Vector3D<Numeric> Left = Vector3D<Numeric>(-1,0,0);
+	constexpr static Vector3D<Numeric> Right = Vector3D<Numeric>(1,0,0);
+	constexpr static Vector3D<Numeric> Forward = Vector3D<Numeric>(0,1,0);
+	constexpr static Vector3D<Numeric> Backward = Vector3D<Numeric>(0,-1,0);
+
 	NumericType X_coord;
 	NumericType Y_coord;
 	NumericType Z_coord;
 
 	// Constructors
-	constexpr Vector3D() : X_coord(0), Y_coord(0), Z_coord(0) {}
-	constexpr Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord) : X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
+	constexpr explicit Vector3D() : X_coord(0), Y_coord(0), Z_coord(0) {}
+	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord) : X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
 
 	operator bool() const
 	{
@@ -126,18 +133,22 @@ public:
 		{
 			return ClassType(X_coord / mag, Y_coord / mag, Z_coord / mag);
 		}
-		return *this;
-	}
-
-	// Yaw
-	NumericType yaw() const
-	{
-		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor;
+		return ClassType(X_coord, Y_coord, Z_coord);
 	}
 
 	// Pitch
 	NumericType pitch() const
 	{
+		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor;
+	}
+
+	// Yaw
+	NumericType yaw() const
+	{
 		return atan2(X_coord, Y_coord) * rad2DegFactor;
+	}
+
+	NumericType angleTo(const VectorCompatible<NumericType> auto &other) const {
+		return atan2(cross(other).magnitude(), dot(other)) * rad2DegFactor;
 	}
 };

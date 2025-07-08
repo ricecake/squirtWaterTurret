@@ -2,84 +2,18 @@
 
 // #include <functional>
 #include <stdint.h>
+#include "HardwareSerial.h"
 // #include <queue>
 // #include <AccelStepper.h>
 // #include <MultiStepper.h>
 #include "vector.hpp"
 #include "fpm_adapter.hpp"
 #include <chrono>
+#include "aproximate_math.hpp"
+#include "utilities.h"
 
 using fixed = fixed_16_16;
 
-// struct FixedReprHighResClock : public std::chrono::high_resolution_clock {
-// 	using rep = fixed;
-// 	using duration = std::chrono::duration<rep, std::nano>;
-// 	using time_point = std::chrono::time_point<FixedReprHighResClock, duration>;
-// };
-
-using Clock = std::chrono::high_resolution_clock;
-// using Clock = FixedReprHighResClock;
-using TimePoint = Clock::time_point;
-using Duration = Clock::duration;
-
-// class VDur : public std::chrono::duration<fixed>
-// {
-// 	public:
-// 	VDur(fixed t): std::chrono::duration<fixed>(t){};
-// };
-
-template <typename Rep = fixed, typename Period = std::ratio<1>>
-class TimeInterval
-{
-public:
-	using DurationType = std::chrono::duration<Rep, Period>;
-
-	// Constructor to initialize with a std::chrono::duration
-	constexpr TimeInterval(DurationType d) : m_duration(d) {}
-
-	// Constructor to initialize with a raw count
-	constexpr TimeInterval(Rep count) : m_duration(count) {}
-
-	template <typename Orep, typename Operiod>
-	constexpr TimeInterval(std::chrono::duration<Orep, Operiod> d) : m_duration(std::chrono::duration_cast<DurationType>(d))
-	{
-	}
-
-	// Get the underlying duration
-	constexpr DurationType get_duration() const
-	{
-		return m_duration;
-	}
-
-	// Get the count of ticks
-	constexpr Rep count() const
-	{
-		return m_duration.count();
-	}
-
-	// Example of a conversion utility
-	template <typename TargetRep, typename TargetPeriod>
-	constexpr TimeInterval<TargetRep, TargetPeriod> as() const
-	{
-		return TimeInterval<TargetRep, TargetPeriod>(
-			std::chrono::duration_cast<std::chrono::duration<TargetRep, TargetPeriod>>(m_duration));
-	}
-
-private:
-	const DurationType m_duration;
-};
-
-template <typename T>
-concept ChronoDuration = requires(T obj) {
-	typename TimeInterval<typename T::rep, typename T::period>;
-	// std::is_base_of_v<TimeInterval<typename T::rep, typename T::period>, T>;
-};
-
-template <typename T>
-concept ChronoPoint = std::is_base_of_v<std::chrono::time_point<typename T::Clock, typename T::Duration>, T>;
-
-constexpr auto AsSeconds = [](const ChronoDuration auto &d)
-{ return std::chrono::duration_cast<std::chrono::duration<fixed>>(d); };
 
 class Target;
 class PositionVector;
@@ -107,7 +41,7 @@ class PositionVector : public Vector3D<fixed, PositionVector>
 public:
 	PositionVector() = default;
 	PositionVector(const PositionVector &other) = default;
-	PositionVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+	constexpr PositionVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
 	PositionVector(PositionVector, DistanceVector);
 	PositionVector(PositionVector, VelocityVector, ChronoDuration auto interval);
 
@@ -124,11 +58,8 @@ class VelocityVector : public Vector3D<fixed, VelocityVector>
 public:
 	VelocityVector() = default;
 	VelocityVector(const VelocityVector &other) = default;
-	VelocityVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
-	VelocityVector(DistanceVector, ChronoDuration auto interval);
-	VelocityVector(PositionVector, PositionVector, ChronoDuration auto interval);
-
-	// DistanceVector operator*(const ChronoDuration auto& interval);
+	constexpr VelocityVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+	VelocityVector(DistanceVector, TimeInterval interval);
 };
 
 class Target
@@ -150,10 +81,56 @@ public:
 	const VelocityVector Velocity() const;
 	const PositionVector Position() const;
 
-	Duration timeSinceLastAction();
-	bool actionIdleExceeds(ChronoDuration auto limit);
+	TimeInterval timeSinceLastAction() const;
+	constexpr bool actionIdleExceeds(const ChronoDuration auto limit) const
+	{
+		return timeSinceLastAction() > limit;
+	}
 	void IncrementAction();
 	PositionVector PredictedPositionAtTime(ChronoDuration auto interval);
+	const PositionVector interceptPosition() const
+	{
+		const PositionVector proj_pos = PositionVector(0, 0, 1.5);
+		const PositionVector target_pos = position;
+		const VelocityVector target_velocity = velocity;
+		const fixed_24_8 proj_speed = 20;
+		const Vector3D<fixed_24_8> Gv(0, 0, 9.814);
+		const fixed_24_8 G = Gv.magnitude();
+
+		const fixed_24_8 P = target_velocity.X_coord;
+		const fixed_24_8 Q = target_velocity.Z_coord;
+		const fixed_24_8 R = target_velocity.Y_coord;
+
+		const auto diff = target_pos - proj_pos;
+		const fixed_24_8 H = diff.X_coord;
+		const fixed_24_8 J = diff.Z_coord;
+		const fixed_24_8 K = diff.Y_coord;
+
+		const fixed_24_8 L = fixed_24_8(-0.5) * G;
+		const fixed_24_8 S = proj_speed;
+
+		// Quartic Coeffecients
+		const fixed_24_8 c0 = L * L;
+		const fixed_24_8 c1 = -2 * Q * L;
+		const fixed_24_8 c2 = -2 * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - pow(S, 2);
+		const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
+		const fixed_24_8 c4 = diff.dot(diff);
+
+		const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic = [=](const fixed_24_8 t) -> const fixed_24_8
+		{
+			return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
+		};
+
+		const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
+
+		auto pos = diff + target_velocity * intercept;
+		pos.Z_coord = fixed_24_8(pos.Z_coord) - L * pow(intercept, 2);
+
+		return PositionVector(
+			(H + P * intercept) / intercept,
+			(K + R * intercept) / intercept,
+			(J + Q * intercept - L * pow(intercept, 2)) / intercept);
+	};
 
 public:
 	bool valid = false;
@@ -168,9 +145,40 @@ private:
 	VelocityVector velocity;
 };
 
+constexpr const VelocityVector operator/(const DistanceVector &D, const ChronoDuration auto &interval)
+{
+	auto scale = interval.count();
+	// auto scale = AsSeconds(interval).count();
+	return VelocityVector(
+		D.X_coord / scale,
+		D.Y_coord / scale,
+		D.Z_coord / scale);
+}
 
-constexpr VelocityVector const operator/(const DistanceVector &, const ChronoDuration auto &interval);
-constexpr const DistanceVector operator*(const VelocityVector &, const TimeInterval<> &interval);
+constexpr const DistanceVector operator*(const VelocityVector &V, const ChronoDuration auto &interval)
+{
+	auto scale = interval.count();
+	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
+}
 
-constexpr PositionVector const operator+(const PositionVector &, const DistanceVector &);
-constexpr DistanceVector const operator-(const PositionVector &, const PositionVector &);
+constexpr const PositionVector operator+(const PositionVector &A, const DistanceVector &B)
+{
+	return PositionVector(
+		A.X_coord + B.X_coord,
+		A.Y_coord + B.Y_coord,
+		A.Z_coord + B.Z_coord);
+}
+
+constexpr const DistanceVector operator-(const PositionVector &A, const PositionVector &B)
+{
+	return DistanceVector(
+		A.X_coord - B.X_coord,
+		A.Y_coord - B.Y_coord,
+		A.Z_coord - B.Z_coord);
+}
+
+// VelocityVector const operator/(const DistanceVector &, const ChronoDuration auto &interval);
+// DistanceVector operator*(const VelocityVector &, const TimeInterval<> &interval);
+
+// PositionVector const operator+(const PositionVector &, const DistanceVector &);
+// DistanceVector const operator-(const PositionVector &, const PositionVector &);

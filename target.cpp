@@ -48,20 +48,27 @@ fixed PositionVector::Distance()
 	return _distance;
 }
 
-VelocityVector::VelocityVector(DistanceVector, ChronoDuration auto interval)
+VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval)
 {
-}
-
-VelocityVector::VelocityVector(PositionVector P2, PositionVector P1, ChronoDuration auto interval)
-{
-	auto duration = std::chrono::duration_cast<std::chrono::seconds>(interval).count();
-	if (duration)
+	// TimeInterval duration = interval.as<fixed, std::ratio<1>();
+	if (interval.count())
 	{
-		X_coord = (P2.X_coord - P1.X_coord) / duration;
-		Y_coord = (P2.Y_coord - P1.Y_coord) / duration;
-		Z_coord = (P2.Z_coord - P1.Z_coord) / duration;
+		X_coord = dist.X_coord / interval.count();
+		Y_coord = dist.Y_coord / interval.count();
+		Z_coord = dist.Z_coord / interval.count();
 	}
 }
+
+// VelocityVector::VelocityVector(PositionVector P2, PositionVector P1, ChronoDuration auto interval)
+// {
+// 	auto duration = std::chrono::duration_cast<std::chrono::seconds>(interval).count();
+// 	if (duration)
+// 	{
+// 		X_coord = (P2.X_coord - P1.X_coord) / duration;
+// 		Y_coord = (P2.Y_coord - P1.Y_coord) / duration;
+// 		Z_coord = (P2.Z_coord - P1.Z_coord) / duration;
+// 	}
+// }
 
 // DistanceVector VelocityVector::operator*(const ChronoDuration auto &interval)
 // {
@@ -93,12 +100,12 @@ PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval)
 
 const VelocityVector Target::Velocity() const
 {
-	if (velocity)
-	{
+	// if (velocity)
+	// {
 		return velocity;
-	}
+	// }
 
-	return VelocityVector(position, last_position, seen - last_seen);
+	// return VelocityVector(position - last_position, TimeInterval(seen - last_seen));
 }
 
 const PositionVector Target::Position() const
@@ -106,14 +113,9 @@ const PositionVector Target::Position() const
 	return position;
 }
 
-Duration Target::timeSinceLastAction()
+TimeInterval Target::timeSinceLastAction() const
 {
-	return Clock::now() - last_action;
-}
-
-bool Target::actionIdleExceeds(ChronoDuration auto limit)
-{
-	return timeSinceLastAction() > limit;
+	return TimeInterval(Clock::now() - last_action);
 }
 
 void Target::IncrementAction()
@@ -240,28 +242,3 @@ void Target::IncrementAction()
 	last_action = esp_timer_get_time();
 }
  */
-constexpr  VelocityVector const inline operator/(const DistanceVector & D, const ChronoDuration auto &interval)
-{
-	auto scale = interval.count();
-	// auto scale = AsSeconds(interval).count();
-	return VelocityVector(
-		D.X_coord / scale,
-		D.Y_coord / scale,
-		D.Z_coord / scale);
-}
-
-constexpr const DistanceVector operator*(const VelocityVector &V, const TimeInterval<>& interval)
-{
-	auto scale = interval.count();
-	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
-}
-
-constexpr PositionVector const operator+(const PositionVector &, const DistanceVector &)
-{
-	return PositionVector();
-}
-
-constexpr DistanceVector const operator-(const PositionVector &, const PositionVector &)
-{
-	return DistanceVector();
-}

@@ -45,8 +45,8 @@ void setup()
 
 	// initTestData();
 
-	dptState.setTarget(1);
-	// dptState.queueSelectTarget(1, 5*1000);
+	// dptState.setTarget(1);
+	dptState.queueSelectTarget(1, 3*1000);
 
 	Serial.println("Ready!");
 
@@ -131,8 +131,8 @@ void refreshTargets() {
 			if (result_target.valid)
 			{
 				// Serial.printf("%i   %i\n", result_target.x, result_target.y);
-				auto newTarget = Target(result_target.id, result_target.x, result_target.y, result_target.speed, result_target.valid);
-				dptState.updateTarget(newTarget, 16);
+				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 0);
+				dptState.updateTarget(result_target.id, result_target.valid, newPositionObservation, 8);
 			}
 		}
 	}

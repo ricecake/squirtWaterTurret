@@ -1,3 +1,5 @@
+#include <chrono>
+#include <ratio>
 #include "HardwareSerial.h"
 #include "utilities.h"
 #include "state.h"
@@ -27,26 +29,29 @@ Target &SystemState::currentTarget()
 	return target[selectedTarget];
 }
 
-void SystemState::updateTarget(Target &newTarget, uint16_t indifferenceMargin)
+void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin)
 {
+	// Serial.printf("saw %f %f %f %f/%f\n", float(newPosition.X_coord), float(newPosition.Y_coord), float(newPosition.Z_coord), float(newPosition.Pitch()), float(newPosition.Yaw()));
 	bool doUpdate = true;
 	if (indifferenceMargin > 0)
 	{
-		auto oldTarget = target[newTarget.index];
-		auto distance = pow(newTarget.X_coord - oldTarget.X_coord, 2) + pow(newTarget.Y_coord - oldTarget.Y_coord, 2);
+		auto oldTarget = target[idx];
+		auto distance = newPosition - oldTarget.Position();
 
-		doUpdate = distance >= indifferenceMargin + max(abs(newTarget.speed), abs(oldTarget.speed));;
-		// if (doUpdate) {
-		// 	Serial.println(distance);
-		// 	Serial.println(newTarget.speed);
-		// 	Serial.println(oldTarget.speed);
-		// 	Serial.println(doUpdate? "Move" : "No Move");
-		// }
+		auto travelAngle = abs(oldTarget.Position().angleTo(newPosition)) / angleToStep;
+		doUpdate = (travelAngle) > indifferenceMargin;
+		// auto yawDist = fixed(distance.yaw());
+		// auto pitchDist = fixed(distance.pitch());
+		// doUpdate = indifferenceMargin <= sqrt(pow(yawDist, 2), pow(pitchDist, 2))/angleToStep;
+
+		// doUpdate = distance.magnitude() >= fixed(indifferenceMargin)/100 + oldTarget.Velocity().magnitude();
 	}
 
 	if (doUpdate)
 	{
-		target[newTarget.index].Update(newTarget);
+		// Serial.println("updating target");
+		target[idx].Update(newPosition);
+		target[idx].valid = valid;
 		needTrackingUpdate = true;
 	}
 }
@@ -65,13 +70,13 @@ void SystemState::setFire(bool active)
 
 void SystemState::queueFire(uint8_t fireDuration)
 {
-	auto start = milliseconds(5);
-	auto end = milliseconds(fireDuration, start);
+	auto start = DynamicTimeInterval<fixed, std::milli>(5);
+	auto end = DynamicTimeInterval<fixed, std::milli>(fireDuration) + start;
 
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
 	{
-		commandQueue.push(new FireControl(true, start));
-		commandQueue.push(new FireControl(false, end));
+		commandQueue.push(new FireControl(true, start.microseconds()));
+		commandQueue.push(new FireControl(false, end.microseconds()));
 		xSemaphoreGive(xMutex);
 	}
 }
@@ -131,7 +136,9 @@ void SystemState::actualizeFiring()
 
 void SystemState::actualizePosition()
 {
-	auto target = targetAimpoint();
+	auto target = currentTarget();
+	// Serial.println("pos check");
+
 	// Serial.println(target.valid);
 	// Serial.println(target.X_coord);
 	// Serial.println(target.Y_coord);
@@ -150,13 +157,24 @@ void SystemState::actualizePosition()
 		It's inputs should be the current position in the respective dimension.
 		*/
 
+		auto aimpoint = target.interceptPosition();
+		// auto position = target.Position();
+		// Serial.printf("At %f %f %f %f/%f\n", float(position.X_coord), float(position.Y_coord), float(position.Z_coord), float(position.Pitch()), float(position.Yaw()));
+		// Serial.printf("Aim %f %f %f %f/%f\n", float(aimpoint.X_coord), float(aimpoint.Y_coord), float(aimpoint.Z_coord), float(aimpoint.Pitch()), float(aimpoint.Yaw()));
+		// auto cyaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
+		// auto cpitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
+
+		// Serial.printf("Curr %f %f\n", float(cpitch), float(cyaw));
 
 		// Serial.printf("loc: %f    %f\n", float(target.Pitch()), float(target.Yaw()));
-		auto pitch = long(min(max(target.Pitch(), -60), 60) / angleToStep);
-		auto yaw = long(min(max(target.Yaw(), -70), 70) / angleToStep);
+		auto pitch = long(min(max(aimpoint.Pitch(), -60), 60) / angleToStep);
+		auto yaw = long(min(max(aimpoint.Yaw(), -70), 70) / angleToStep);
 
-		int delta_A = pitch + yaw;
-		int delta_B = yaw - pitch;
+		// int delta_A = pitch + yaw;
+		// int delta_B = yaw - pitch;
+
+		int delta_A = yaw + pitch;
+		int delta_B = pitch - yaw;
 
 		// long moveA = delta_A - stepperA.currentPosition();
 		// long moveB = delta_B - stepperB.currentPosition();
@@ -199,55 +217,23 @@ void SystemState::actualizePosition()
 
 fixed SystemState::targetTravelDistance()
 {
-	auto target = targetAimpoint();
+	auto target = currentTarget();
 	if (!target.valid)
 	{
 		return INT_MAX;
 	}
+	auto aimpoint = target.interceptPosition();
 
 	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
 	auto pitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
 
 	// Serial.printf("At %f %f Want %f %f\n", pitch, yaw, target.Pitch(), target.Yaw());
 
-	return sqrt(pow(yaw - target.Yaw(), 2) + pow(pitch - target.Pitch(), 2));
+	return sqrt(pow(yaw - aimpoint.Yaw(), 2) + pow(pitch - aimpoint.Pitch(), 2));
 }
 
-Target SystemState::targetAimpoint()
+PositionVector SystemState::targetAimpoint()
 {
 	const auto target = currentTarget();
-	const auto P = target.Position();
-	const auto V = target.Velocity();
-
-	const auto cT4 = fixed(0.25) * G.dot(G);
-	const auto cT3 = V.dot(G);
-	const auto cT2 = P.dot(G) + V.dot(V) - pow(projectileSpeed, 2);
-	const auto cT1 = 2 * P.dot(V);
-	const auto cT0 = P.dot(P);
-
-	std::function<const fixed(const fixed)> movingTargetInterceptQuartic = [=](const fixed t) -> const fixed
-	{
-		return cT4 * pow(t, 4) + cT3 * pow(t, 3) + cT2 * pow(t, 2) + cT1 * t + cT0;
-	};
-
-	auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
-
-	// Serial.println("Position");
-	// Serial.println(P.valid);
-	// Serial.println(float(P.X_coord));
-	// Serial.println(float(P.Y_coord));
-	// Serial.println(float(P.Z_coord));
-
-	// Serial.println("Velocity");
-	// Serial.println(float(V.X_coord));
-	// Serial.println(float(V.Y_coord));
-	// Serial.println(float(V.Z_coord));
-
-	// Serial.println(float(intercept));
-	auto dis = V * intercept;
-	auto res = P + Target(dis);
-	res.valid = P.valid;
-	// Serial.printf("Target: %i %f %f %f\n", res.valid, float(res.X_coord), float(res.Y_coord), float(res.Z_coord));
-	return res;
-	// return P + Target(V * intercept);
+	return target.interceptPosition();
 }

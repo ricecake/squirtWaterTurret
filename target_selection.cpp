@@ -8,7 +8,9 @@ void TargetSelection::Execute(SystemState *state)
 	uint16_t timeout = 0;
 	if (currTarget.valid)
 	{
-		timeout = 5 * 1000;
+		timeout = 10 * 1000;
+		Serial.print("Tracking target ");
+		Serial.println(target_id);
 	}
 
 	state->queueSelectTarget(((target_id + 1) % 4), timeout);

@@ -27,7 +27,7 @@ namespace Approximate
 	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16)
 	{
 		T leftInput = 0;
-		T rightInput = 1;
+		T rightInput = 0.01;//std::numeric_limits<fpm::fixed_16_16>::min;
 		T midInput;
 
 		T leftValue = func(leftInput);

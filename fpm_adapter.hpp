@@ -8,8 +8,14 @@ template <
 	typename B, typename I, unsigned int F, bool E = true>
 class FixedAdapter : public fpm::fixed<B, I, F, E>
 {
+	using b = B;
+	using i = I;
+
+	static const unsigned int f = F;
+	static const bool e = E;
+
 public:
-    inline FixedAdapter() noexcept = default;
+	inline FixedAdapter() noexcept = default;
 
 	template <
 		typename NonFixedType>
@@ -35,6 +41,13 @@ namespace std
 	constexpr FixedType min(const FixedType &a, const NonFixedType &b)
 	{
 		return (a >= b) ? FixedType(b) : a;
+	}
+
+	template <typename T, typename O>
+		requires same_as<T, FixedAdapter<typename T::params, typename T::i, T::f, T::e>>
+	constexpr FixedAdapter<typename T::params, typename T::i, T::f, T::e> pow(const T &A, const O &B)
+	{
+		return FixedAdapter<typename T::params, typename T::i, T::f, T::e>(fpm::pow(A, B));
 	}
 }
 
