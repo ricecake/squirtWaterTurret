@@ -83,12 +83,108 @@ namespace cerializer
 					.data())...};
 	};
 
+	template <typename T>
+		requires std::is_trivially_copyable_v<T>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize()
+	{
+		return {ceil(log10(sizeof(T))), sizeof(T), 'P'};
+	}
+
+	template <typename T>
+		requires std::is_bounded_array_v<T> && std::same_as<char, std::remove_all_extents_t<T>>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize()
+	{
+		return {ceil(log10(sizeof(T))), sizeof(T), 's'};
+	}
+
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<char>()
+	{
+		return {1, 1, 'c'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<signed char>()
+	{
+		return {1, 1, 'b'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<unsigned char>()
+	{
+		return {1, 1, 'B'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<bool>()
+	{
+		return {1, 1, '?'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<short>()
+	{
+		return {1, 2, 'h'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<unsigned short>()
+	{
+		return {1, 2, 'H'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<int>()
+	{
+		return {1, 4, 'i'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<unsigned int>()
+	{
+		return {1, 4, 'I'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<long>()
+	{
+		return {1, 4, 'l'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<unsigned long>()
+	{
+		return {1, 4, 'L'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<long long>()
+	{
+		return {1, 8, 'q'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<unsigned long long>()
+	{
+		return {1, 8, 'Q'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<float>()
+	{
+		return {1, 4, 'f'};
+	}
+	template <>
+	constexpr std::tuple<uint8_t, uint8_t, char> formatSize<double>()
+	{
+		return {1, 8, 'd'};
+	}
+
+	template <typename... Ts>
+		requires(std::is_trivially_copyable_v<Ts> && ...)
+	constexpr inline std::array<std::byte, 1 + (std::get<0>(formatSize<Ts>()) + ...)> renderFormat()
+	{
+		return std::array<std::byte, 1 + (std::get<0>(formatSize<Ts>()) + ...)>{std::byte('<'), std::byte(std::get<2>(formatSize<Ts>()))...};
+	}
+
 	template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
 	class Message
 	{
 	public:
 		inline constexpr static uint8_t Type() { return TypeVal; };
 		inline constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
+		constexpr inline static std::array<std::byte, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)> Format()
+		{
+			return renderFormat<uint16_t, uint8_t, FieldTypes..., uint16_t>();
+		};
 		constexpr std::array<std::byte, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)> ToBinary() const
 		{
 			auto encodedData = static_cast<const Derived *>(this)->encode();
