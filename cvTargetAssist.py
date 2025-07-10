@@ -2,8 +2,9 @@ import sys
 import select
 import struct
 import depthai as dai
+import cv2
 
-from depthai import SpatialLocationCalculatorData
+from depthai import SpatialLocationCalculatorData, ImageManipConfig, RotatedRect
 from depthai_nodes.message import ImgDetectionsExtended
 from depthai_nodes.node import ParsingNeuralNetwork
 
@@ -88,12 +89,21 @@ calibdata = device.readCalibration()
 with dai.Pipeline(device) as pipeline:
     print("Creating pipeline...")
 
-    # model
-    model_description = dai.NNModelDescription("luxonis/yolov8-nano-pose-estimation:coco-512x288")
-    model_description.platform = platform
-    nn_archive = dai.NNArchive(
+    # pose model
+    poseModelDescription = dai.NNModelDescription("luxonis/yolov8-nano-pose-estimation:coco-512x288")
+    poseModelDescription.platform = platform
+    poseModelArchive = dai.NNArchive(
         dai.getModelFromZoo(
-            model_description,
+            poseModelDescription,
+        )
+    )
+
+    # recognition model
+    faceModelDescription = dai.NNModelDescription("luxonis/arcface:lfw-112x112")
+    faceModelDescription.platform = platform
+    faceModelArchive = dai.NNArchive(
+        dai.getModelFromZoo(
+            faceModelDescription,
         )
     )
 
@@ -102,10 +112,17 @@ with dai.Pipeline(device) as pipeline:
     monoLeft = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
     monoRight = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
 
+    # node creation
     stereo = pipeline.create(dai.node.StereoDepth)
     spatialLocationCalculator = pipeline.create(dai.node.SpatialLocationCalculator)
-    nn_with_parser = pipeline.create(ParsingNeuralNetwork).build(
-        cam, nn_archive
+    crop_node = pipeline.create(dai.node.ImageManip)
+
+    # NN nodes
+    poseNode = pipeline.create(ParsingNeuralNetwork).build(
+        cam, poseModelArchive
+    )
+    faceNode: ParsingNeuralNetwork = pipeline.create(ParsingNeuralNetwork).build(
+        crop_node.out, faceModelArchive
     )
 
     # Linking
@@ -115,13 +132,14 @@ with dai.Pipeline(device) as pipeline:
     monoRightOut.link(stereo.right)
     stereo.depth.link(spatialLocationCalculator.inputDepth)
 
+    poseNode.passthrough.link(crop_node.inputImage)
+
     config = dai.SpatialLocationCalculatorConfigData()
     config.depthThresholds.lowerThreshold = 1
     config.depthThresholds.upperThreshold = 10000
     calculationAlgorithm = dai.SpatialLocationCalculatorAlgorithm.MIN
     config.roi = dai.Rect(dai.Point2f(0.4, 0.4), dai.Point2f(0.6, 0.6))
 
-    # spatialLocationCalculator.inputConfig.setWaitForMessage(False)
     spatialLocationCalculator.inputConfig.setWaitForMessage(True)
     spatialLocationCalculator.initialConfig.addROI(config)
 
@@ -129,10 +147,19 @@ with dai.Pipeline(device) as pipeline:
     stereo.initialConfig.setConfidenceThreshold(50)
     stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.FAST_ACCURACY)
 
-    inputConfigQueue = spatialLocationCalculator.inputConfig.createInputQueue()
+    faceModelWidth = faceModelArchive.getInputWidth()
+    faceModelHeight = faceModelArchive.getInputHeight()
+    if faceModelWidth and faceModelHeight:
+        crop_node.initialConfig.setOutputSize(
+            faceModelWidth, faceModelHeight
+        )
+
+    spatialConfigInputQueue = spatialLocationCalculator.inputConfig.createInputQueue()
+    cropConfigInputQueue = crop_node.inputConfig.createInputQueue()
 
     xoutSpatialQueue = spatialLocationCalculator.out.createOutputQueue(maxSize=1)
-    outputs = nn_with_parser.out.createOutputQueue()
+    outputs = poseNode.out.createOutputQueue()
+    faceQueue = faceNode.out.createOutputQueue()
 
     # Make a map with ROI data that maps it to data about the detection to keep things synced up
     # numDets = 0
@@ -156,6 +183,9 @@ with dai.Pipeline(device) as pipeline:
                 rShoulder = detection.keypoints[6]
                 lHip = detection.keypoints[11]
                 rHip = detection.keypoints[12]
+                nose = detection.keypoints[0]
+                lEar = detection.keypoints[3]
+                rEar = detection.keypoints[4]
 
                 if lShoulder.x <= rShoulder.x or lHip.x <= rShoulder.x:
                     # print("No shooting in back")
@@ -181,16 +211,27 @@ with dai.Pipeline(device) as pipeline:
                     dai.Point2f(tX + 0.02, tY - 0.02),
                 )
 
+                if faceModelWidth and faceModelHeight:
+                    rect = RotatedRect()
+                    rect.center.x = nose.x
+                    rect.center.y = nose.y
+                    rect.size.width = abs(rEar.x - lEar.x)
+                    rect.size.height = abs(nose.y - cSY) * 2
+                    rect.angle = 0
+
+                    cropConfig = ImageManipConfig()
+                    cropConfig.addCropRotatedRect(rect.normalize(width=w, height=h), True)
+                    cropConfig.setOutputSize(faceModelWidth, faceModelHeight, ImageManipConfig.ResizeMode.CENTER_CROP)
+
+                    cropConfigInputQueue.send(cropConfig)
+
                 config.roi = roi.normalize(width=w, height=h)
                 cfg.addROI(config)
                 roiSet = True
         if roiSet:
-            inputConfigQueue.send(cfg)
+            spatialConfigInputQueue.send(cfg)
 
     def spatialCallback(spatialData: SpatialLocationCalculatorData):
-        # if numDets == 0:
-        #     return
-
         for depthData in spatialData.getSpatialLocations():
             print("X: {}, Y: {}, Z: {}".format(
                 int(depthData.spatialCoordinates.x),
@@ -198,8 +239,16 @@ with dai.Pipeline(device) as pipeline:
                 int(-1 * depthData.spatialCoordinates.y))
             )
 
+    from objprint import op
+
+    def faceCallback(msg: ImgDetectionsExtended):
+        op(msg)
+
     outputs.addCallback(outputCallback)
     xoutSpatialQueue.addCallback(spatialCallback)
+    # faceQueue.addCallback(faceCallback)
+
+    colorImage = poseNode.passthrough.createOutputQueue()
 
     pipeline.start()
 
@@ -207,6 +256,12 @@ with dai.Pipeline(device) as pipeline:
 
     while pipeline.isRunning():
         pipeline.processTasks()
+
+        frame = colorImage.get()
+        img = frame.getCvFrame()
+        # cv2.imshow("Test", img)
+        op(img)
+        op(frame)
 
         if select.select([sys.stdin], [], [], 0)[0]:
             print("Stopping pipeline...")
