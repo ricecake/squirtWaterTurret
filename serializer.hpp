@@ -4,12 +4,40 @@
 #include <bit>
 #include <cstring>
 #include <span>
-
-const uint16_t magicHead = 0xCAFE;
-const uint16_t magicFoot = 0xFACE;
+#include <tuple>
+#include <iostream>
+#include <memory>
+#include <map>
 
 namespace cerializer
 {
+	const uint16_t magicHead = 0xCAFE;
+	const uint16_t magicFoot = 0xFACE;
+
+	std::string hexify(auto data)
+	{
+		std::stringstream out;
+		for (char c : data)
+		{
+			out << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(static_cast<unsigned char>(c));
+		}
+		return out.str();
+	}
+
+	template <typename T>
+	constexpr auto toCharArray(const T &thing)
+	{
+		return std::bit_cast<std::array<char, sizeof(T)>>(thing);
+	}
+
+	enum ParseMode
+	{
+		START,
+		PRE_END,
+		END,
+		EMIT,
+	};
+
 	template <typename T>
 	struct is_std_array : std::false_type
 	{
@@ -43,14 +71,14 @@ namespace cerializer
 
 	template <typename... Ts>
 		requires(std::is_trivially_copyable_v<Ts> && ...)
-	constexpr inline std::array<std::byte, (sizeof(Ts) + ...)> pack(const Ts &...args)
+	constexpr inline std::array<char, (sizeof(Ts) + ...)> pack(const Ts &...args)
 	{
-		std::array<std::byte, (sizeof(Ts) + ...)> dest;
+		std::array<char, (sizeof(Ts) + ...)> dest;
 		auto offset = 0;
 		([&]()
 		 {
 			if constexpr ((std::endian::native == std::endian::big) && sizeof(Ts) > 1 && !Indexable<Ts>) {
-				auto bits = std::bit_cast<std::array<std::byte, sizeof(Ts)>>(args);
+				auto bits = std::bit_cast<std::array<char, sizeof(Ts)>>(args);
 				std::copy(bits.rbegin(), bits.rend(), dest.data()+offset);
 			}
 			else {
@@ -61,11 +89,10 @@ namespace cerializer
 	};
 
 	template <typename Dest, typename... Ts, typename Cont>
-		requires
-			(std::is_trivially_copyable_v<Ts> && ...)
-			&& (std::is_trivially_constructible_v<Ts> && ...)
-			&& (std::is_constructible_v<Dest, Ts...>)
-			&& Container<Cont, std::byte>
+		requires(std::is_trivially_copyable_v<Ts> && ...)
+				// && (std::is_trivially_constructible_v<Ts> && ...)
+				// && (std::is_constructible_v<Dest, Ts...>)
+				&& Container<Cont, char>
 	constexpr inline Dest unpack(const Cont &binaryData)
 	{
 		if (sizeof...(Ts) < 1)
@@ -73,7 +100,7 @@ namespace cerializer
 			return *reinterpret_cast<Dest *>(binaryData.data());
 		}
 		auto count = 0;
-		std::span<std::byte> dataView(binaryData);
+		std::span<char> dataView(binaryData);
 		return Dest{
 			*reinterpret_cast<Ts *>(
 				dataView.subspan(
@@ -84,7 +111,7 @@ namespace cerializer
 	};
 
 	template <typename T>
-		requires std::is_trivially_copyable_v<T>
+		requires std::is_trivially_copyable_v<T> && (!std::is_bounded_array_v<T>)
 	constexpr std::tuple<uint8_t, uint8_t, char> formatSize()
 	{
 		return {ceil(log10(sizeof(T))), sizeof(T), 'P'};
@@ -170,37 +197,66 @@ namespace cerializer
 
 	template <typename... Ts>
 		requires(std::is_trivially_copyable_v<Ts> && ...)
-	constexpr inline std::array<std::byte, 1 + (std::get<0>(formatSize<Ts>()) + ...)> renderFormat()
+	constexpr inline std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)> renderFormat()
 	{
-		return std::array<std::byte, 1 + (std::get<0>(formatSize<Ts>()) + ...)>{std::byte('<'), std::byte(std::get<2>(formatSize<Ts>()))...};
+		return std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>{char('<'), char(std::get<2>(formatSize<Ts>()))...};
 	}
+
+	// using creatorFunc = void(*)(void);
+	// using infoFunc = std::tuple<uint8_t, creatorFunc>(*)(void);
+	// infoFunc creators[32];
+
+	// class Registry
+	// {
+	// 	public:
+	// 	constexpr Registry() {
+	// 		 bool registered = register_class();
+	// 	}
+	// 	protected:
+	// 	static bool register_class() {
+	// 		auto n= [] (const auto& ... args) -> Base { return Base((args, ...)); };
+	// 	creators[Derived::Type()] =
+
+	// 		[] (const auto& ... args) -> Derived { return std::make_unique<Derived>((args, ...)); };
+	// 		return true;
+	// 	}
+	// };
+
+	// class Base {
+	// 	public:
+	// 	// std::map<uint8_t, std::function<Base(auto&...)>> registry;
+	// };
 
 	template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
 	class Message
 	{
 	public:
-		inline constexpr static uint8_t Type() { return TypeVal; };
-		inline constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
-		constexpr inline static std::array<std::byte, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)> Format()
+		// static constexpr uint8_t TypeCode = TypeVal;
+		constexpr static uint8_t Type() { return TypeVal; };
+		constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
+		constexpr static std::array<char, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)> Format()
 		{
 			return renderFormat<uint16_t, uint8_t, FieldTypes..., uint16_t>();
 		};
-		constexpr std::array<std::byte, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)> ToBinary() const
+		constexpr std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)> ToBinary() const
 		{
 			auto encodedData = static_cast<const Derived *>(this)->encode();
 			return pack(magicHead, Type(), encodedData, magicFoot);
 		};
 
-		static Derived LoadBinary(std::array<std::byte, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)> &binaryData)
+		constexpr static Derived LoadBinary(std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)> &binaryData)
 		{
-			std::span<std::byte> dataView(binaryData);
+			return LoadBinary(std::span(binaryData.begin(), binaryData.end()));
+		}
+		constexpr static Derived LoadBinary(const std::span<char> &binaryData)
+		{
+			std::span<char> dataView(binaryData);
 			uint16_t headCheck = unpack<uint16_t>(dataView.first(sizeof(magicHead)));
 			uint16_t footCheck = unpack<uint16_t>(dataView.last(sizeof(footCheck)));
 
 			assert(headCheck == magicHead);
 			assert(footCheck == magicFoot);
 
-			auto body = std::span(binaryData.begin() + sizeof(uint16_t) + sizeof(uint8_t), Size());
 			return unpack<Derived, FieldTypes...>(dataView.subspan(sizeof(uint16_t) + sizeof(uint8_t), Size()));
 		}
 	};
@@ -216,8 +272,7 @@ namespace cerializer
 
 	public:
 		constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept : id(id), valid(valid), x(x), y(y), z(z) {}
-
-		constexpr std::array<std::byte, Size()> encode() const
+		constexpr std::array<char, Size()> encode() const
 		{
 			return pack(id, valid, x, y, z);
 		}
@@ -231,7 +286,116 @@ namespace cerializer
 
 	class Deserializer
 	{
+		std::istream input;
+		std::array<char, 128> buf;
+		char *offset = buf.begin();
+		char *end_offset = buf.begin();
+
+		constexpr auto findToken(const std::span<char> &buffer, const std::span<char> &value, const ParseMode &fail_state, const ParseMode &success_state)
+		{
+			auto next_state = fail_state;
+			auto next_size = value.size();
+			auto next_offset = buffer.begin();
+
+			if (buffer.size() < value.size())
+			{
+				next_size = value.size();
+				// next_size += value.size() - buffer.size();
+			}
+			else if (buffer.size() >= value.size())
+			{
+				auto index = std::search(buffer.begin(), buffer.end(), value.begin(), value.end());
+				if (index == buffer.end())
+				{
+					next_offset = buffer.end() - (value.size() - 1);
+				}
+				else
+				{
+					next_offset = index;
+					next_state = success_state;
+				}
+			}
+
+			return std::tuple{next_state, next_size, next_offset};
+		}
+
 	public:
+		auto ParseStream(std::istream &input)
+		{
+			constexpr const auto header_bytes = toCharArray(magicHead);
+			constexpr const auto footer_bytes = toCharArray(magicFoot);
+			auto state = START;
+			auto read_size = header_bytes.size();
+			auto token = header_bytes;
+			auto success = PRE_END;
+			auto fail = START;
+
+			auto read = 0;
+
+			read = input.readsome(end_offset, read_size);
+			end_offset += read;
+
+			auto result = findToken(std::span(offset, end_offset), std::span(token), fail, success);
+			state = std::get<0>(result);
+			read_size = std::get<1>(result);
+			offset = std::get<2>(result).base();
+
+			while (input.good() && !input.eof())
+			{
+				switch (state)
+				{
+				case START:
+					token = header_bytes;
+					success = PRE_END;
+					fail = START;
+					if (offset > buf.begin())
+					{
+						auto shift = offset - buf.begin();
+						std::copy(offset, end_offset, buf.begin());
+						end_offset -= shift;
+						offset = buf.begin();
+					}
+					break;
+				case PRE_END:
+					token = footer_bytes;
+					success = EMIT;
+					fail = END;
+					if (offset > buf.begin())
+					{
+						auto shift = offset - buf.begin();
+						std::copy(offset, end_offset, buf.begin());
+						end_offset -= shift;
+						offset = buf.begin();
+					}
+					break;
+				case END:
+					token = footer_bytes;
+					success = EMIT;
+					fail = END;
+					break;
+				case EMIT:
+					switch (offset[2])
+					{
+					case 0:
+						return Target::LoadBinary(std::span(offset, end_offset));
+					}
+					// // std::cout << "FOUND IT" << hexify(std::span(buf.begin(), end_offset)) << std::endl;
+					// offset = buf.begin();
+					// end_offset = buf.begin();
+					// state = START;
+					// continue;
+				}
+
+				auto result = findToken(std::span<char>(offset, end_offset), std::span(token), fail, success);
+				state = std::get<0>(result);
+				read_size = std::get<1>(result);
+				offset = std::get<2>(result).base();
+
+				read = input.readsome(end_offset, read_size);
+				end_offset += read;
+			}
+			return Target(1, true, 0, 0, 0);
+		}
 	};
 
 	class StreamHandler // This one should have a callback for what to do when it deserializes a message
