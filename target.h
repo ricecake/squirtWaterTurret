@@ -1,11 +1,6 @@
 #pragma once
 
-// #include <functional>
 #include <stdint.h>
-#include "HardwareSerial.h"
-// #include <queue>
-// #include <AccelStepper.h>
-// #include <MultiStepper.h>
 #include "vector.hpp"
 #include "fpm_adapter.hpp"
 #include <chrono>

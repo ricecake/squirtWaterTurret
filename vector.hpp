@@ -59,7 +59,7 @@ public:
 
 	operator bool() const
 	{
-		return X_coord && Y_coord && Z_coord;
+		return X_coord || Y_coord || Z_coord;
 	}
 
 	// Vector addition
@@ -104,7 +104,7 @@ public:
 	// Magnitude
 	NumericType magnitude() const
 	{
-		return sqrt(X_coord * X_coord + Y_coord * Y_coord + Z_coord * Z_coord);
+		return sqrt((X_coord * X_coord) + (Y_coord * Y_coord) + (Z_coord * Z_coord));
 	}
 
 	// Magnitude XY
@@ -149,6 +149,7 @@ public:
 	}
 
 	NumericType angleTo(const VectorCompatible<NumericType> auto &other) const {
+
 		return atan2(cross(other).magnitude(), dot(other)) * rad2DegFactor;
 	}
 };

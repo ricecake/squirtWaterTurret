@@ -36,20 +36,23 @@ void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVect
 	if (indifferenceMargin > 0)
 	{
 		auto oldTarget = target[idx];
-		auto distance = newPosition - oldTarget.Position();
+		auto oldTargetPos = oldTarget.Position();
+		if (oldTargetPos) {
+			// auto distance = newPosition - oldTargetPos;
 
-		auto travelAngle = abs(oldTarget.Position().angleTo(newPosition)) / angleToStep;
-		doUpdate = (travelAngle) > indifferenceMargin;
-		// auto yawDist = fixed(distance.yaw());
-		// auto pitchDist = fixed(distance.pitch());
-		// doUpdate = indifferenceMargin <= sqrt(pow(yawDist, 2), pow(pitchDist, 2))/angleToStep;
+			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
+			doUpdate = (travelAngle) > indifferenceMargin;
+			// auto yawDist = fixed(distance.yaw());
+			// auto pitchDist = fixed(distance.pitch());
+			// doUpdate = indifferenceMargin <= sqrt(pow(yawDist, 2), pow(pitchDist, 2))/angleToStep;
 
-		// doUpdate = distance.magnitude() >= fixed(indifferenceMargin)/100 + oldTarget.Velocity().magnitude();
+			// doUpdate = distance.magnitude() >= fixed(indifferenceMargin)/100 + oldTarget.Velocity().magnitude();
+		}
 	}
 
 	if (doUpdate)
 	{
-		// Serial.println("updating target");
+		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
 		target[idx].Update(newPosition);
 		target[idx].valid = valid;
 		needTrackingUpdate = true;
@@ -186,6 +189,10 @@ void SystemState::actualizePosition()
 		// }
 
 		double iterMaxSpeed = trackingSpeed / double(0xFF) * maxSpeed * stepFraction;
+		// long moveA = delta_A - stepperA.currentPosition();
+		// long moveB = delta_B - stepperB.currentPosition();
+		// long distance = sqrt(pow(moveA, 2) + pow(moveB, 2));
+		// iterMaxSpeed *= distance / (distance + 1);
 
 		// iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
 		// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));

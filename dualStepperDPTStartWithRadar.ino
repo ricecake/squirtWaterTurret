@@ -11,6 +11,21 @@
 #include "serializer.hpp"
 
 HardwareSerial RadarSerial(1);
+HardwareSerial testSerial(2);
+
+struct IOWrapper {
+	HardwareSerial& io;
+	size_t readsome(char* buf, size_t count){return 0;};
+	bool good() {return true;};
+	IOWrapper(HardwareSerial& io) : io(io) {};
+};
+
+
+
+// IOWrapper wrapped(testSerial);
+IOWrapper wrapped(Serial0);
+
+cerializer::Deserializer deserializer(wrapped);
 LD2450 ld2450;
 
 SystemState dptState;
@@ -39,6 +54,7 @@ void setup()
 		Serial.println("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
 	}
 
+	testSerial.begin(9600, SERIAL_8N1, 19, 18);
 	randomSeed(analogRead(0));
 
 	Serial.println("SETUP_FINISHED");
@@ -130,12 +146,14 @@ void refreshTargets() {
 
 			if (result_target.valid)
 			{
-				// Serial.printf("%i   %i\n", result_target.x, result_target.y);
-				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 0);
+				auto oldTarget = dptState.fetchTarget(result_target.id);
+				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, oldTarget.Position().Z_coord);
 				dptState.updateTarget(result_target.id, result_target.valid, newPositionObservation, 8);
 			}
 		}
 	}
+
+	deserializer.ParseStream();
 }
 
 void generateFireActions() {

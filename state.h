@@ -81,6 +81,9 @@ public:
 	void queueLinger(uint8_t milliseconds);
 	void processCommandQueue();
 	void actualizeState();
+	inline Target &fetchTarget(const uint8_t idx) {
+		return target[idx];
+	}
 	fixed targetTravelDistance();
 
 private:

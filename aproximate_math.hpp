@@ -1,6 +1,5 @@
 #pragma once
 
-// #include <sys/_types.h>
 #include <functional>
 #include <stdint.h>
 #include "fpm_adapter.hpp"
@@ -27,7 +26,7 @@ namespace Approximate
 	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16)
 	{
 		T leftInput = 0;
-		T rightInput = 0.01;//std::numeric_limits<fpm::fixed_16_16>::min;
+		T rightInput = 0.01;
 		T midInput;
 
 		T leftValue = func(leftInput);
@@ -41,7 +40,7 @@ namespace Approximate
 		{
 			leftInput = rightInput;
 			leftValue = rightValue;
-			rightInput *= 2;
+			rightInput *= 4;
 			rightValue = func(rightInput);
 			round++;
 		}
@@ -67,7 +66,7 @@ namespace Approximate
 			}
 
 			// This should check if proportional error is less than the threshold
-			if ((rightInput - leftInput) / rightInput < error)
+			if ((rightInput - leftInput) / rightInput <= error)
 			{
 				return ApproximateResult<T>(true, midInput);
 			}

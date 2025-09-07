@@ -43,7 +43,7 @@ Here is the mapping of each index to its respective body joint:
 """
 
 class SETTINGS:
-    enable_visualizer = False
+    enable_visualizer = True
     SERIAL_OUTPUT = False
     log_level = dai.LogLevel.WARN
     FPS = 10
@@ -94,13 +94,19 @@ script_content = """
 try:
     while True:
         frame = node.inputs['preview'].get()
-        dets  = node.inputs['det_in'].get()
-        depth = node.inputs['depth_in'].get()
+        dets  = node.inputs['det_in'].tryGet()
+        depth = node.inputs['depth_in'].tryGet()
+
+        if not (frame and dets and depth):
+            continue
 
         if len(dets.detections) == 0:
             continue
 
-        for det in dets.detections:
+        node.outputs['manip_img'].send(frame)
+        node.outputs['depth_cfg'].send(depth)
+
+        for index, det in enumerate(dets.detections):
             cfg = ImageManipConfig()
             rect = RotatedRect()
             rect.center.x = (det.xmin + det.xmax) / 2
@@ -113,11 +119,8 @@ try:
 
             cfg.addCropRotatedRect(rect, True)
             cfg.setOutputSize({w}, {h}, ImageManipConfig.ResizeMode.CENTER_CROP)
-
+            cfg.setReusePreviousImage(index < len(dets.detections) - 1)
             node.outputs['manip_cfg'].send(cfg)
-            node.outputs['manip_img'].send(frame)
-
-        node.outputs['depth_cfg'].send(depth)
 
 except Exception as e:
     node.warn(str(e))
@@ -191,25 +194,23 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
                 depthConfigs.append(depth_config.normalize(width=w, height=h))
                 recognitionConfigs.append(crop_config)
 
-        new_detection_message = dets_msg.copy()
-        new_detection_message.detections = []
         if depthConfigs and recognitionConfigs and detections:
+            new_detection_message = dets_msg.copy()
             new_detection_message.detections = detections
+            cfg = dai.SpatialLocationCalculatorConfig()
+            for roi in depthConfigs:
+                config.roi = roi
+                cfg.addROI(config)
 
-        cfg = dai.SpatialLocationCalculatorConfig()
-        for roi in depthConfigs:
-            config.roi = roi
-            cfg.addROI(config)
+            configDet = dai.ImgDetections()
+            configDet.detections = recognitionConfigs
 
-        configDet = dai.ImgDetections()
-        configDet.detections = recognitionConfigs
+            for conf in recognitionConfigs:
+                configDet.detections.append(conf)
 
-        for conf in recognitionConfigs:
-            configDet.detections.append(conf)
-
-        self.out.send(new_detection_message)
-        self.crop_config_output.send(configDet)
-        self.depth_config_output.send(cfg)
+            self.out.send(new_detection_message)
+            self.crop_config_output.send(configDet)
+            self.depth_config_output.send(cfg)
 
     def _transform_detection(self, detection: ImgDetectionExtended, frameSize: tuple[int, int]) -> Tuple[ImgDetectionExtended, dai.Rect | None, dai.ImgDetection | None]:
         new_detection = detection.copy()
@@ -479,13 +480,12 @@ class IdentificationNode(dai.node.HostNode):
 
         return (emit_event, person_name, person_id)
 
-class SimpleSync(dai.node.HostNode):
-    def build(
-        self, detections, depth
-    ) -> "SimpleSync":
-        self.link_args(detections, depth)
+class SimpleSync(dai.node.ThreadedHostNode):
+    def __init__(self) -> None:
+        super().__init__()
+        self.detections = self.createInput()
+        self.depth = self.createInput()
         self.serial = serial.Serial()
-        return self
 
     def onStart(self) -> None:
         if SETTINGS.SERIAL_OUTPUT:
@@ -499,8 +499,19 @@ class SimpleSync(dai.node.HostNode):
             self.serial.close()
         return super().onStop()
 
+    def run(self):
+        while self.isRunning():
+            try:
+                detections = self.detections.get()
+                depth = self.depth.get()
+                self.process(detections, depth)
+            except dai.MessageQueue.QueueException:
+                break
+
     def process(self, detections, spatialOutput) -> None:
         spatialData = [spatialData.spatialCoordinates for spatialData in spatialOutput.getSpatialLocations()]
+        if spatialData and not SETTINGS.SERIAL_OUTPUT:
+            print("PACKET:")
         for detection, depthData in zip(detections.detections, spatialData):
             if len(detection.keypoints) < 18:
                 continue
@@ -514,8 +525,8 @@ class SimpleSync(dai.node.HostNode):
             if SETTINGS.SERIAL_OUTPUT:
                 self.serial.write(targetPacket)
             else:
-                print((detections.getSequenceNum(), detections.getTimestamp(), name, int(id), bool(emit), xCoord, yCoord, zCoord))
-                print(targetPacket.hex())
+                print("\t", (detections.getSequenceNum(), detections.getTimestamp(), name, int(id), bool(emit), xCoord, yCoord, zCoord))
+                print("\t", targetPacket.hex())
 
 
 with dai.Pipeline(device) as pipeline:
@@ -531,6 +542,7 @@ with dai.Pipeline(device) as pipeline:
     )
     det_nn.setNNArchive(det_model_nn_archive, numShaves=4)
     det_nn.input.setBlocking(False)
+    det_nn.input.setMaxSize(2)
 
     target_detection_node = pipeline.create(DetectionTargetingConfigurationNode).build(
         det_nn.out,
@@ -543,7 +555,7 @@ with dai.Pipeline(device) as pipeline:
     target_detection_node.depth_config_output.link(script_node.inputs['depth_in'])
 
     crop_node = pipeline.create(dai.node.ImageManip)
-    crop_node.inputImage.setWaitForMessage(True)
+    crop_node.inputConfig.setWaitForMessage(True)
     crop_node.initialConfig.setOutputSize(
         faceModelWidth, faceModelHeight,
     )
@@ -555,11 +567,9 @@ with dai.Pipeline(device) as pipeline:
     )
     rec_nn.setNNArchive(rec_nn_archive, numShaves=4)
 
-    gather_data_node = pipeline.create(GatherData).build(camera_fps=SETTINGS.FPS)
+    gather_data_node = pipeline.create(GatherData).build(camera_fps=SETTINGS.FPS)  # Should be able to find away to bake this into the IdentNode
     rec_nn.out.link(gather_data_node.input_data)
     target_detection_node.out.link(gather_data_node.input_reference)
-
-    # Would this make more sense to just emit the detections, and then find a way to pair the detections with the cropped image and then with the recognition?
 
     id_node = pipeline.create(IdentificationNode).build(
         gather_data_msg=gather_data_node.out,
@@ -591,31 +601,20 @@ with dai.Pipeline(device) as pipeline:
     spatialLocationCalculator.inputDepth.setBlocking(False)
     spatialLocationCalculator.inputDepth.setMaxSize(2)
 
-    sync_node = pipeline.create(SimpleSync).build(
-        detections=id_node.out,
-        depth=spatialLocationCalculator.out
-    )
+    sync_node = pipeline.create(SimpleSync)
+    id_node.out.link(sync_node.detections)
+    spatialLocationCalculator.out.link(sync_node.depth)
 
     if SETTINGS.enable_visualizer:
-        # # # # Visualizer
         visualizer = dai.RemoteConnection(
             address='0.0.0.0',
             httpPort=8082
         )
         visualizer.addTopic("Video", det_nn.passthrough, "images")
-        # visualizer.addTopic("Video", colorCameraOutput, "images")
         visualizer.addTopic("Objects", id_node.out, "images")
-        # visualizer.addTopic("FaceInput", rec_nn.passthrough, "recog", useVisualizationIfAvailable=False)
-        # visualizer.addTopic("Depth", depth_color.out, "depth")
-        # time.sleep(5)
 
-    # Should look into moving the pose stuff sooner, and skipping recognition as much as possible, if we have bad pose data or whatnot.
-    # Need a pose processing node that lives immediately after the detection node.
-    # it should make sure the pose is processable, and then send a crop message to manip node, the frame to the manip node, and a depth config message to the spatial calculator.
-    # it should have an output queue for the detections, passthrough, the various configs, and maybe some type of annotation message?  Something that it can use to mark the data down.
     print("Pipeline created.")
 
-    # Start Pipeline
     pipeline.start()
 
     while pipeline.isRunning():

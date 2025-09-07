@@ -278,18 +278,36 @@ namespace cerializer
 		}
 	};
 
+	template <typename T>
+	concept IOAble = requires(T io, char* buf, size_t count) {
+		{ io.readsome(buf, count) } -> std::convertible_to<size_t>;
+		{ io.good() } -> std::convertible_to<bool>;
+	};
+
+
 	class Serializer
 	{
 	public:
 		void Write();
 	};
 
+	template<typename T>
+	requires IOAble<T>
 	class Deserializer
 	{
-		std::istream input;
+	protected:
+		T& input;
 		std::array<char, 128> buf;
 		char *offset = buf.begin();
 		char *end_offset = buf.begin();
+
+		const std::array<char, 2> header_bytes = toCharArray(magicHead);
+		const std::array<char, 2> footer_bytes = toCharArray(magicFoot);
+		std::size_t read_size = header_bytes.size();
+		std::array<char, 2> token = header_bytes;
+		ParseMode state = START;
+		ParseMode success = PRE_END;
+		ParseMode fail = START;
 
 		constexpr auto findToken(const std::span<char> &buffer, const std::span<char> &value, const ParseMode &fail_state, const ParseMode &success_state)
 		{
@@ -320,16 +338,10 @@ namespace cerializer
 		}
 
 	public:
-		auto ParseStream(std::istream &input)
-		{
-			constexpr const auto header_bytes = toCharArray(magicHead);
-			constexpr const auto footer_bytes = toCharArray(magicFoot);
-			auto state = START;
-			auto read_size = header_bytes.size();
-			auto token = header_bytes;
-			auto success = PRE_END;
-			auto fail = START;
+		Deserializer(T& readStream) : input(readStream) {};
 
+		void ParseStream(std::function<void(Message)> callback)
+		{
 			auto read = 0;
 
 			read = input.readsome(end_offset, read_size);
@@ -340,7 +352,7 @@ namespace cerializer
 			read_size = std::get<1>(result);
 			offset = std::get<2>(result).base();
 
-			while (input.good() && !input.eof())
+			while (input.good())
 			{
 				switch (state)
 				{
@@ -377,7 +389,8 @@ namespace cerializer
 					switch (offset[2])
 					{
 					case 0:
-						return Target::LoadBinary(std::span(offset, end_offset));
+						auto found = Target::LoadBinary(std::span(offset, end_offset));
+						callback(found);
 					}
 					// // std::cout << "FOUND IT" << hexify(std::span(buf.begin(), end_offset)) << std::endl;
 					// offset = buf.begin();
@@ -394,7 +407,6 @@ namespace cerializer
 				read = input.readsome(end_offset, read_size);
 				end_offset += read;
 			}
-			return Target(1, true, 0, 0, 0);
 		}
 	};
 
