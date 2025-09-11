@@ -8,6 +8,9 @@
 #include <iostream>
 #include <memory>
 #include <map>
+#include <cmath>
+#include <functional>
+#include <cassert>
 
 namespace cerializer
 {
@@ -227,9 +230,34 @@ namespace cerializer
 	// 	// std::map<uint8_t, std::function<Base(auto&...)>> registry;
 	// };
 
+	class BasePacket{};
+
+	class MessageMaker {
+	public:
+		using TCreateMethod = std::function<BasePacket(const std::span<char> &binaryData)>;
+		static bool Register(const uint8_t typeVal, TCreateMethod builder) {
+			MessageMaker::makerMap[typeVal] = builder;
+			return true;
+		}
+		static BasePacket Create(const uint8_t typeVal, const std::span<char> &binaryData) {
+			if (auto it = MessageMaker::makerMap.find(typeVal); it != makerMap.end()) {
+					return it->second(binaryData); // call the createFunc
+			}
+			return BasePacket();
+		}
+
+	// private:
+		static inline std::map<uint8_t, TCreateMethod> makerMap;
+	};
+
+
 	template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
-	class Message
+	class Message : public BasePacket
 	{
+	private:
+		const static bool registered = MessageMaker::Register(TypeVal, [](const std::span<char> &binaryData){
+			return Derived::LoadBinary(binaryData);
+		});
 	public:
 		// static constexpr uint8_t TypeCode = TypeVal;
 		constexpr static uint8_t Type() { return TypeVal; };
@@ -283,7 +311,6 @@ namespace cerializer
 		{ io.readsome(buf, count) } -> std::convertible_to<size_t>;
 		{ io.good() } -> std::convertible_to<bool>;
 	};
-
 
 	class Serializer
 	{
@@ -340,7 +367,10 @@ namespace cerializer
 	public:
 		Deserializer(T& readStream) : input(readStream) {};
 
-		void ParseStream(std::function<void(Message)> callback)
+		// void ParseStream(std::function<void(BasePacket)> callback)
+		// void ParseStream(std::derived_from<BasePacket> auto callback)
+		template <std::function<void(std::derived_from<BasePacket>)> SUBTYPE>
+		void ParseStream(SUBTYPE callback)
 		{
 			auto read = 0;
 
@@ -352,7 +382,7 @@ namespace cerializer
 			read_size = std::get<1>(result);
 			offset = std::get<2>(result).base();
 
-			while (input.good())
+			while (input.good() && (read > 0 || state == EMIT))
 			{
 				switch (state)
 				{
@@ -386,17 +416,15 @@ namespace cerializer
 					fail = END;
 					break;
 				case EMIT:
-					switch (offset[2])
-					{
-					case 0:
-						auto found = Target::LoadBinary(std::span(offset, end_offset));
-						callback(found);
-					}
-					// // std::cout << "FOUND IT" << hexify(std::span(buf.begin(), end_offset)) << std::endl;
-					// offset = buf.begin();
-					// end_offset = buf.begin();
-					// state = START;
-					// continue;
+					uint8_t typeCode = offset[2];
+					auto found = MessageMaker::Create(typeCode, std::span(offset, end_offset));
+
+					callback(found);
+
+					offset = buf.begin();
+					end_offset = buf.begin();
+					state = START;
+					continue;
 				}
 
 				auto result = findToken(std::span<char>(offset, end_offset), std::span(token), fail, success);
