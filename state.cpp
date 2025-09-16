@@ -29,6 +29,11 @@ Target &SystemState::currentTarget()
 	return target[selectedTarget];
 }
 
+void SystemState::updateNearestTarget(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin) {
+	auto idx = fetchNearestTargetIdx(newPosition);
+	updateTarget(idx, valid, newPosition, indifferenceMargin);
+}
+
 void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin)
 {
 	// Serial.printf("saw %f %f %f %f/%f\n", float(newPosition.X_coord), float(newPosition.Y_coord), float(newPosition.Z_coord), float(newPosition.Pitch()), float(newPosition.Yaw()));

@@ -11,6 +11,7 @@
 #include <cmath>
 #include <functional>
 #include <cassert>
+#include <iomanip>
 
 namespace cerializer
 {
@@ -230,36 +231,50 @@ namespace cerializer
 	// 	// std::map<uint8_t, std::function<Base(auto&...)>> registry;
 	// };
 
-	class BasePacket{};
-
-	class MessageMaker {
+	class BasePacket
+	{
 	public:
-		using TCreateMethod = std::function<BasePacket(const std::span<char> &binaryData)>;
-		static bool Register(const uint8_t typeVal, TCreateMethod builder) {
+		virtual ~BasePacket() = default;
+		virtual constexpr uint8_t Code() = 0;
+	};
+
+	using BasePointer = std::unique_ptr<BasePacket>;
+	class MessageMaker
+	{
+	public:
+		using TCreateMethod = std::function<BasePointer(const std::span<char> &binaryData)>;
+		static bool Register(const uint8_t typeVal, TCreateMethod builder)
+		{
 			MessageMaker::makerMap[typeVal] = builder;
 			return true;
 		}
-		static BasePacket Create(const uint8_t typeVal, const std::span<char> &binaryData) {
-			if (auto it = MessageMaker::makerMap.find(typeVal); it != makerMap.end()) {
-					return it->second(binaryData); // call the createFunc
+		static BasePointer Create(const uint8_t typeVal, const std::span<char> &binaryData)
+		{
+			if (auto it = MessageMaker::makerMap.find(typeVal); it != makerMap.end())
+			{
+				return it->second(binaryData); // call the createFunc
 			}
-			return BasePacket();
+			return nullptr;
 		}
 
-	// private:
+	private:
 		static inline std::map<uint8_t, TCreateMethod> makerMap;
 	};
-
 
 	template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
 	class Message : public BasePacket
 	{
-	private:
-		const static bool registered = MessageMaker::Register(TypeVal, [](const std::span<char> &binaryData){
-			return Derived::LoadBinary(binaryData);
-		});
 	public:
-		// static constexpr uint8_t TypeCode = TypeVal;
+		static bool registered;
+		//  = MessageMaker::Register(TypeVal, [](const std::span<char> &binaryData) -> std::unique_ptr<Derived> {
+		// 	auto obj = Derived::LoadBinary(binaryData);
+		// 	return std::make_unique<Derived>(obj);
+		// });
+
+	public:
+		constexpr uint8_t Code() override {
+			return TypeVal;
+		};
 		constexpr static uint8_t Type() { return TypeVal; };
 		constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
 		constexpr static std::array<char, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)> Format()
@@ -289,9 +304,16 @@ namespace cerializer
 		}
 	};
 
+	template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
+	bool Message<Derived, TypeVal, FieldTypes...>::registered = MessageMaker::Register(TypeVal, [](const std::span<char> &binaryData) -> std::unique_ptr<Derived> {
+		auto obj = Derived::LoadBinary(binaryData);
+		return std::make_unique<Derived>(obj);
+	});
+
+
 	class Target : public Message<Target, 0, uint32_t, bool, uint16_t, uint16_t, uint16_t>
 	{
-	private:
+	public:
 		const uint32_t id;
 		const bool valid;
 		const uint16_t x;
@@ -299,7 +321,9 @@ namespace cerializer
 		const uint16_t z;
 
 	public:
-		constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept : id(id), valid(valid), x(x), y(y), z(z) {}
+		constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept : id(id), valid(valid), x(x), y(y), z(z) {
+			assert(registered);
+		}
 		constexpr std::array<char, Size()> encode() const
 		{
 			return pack(id, valid, x, y, z);
@@ -307,7 +331,7 @@ namespace cerializer
 	};
 
 	template <typename T>
-	concept IOAble = requires(T io, char* buf, size_t count) {
+	concept IOAble = requires(T io, char *buf, size_t count) {
 		{ io.readsome(buf, count) } -> std::convertible_to<size_t>;
 		{ io.good() } -> std::convertible_to<bool>;
 	};
@@ -318,12 +342,12 @@ namespace cerializer
 		void Write();
 	};
 
-	template<typename T>
-	requires IOAble<T>
+	template <typename T>
+		requires IOAble<T>
 	class Deserializer
 	{
 	protected:
-		T& input;
+		T &input;
 		std::array<char, 128> buf;
 		char *offset = buf.begin();
 		char *end_offset = buf.begin();
@@ -365,12 +389,10 @@ namespace cerializer
 		}
 
 	public:
-		Deserializer(T& readStream) : input(readStream) {};
+		Deserializer(T &readStream) : input(readStream) {};
 
-		// void ParseStream(std::function<void(BasePacket)> callback)
-		// void ParseStream(std::derived_from<BasePacket> auto callback)
-		template <std::function<void(std::derived_from<BasePacket>)> SUBTYPE>
-		void ParseStream(SUBTYPE callback)
+		template <std::derived_from<BasePacket> Type>
+		void ParseStream(std::function<void(std::unique_ptr<Type> &)> callback)
 		{
 			auto read = 0;
 
@@ -416,8 +438,8 @@ namespace cerializer
 					fail = END;
 					break;
 				case EMIT:
-					uint8_t typeCode = offset[2];
-					auto found = MessageMaker::Create(typeCode, std::span(offset, end_offset));
+					uint8_t typeCode = buf.begin()[2];
+					auto found = MessageMaker::Create(typeCode, std::span(buf.begin(), offset + sizeof(footer_bytes)));
 
 					callback(found);
 

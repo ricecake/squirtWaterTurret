@@ -153,7 +153,14 @@ void refreshTargets() {
 		}
 	}
 
-	deserializer.ParseStream();
+	deserializer.ParseStream(std::function<void(cerializer::BasePointer &)>([](cerializer::BasePointer &thing) {
+		cerializer::Target *rawDerivedPtr = dynamic_cast<cerializer::Target *>(thing.get());
+		if (rawDerivedPtr)
+		{
+			auto newPositionObservation = PositionVector(fixed(rawDerivedPtr->x)/1000, fixed(rawDerivedPtr->y)/1000, fixed(rawDerivedPtr->z)/1000);
+			dptState.updateNearestTarget(rawDerivedPtr->valid, newPositionObservation, 8);
+		}
+	}));
 }
 
 void generateFireActions() {

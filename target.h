@@ -130,6 +130,7 @@ public:
 public:
 	bool valid = false;
 	uint8_t index;
+	uint8_t id;
 	TimePoint seen;
 	TimePoint last_action;
 

@@ -65,7 +65,8 @@ private:
 
 private:
 	PositionVector targetAimpoint();
-	Target target[4]; // Target zero is for special overrides, without messing with radar targets
+	std::array<Target, 32> target;
+	// Target target[32]; // Target zero is for special overrides, without messing with radar targets
 	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
 																	{ return left->run_after >= right->run_after; })>
 		commandQueue;
@@ -74,6 +75,7 @@ public:
 	SystemState();
 	Target &currentTarget();
 	void updateTarget(const uint8_t idx, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin = 0);
+	void updateNearestTarget(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin = 0);
 	void setTarget(uint8_t index, uint8_t speed = 0xFF);
 	void setFire(bool active);
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
@@ -83,6 +85,14 @@ public:
 	void actualizeState();
 	inline Target &fetchTarget(const uint8_t idx) {
 		return target[idx];
+	}
+	inline uint8_t fetchNearestTargetIdx(const PositionVector& point) {
+		auto distance = [&](Target& item){
+			auto pos = item.Position();
+			return pow(pos.X_coord, point.X_coord)+pow(pos.Y_coord, point.Y_coord)+pow(pos.Z_coord, point.Z_coord);
+		};
+		auto res = std::ranges::min_element(target, std::ranges::less{}, distance);
+		return std::ranges::distance(target.begin(), res);
 	}
 	fixed targetTravelDistance();
 
