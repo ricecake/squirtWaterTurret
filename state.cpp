@@ -83,15 +83,25 @@ void SystemState::setFire(bool active)
 	fireState = active;
 }
 
-void SystemState::queueFire(uint8_t fireDuration)
+bool SystemState::getFireState() {
+	return fireState;
+}
+
+void SystemState::queueFire(uint16_t fireDuration)
 {
-	auto start = DynamicTimeInterval<fixed, std::milli>(5);
-	auto end = DynamicTimeInterval<fixed, std::milli>(fireDuration) + start;
+	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
+	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
 
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
 	{
-		commandQueue.push(new FireControl(true, start.microseconds()));
-		commandQueue.push(new FireControl(false, end.microseconds()));
+		// Serial.println("======");
+		// Serial.println(fireDuration);
+		// Serial.println(start.microseconds());
+		// Serial.println(end.microseconds());
+		// Serial.println(DynamicTimeInterval<uint32_t, std::milli>(fireDuration).microseconds());
+		// Serial.println("======");
+		commandQueue.push(new FireControl(true, fireDuration, start.microseconds()));
+		commandQueue.push(new FireControl(false, fireDuration, end.microseconds()));
 		xSemaphoreGive(xMutex);
 	}
 }

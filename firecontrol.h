@@ -12,8 +12,9 @@
 class FireControl : public Command
 {
 	bool active;
+	uint16_t duration;
 
 public:
 	void Execute(SystemState *state);
-	FireControl(bool, int64_t);
+	FireControl(bool, uint16_t, int64_t);
 };

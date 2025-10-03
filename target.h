@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Arduino.h>
+
 #include <stdint.h>
 #include "vector.hpp"
 #include "fpm_adapter.hpp"
@@ -77,10 +79,23 @@ public:
 	const PositionVector Position() const;
 
 	TimeInterval timeSinceLastAction() const;
-	constexpr bool actionIdleExceeds(const ChronoDuration auto limit) const
+	TimeInterval timeSinceLastSeen() const;
+	bool actionIdleExceeds(const ChronoDuration auto limit) const
 	{
+		// Serial.println("last action time");
+		// Serial.println(timeSinceLastAction().microseconds());
+		// Serial.println((limit).microseconds());
+		// Serial.println(AsSeconds(limit).microseconds());
+		// return timeSinceLastAction() > AsSeconds(limit);
 		return timeSinceLastAction() > limit;
 	}
+
+	bool idleExceeds(const ChronoDuration auto limit) const
+	{
+		return timeSinceLastSeen() > limit;
+	}
+
+
 	void IncrementAction();
 	PositionVector PredictedPositionAtTime(ChronoDuration auto interval);
 	const PositionVector interceptPosition() const

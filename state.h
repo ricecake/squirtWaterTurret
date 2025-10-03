@@ -105,8 +105,9 @@ public:
 	void updateNearestTarget2d(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin = 0);
 	void setTarget(uint8_t index, uint8_t speed = 0xFF);
 	void setFire(bool active);
+	bool getFireState();
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
-	void queueFire(uint8_t milliseconds);
+	void queueFire(uint16_t milliseconds);
 	void queueLinger(uint8_t milliseconds);
 	void processCommandQueue();
 	void actualizeState();

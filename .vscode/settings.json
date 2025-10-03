@@ -54,7 +54,14 @@
 		"stdexcept": "cpp",
 		"streambuf": "cpp",
 		"cinttypes": "cpp",
-		"typeinfo": "cpp"
+		"typeinfo": "cpp",
+		"cwctype": "cpp",
+		"iomanip": "cpp",
+		"istream": "cpp",
+		"text_encoding": "cpp",
+		"variant": "cpp",
+		"deque": "cpp",
+		"iostream": "cpp"
 	},
 	"cSpell.words": [
 		"cerializer"

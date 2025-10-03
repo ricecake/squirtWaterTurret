@@ -14,6 +14,19 @@ using Clock = std::chrono::high_resolution_clock;
 using TimePoint = Clock::time_point;
 using Duration = Clock::duration;
 
+template <typename Rep, typename Period>
+class DynamicTimeInterval;
+
+template <typename T>
+concept ChronoDuration = requires(T obj) {
+	// typename TimeInterval<typename T::rep, typename T::period>;
+	// std::is_base_of_v<TimeInterval<typename T::rep, typename T::period>, T>;
+	requires std::same_as<DynamicTimeInterval<typename T::rep, typename T::period>, T>;
+};
+
+template <typename T>
+concept ChronoPoint = std::is_base_of_v<std::chrono::time_point<typename T::Clock, typename T::Duration>, T>;
+
 // class VDur : public std::chrono::duration<fixed>
 // {
 // 	public:
@@ -27,6 +40,9 @@ public:
 	using DurationType = std::chrono::duration<Rep, Period>;
 	using rep = DurationType::rep;
 	using period = DurationType::period;
+
+	template <typename ORep, typename OPeriod>
+	friend class DynamicTimeInterval;
 
 	DynamicTimeInterval(const DynamicTimeInterval &other) = default;
 
@@ -53,10 +69,11 @@ public:
 		return m_duration.count();
 	}
 
-	constexpr uint64_t microseconds() const {
+	constexpr uint64_t microseconds() const
+	{
 		return std::chrono::duration_cast<
-			std::chrono::duration<uint64_t, std::micro>
-		>(m_duration).count();
+				   std::chrono::duration<uint64_t, std::micro>>(m_duration)
+			.count();
 	}
 
 	// Example of a conversion utility
@@ -68,32 +85,35 @@ public:
 	}
 
 	template <typename T, typename P>
-	constexpr DynamicTimeInterval operator+(const DynamicTimeInterval<T, P> &other) {
+	constexpr DynamicTimeInterval operator+(const DynamicTimeInterval<T, P> &other)
+	{
 		return DynamicTimeInterval(m_duration + std::chrono::duration_cast<std::chrono::duration<Rep, Period>>(other.m_duration));
 	}
 
-	constexpr bool operator>(const DynamicTimeInterval &other) {
+	template <typename T, typename P>
+	constexpr bool operator>(const DynamicTimeInterval<T, P> &other)
+	{
 		return m_duration > other.m_duration;
 	}
+
+	// constexpr bool operator>(const ChronoDuration auto &other) {
+	// 	return m_duration > other.get_duration();
+	// }
 
 private:
 	const DurationType m_duration;
 };
 
-using TimeInterval = DynamicTimeInterval<fixed_16_16, std::ratio<1>>;
-
-template <typename T>
-concept ChronoDuration = requires(T obj) {
-	// typename TimeInterval<typename T::rep, typename T::period>;
-	// std::is_base_of_v<TimeInterval<typename T::rep, typename T::period>, T>;
-	requires std::same_as<DynamicTimeInterval<typename T::rep, typename T::period>, T>;
-};
-
-template <typename T>
-concept ChronoPoint = std::is_base_of_v<std::chrono::time_point<typename T::Clock, typename T::Duration>, T>;
+using TimeInterval = DynamicTimeInterval<uint64_t, std::ratio<1>>;
 
 constexpr auto AsSeconds = [](const ChronoDuration auto &d)
-{ return std::chrono::duration_cast<std::chrono::duration<fixed_16_16>>(d); };
+{
+	return TimeInterval(d.get_duration());
+	// DynamicTimeInterval<fixed_16_16, std::ratio<1>>(std::chrono::duration_cast<std::chrono::duration<fixed_16_16, std::ratio<1>> >(d.get_duration()));
+	// return d.as<fixed_16_16, std::ratio<1>>();
+
+	// return std::chrono::duration_cast<std::chrono::duration<fixed_16_16>>(d);
+};
 
 // Define motor interface type
 const int motorInterfaceType = 1;
@@ -105,24 +125,31 @@ const int altitude = 1320;
 const fixed_16_16 projectileSpeed = 20;
 
 template <typename T, typename P>
-constexpr DynamicTimeInterval<fixed_16_16, std::milli> milliseconds(const fixed_16_16 millis, const DynamicTimeInterval<T, P> offset)
+constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t millis, const DynamicTimeInterval<T, P> offset)
 {
-	return DynamicTimeInterval<fixed_16_16, std::milli>(millis) + DynamicTimeInterval<fixed_16_16, std::milli>(offset);
+	return DynamicTimeInterval<uint64_t, std::milli>(millis) + DynamicTimeInterval<uint64_t, std::milli>(offset.get_duration());
 }
 
-constexpr DynamicTimeInterval<fixed_16_16, std::milli> milliseconds(const fixed_16_16 millis)
+constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t millis)
 {
-	return std::chrono::duration<fixed_16_16, std::milli>(millis);
+	return std::chrono::duration<uint64_t, std::milli>(millis);
 }
-
 
 template <typename T, typename P>
-constexpr DynamicTimeInterval<fixed_16_16> seconds(fixed_16_16 seconds, DynamicTimeInterval<T, P> offset)
+constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds, DynamicTimeInterval<T, P> offset)
 {
-	return DynamicTimeInterval<fixed_16_16>(seconds) + DynamicTimeInterval<fixed_16_16, std::ratio<1>>(offset);
+	return DynamicTimeInterval<uint64_t>(seconds) + DynamicTimeInterval<uint64_t>(offset.get_duration());
 }
 
-constexpr DynamicTimeInterval<fixed_16_16> seconds(fixed_16_16 seconds)
+constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds)
 {
-	return std::chrono::duration<fixed_16_16, std::ratio<1>>(seconds);
+	return std::chrono::duration<uint64_t, std::ratio<1>>(seconds);
+}
+
+const auto fireActionInterval = seconds(3);
+
+inline uint64_t milliSinceEpoch() {
+	auto now = std::chrono::system_clock::now();
+	auto duration_since_epoch = now.time_since_epoch();
+	return std::chrono::duration_cast<std::chrono::milliseconds>(duration_since_epoch).count();
 }

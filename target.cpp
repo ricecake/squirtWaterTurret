@@ -118,6 +118,11 @@ TimeInterval Target::timeSinceLastAction() const
 	return TimeInterval(Clock::now() - last_action);
 }
 
+TimeInterval Target::timeSinceLastSeen() const
+{
+	return TimeInterval(Clock::now() - seen);
+}
+
 void Target::IncrementAction()
 {
 	last_action = Clock::now();

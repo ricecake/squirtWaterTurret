@@ -15,15 +15,19 @@ HardwareSerial testSerial(2);
 
 struct IOWrapper {
 	HardwareSerial& io;
-	size_t readsome(char* buf, size_t count){return 0;};
-	bool good() {return true;};
+	size_t readsome(char* buf, size_t count) {
+		return io.readBytes(buf, count);
+	};
+	bool good() {
+		return bool(io);
+	};
 	IOWrapper(HardwareSerial& io) : io(io) {};
 };
 
 
 
-// IOWrapper wrapped(testSerial);
-IOWrapper wrapped(Serial0);
+IOWrapper wrapped(testSerial);
+// IOWrapper wrapped(Serial);
 
 cerializer::Deserializer deserializer(wrapped);
 LD2450 ld2450;
@@ -66,7 +70,7 @@ void setup()
 
 	Serial.println("Ready!");
 
-	delay(5000);
+	delay(1000);
 
 	Serial.println("Starting!");
 
@@ -146,25 +150,36 @@ void refreshTargets() {
 
 			if (result_target.valid)
 			{
-				auto oldTarget = dptState.fetchTarget(result_target.id);
-				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, oldTarget.Position().Z_coord);
-				dptState.updateTarget(result_target.id, result_target.valid, newPositionObservation, 8);
+				// This should be using updateNearestTarget -- maybe a 2d variant?
+				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 0);
+				dptState.updateNearestTarget2d(result_target.valid, newPositionObservation, 8);
 			}
 		}
 	}
 
 	deserializer.ParseStream(std::function<void(cerializer::BasePointer &)>([](cerializer::BasePointer &thing) {
-		cerializer::Target *rawDerivedPtr = dynamic_cast<cerializer::Target *>(thing.get());
-		if (rawDerivedPtr)
-		{
-			auto newPositionObservation = PositionVector(fixed(rawDerivedPtr->x)/1000, fixed(rawDerivedPtr->y)/1000, fixed(rawDerivedPtr->z)/1000);
-			dptState.updateNearestTarget(rawDerivedPtr->valid, newPositionObservation, 8);
+		auto thingCode = thing->Code();
+		Serial.println(thingCode);
+		switch (thing->Code()) {
+		case cerializer::Target::Type():
+			auto target = static_cast<cerializer::Target*>(thing.get());
+
+			Serial.printf("%i -> %i\n", target->id, target->valid);
+
+			auto newPositionObservation = PositionVector(fixed(target->x)/1000, fixed(target->y)/1000, fixed(target->z)/1000);
+			dptState.updateTargetById(target->id, target->valid, newPositionObservation, 8);
+			// dptState.updateNearestTarget(target->valid, newPositionObservation, 8);
 		}
 	}));
 }
 
 void generateFireActions() {
 	Target& target = dptState.currentTarget();
+
+	if (dptState.targetTravelDistance() <= 2) {
+		dptState.queueFire(500);
+	}
+}
 
 	if (target.actionIdleExceeds(seconds(3)) && dptState.targetTravelDistance() < 10) {
 		Serial.println("Fire");
