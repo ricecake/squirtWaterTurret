@@ -99,6 +99,11 @@ void SystemState::queueFire(uint16_t fireDuration)
 
 void SystemState::queueLinger(uint8_t milliseconds)
 {
+	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
+	{
+		commandQueue.push(new LingerCommand(milliseconds * 1000));
+		xSemaphoreGive(xMutex);
+	}
 }
 
 void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds)
@@ -107,6 +112,9 @@ void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds)
 		index, 0xFF, milliseconds * 1000));
 }
 
+/**
+ * @brief Processes the command queue, executing any commands that are due.
+ */
 void SystemState::processCommandQueue()
 {
 	auto now = esp_timer_get_time();
@@ -116,6 +124,7 @@ void SystemState::processCommandQueue()
 		{
 			auto comm = commandQueue.top();
 
+			// Since the queue is sorted by execution time, we can stop when we find a command that is not yet due.
 			if (now <= comm->run_after)
 			{
 				break;
@@ -129,56 +138,54 @@ void SystemState::processCommandQueue()
 	}
 }
 
+/**
+ * @brief Updates the physical state of the system to match the desired state.
+ */
 void SystemState::actualizeState()
 {
 	actualizePosition();
 	actualizeFiring();
 }
 
+/**
+ * @brief Activates or deactivates the firing pin based on the current fire state.
+ */
 void SystemState::actualizeFiring()
 {
 	digitalWrite(firePin, fireState ? HIGH : LOW);
 }
 
+/**
+ * @brief Updates the motor positions to track the current target.
+ */
 void SystemState::actualizePosition()
 {
 	auto target = currentTarget();
 	if (needTrackingUpdate && target.valid)
 	{
-		/*
-			This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
-			Basically take multiple target positions over time, and try to match the targets velocity, and also their positiono.
-			I think that's something that a pid controller does?
-			Yes, pid controller.
-			Pitch and yaw each get a controller, and it should output a movement speed for each motor.
-			We should set the speed for each of them and use runSpeed to move at that velocity.
-			It's inputs should be the current position in the respective dimension.
-
-			Specifically, a pid controller on the quaternion of the firing angle with a kalman tracker of some sort for smoothing and prediction.
-		*/
-
+		// Calculate the aimpoint using the target's intercept position
 		auto aimpoint = target.interceptPosition();
 		auto pitch = long(min(max(aimpoint.Pitch(), -60), 60) / angleToStep);
 		auto yaw = long(min(max(aimpoint.Yaw(), -70), 70) / angleToStep);
 
+		// Convert pitch and yaw to motor steps
 		int delta_A = yaw + pitch;
 		int delta_B = pitch - yaw;
 
+		// Set motor speed based on tracking speed
 		double iterMaxSpeed = trackingSpeed / double(0xFF) * maxSpeed * stepFraction;
 
-		long delta[2] = {
-			delta_A,
-			delta_B,
-		};
 		stepperA.setMaxSpeed(iterMaxSpeed);
 		stepperB.setMaxSpeed(iterMaxSpeed);
 
+		// Move motors to the new target position
 		stepperA.moveTo(delta_A);
 		stepperB.moveTo(delta_B);
 
 		needTrackingUpdate = false;
 	}
 
+	// Continuously run the motors to move towards the target
 	if (stepperA.distanceToGo() || stepperB.distanceToGo())
 	{
 		stepperA.run();

@@ -17,6 +17,11 @@ class PositionVector;
 class DistanceVector;
 class VelocityVector;
 
+/**
+ * @brief Represents a 3D distance vector.
+ *
+ * This class is used to define a displacement in 3D space.
+ */
 class DistanceVector : public Vector3D<fixed, DistanceVector>
 {
 	using Vec = Vector3D<fixed, DistanceVector>;
@@ -28,12 +33,18 @@ public:
 	DistanceVector(VelocityVector, ChronoDuration auto interval);
 };
 
+/**
+ * @brief Represents a 3D position vector.
+ *
+ * This class defines a specific point in 3D space and provides methods
+ * to calculate pitch, yaw, and distance.
+ */
 class PositionVector : public Vector3D<fixed, PositionVector>
 {
 	using Vec = Vector3D<fixed, PositionVector>;
-	fixed _distance = 0;
-	fixed _pitch = 0;
-	fixed _yaw = 0;
+	fixed _distance = 0; ///< Cached distance value.
+	fixed _pitch = 0;    ///< Cached pitch value.
+	fixed _yaw = 0;      ///< Cached yaw value.
 
 public:
 	PositionVector() = default;
@@ -48,6 +59,11 @@ public:
 	fixed Distance();
 };
 
+/**
+ * @brief Represents a 3D velocity vector.
+ *
+ * This class is used to define the rate of change of position.
+ */
 class VelocityVector : public Vector3D<fixed, VelocityVector>
 {
 	using Vec = Vector3D<fixed, VelocityVector>;
@@ -59,6 +75,13 @@ public:
 	VelocityVector(DistanceVector, TimeInterval interval);
 };
 
+/**
+ * @brief Represents a target in the system.
+ *
+ * This class stores all relevant information about a target, including its
+ * position, velocity, and timing information. It also provides methods for
+ * predicting future positions and calculating intercept points.
+ */
 class Target
 {
 public:
@@ -80,19 +103,38 @@ public:
 
 	TimeInterval timeSinceLastAction() const;
 	TimeInterval timeSinceLastSeen() const;
+
+	/**
+	 * @brief Checks if the time since the last action exceeds a limit.
+	 * @param limit The duration to check against.
+	 * @return True if the idle time exceeds the limit, false otherwise.
+	 */
 	bool actionIdleExceeds(const ChronoDuration auto limit) const
 	{
 		return timeSinceLastAction() > limit;
 	}
 
+	/**
+	 * @brief Checks if the time since the target was last seen exceeds a limit.
+	 * @param limit The duration to check against.
+	 * @return True if the idle time exceeds the limit, false otherwise.
+	 */
 	bool idleExceeds(const ChronoDuration auto limit) const
 	{
 		return timeSinceLastSeen() > limit;
 	}
 
-
 	void IncrementAction();
 	PositionVector PredictedPositionAtTime(ChronoDuration auto interval);
+
+	/**
+	 * @brief Calculates the intercept position for a moving target.
+	 *
+	 * This function solves a quartic equation to find the time of intercept,
+	 * considering the projectile's speed and the effect of gravity.
+	 *
+	 * @return The calculated position vector for interception.
+	 */
 	const PositionVector interceptPosition() const
 	{
 		const PositionVector proj_pos = PositionVector(0, 0, 1.5);
@@ -114,7 +156,7 @@ public:
 		const fixed_24_8 L = fixed_24_8(-0.5) * G;
 		const fixed_24_8 S = proj_speed;
 
-		// Quartic Coeffecients
+		// Quartic Coefficients
 		const fixed_24_8 c0 = L * L;
 		const fixed_24_8 c1 = -2 * Q * L;
 		const fixed_24_8 c2 = -2 * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - pow(S, 2);

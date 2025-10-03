@@ -1,9 +1,23 @@
+/**
+ * @file fpm_adapter.hpp
+ * @brief An adapter for the fpm fixed-point math library.
+ *
+ * This file provides a wrapper around the `fpm::fixed` class to enhance its
+ * interoperability with standard numeric types. It includes operator overloads
+ * and helper functions to make fixed-point arithmetic more seamless.
+ */
 #pragma once
 
 #include "fpm/fixed.hpp"
 #include "fpm/math.hpp"
 #include "fpm/ios.hpp"
 
+/**
+ * @brief A wrapper class for `fpm::fixed` to provide enhanced functionality.
+ *
+ * This adapter class inherits from `fpm::fixed` and is intended to simplify
+ * the use of fixed-point numbers throughout the codebase.
+ */
 template <
 	typename B, typename I, unsigned int F, bool E = true>
 class FixedAdapter : public fpm::fixed<B, I, F, E>
@@ -25,8 +39,14 @@ public:
 	}
 };
 
+/**
+ * @brief Overloads for standard library functions to support fixed-point types.
+ */
 namespace std
 {
+	/**
+	 * @brief Overload of std::max for fixed-point and non-fixed-point types.
+	 */
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value> * = nullptr>
@@ -35,6 +55,9 @@ namespace std
 		return (a < b) ? FixedType(b) : a;
 	}
 
+	/**
+	 * @brief Overload of std::min for fixed-point and non-fixed-point types.
+	 */
 	template <
 		typename FixedType, typename std::enable_if<fpm::is_fixed<FixedType>::value>::type * = nullptr,
 		typename NonFixedType, typename std::enable_if<!fpm::is_fixed<NonFixedType>::value> * = nullptr>
@@ -43,6 +66,9 @@ namespace std
 		return (a >= b) ? FixedType(b) : a;
 	}
 
+	/**
+	 * @brief Overload of std::pow for the FixedAdapter type.
+	 */
 	template <typename T, typename O>
 		requires same_as<T, FixedAdapter<typename T::params, typename T::i, T::f, T::e>>
 	constexpr FixedAdapter<typename T::params, typename T::i, T::f, T::e> pow(const T &A, const O &B)
@@ -51,8 +77,14 @@ namespace std
 	}
 }
 
+/**
+ * @brief Overloads and specializations for the fpm library.
+ */
 namespace fpm
 {
+	/**
+	 * @brief Specialization of fpm::is_fixed for the FixedAdapter type.
+	 */
 	template <typename BaseType, typename IntermediateType, unsigned int FractionBits, bool EnableRounding>
 	struct is_fixed<FixedAdapter<BaseType, IntermediateType, FractionBits, EnableRounding>> : std::true_type
 	{

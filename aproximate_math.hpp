@@ -6,14 +6,23 @@
 
 using fixed = fixed_16_16;
 
+/**
+ * @brief Provides functions for numerical approximations.
+ *
+ * This namespace contains a collection of mathematical functions that use
+ * approximation algorithms to compute their results, suitable for fixed-point arithmetic.
+ */
 namespace Approximate
 {
-
+	/**
+	 * @brief Represents the result of an approximation calculation.
+	 * @tparam T The type of the result.
+	 */
 	template <typename T>
 	struct ApproximateResult
 	{
-		bool converged = false;
-		T result;
+		bool converged = false; ///< Indicates whether the approximation converged to a solution.
+		T result;               ///< The result of the approximation.
 	};
 
 	fixed sin(fixed);
@@ -22,6 +31,19 @@ namespace Approximate
 	fixed atan(fixed);
 	fixed sqrt(fixed);
 
+	/**
+	 * @brief Finds a small root of a function using a combination of the secant and bisection methods.
+	 *
+	 * This function attempts to find a root of the given function `func` within a specified number
+	 * of iterations. It starts by searching for an interval where a root is likely to exist and
+	 * then refines the search using a numerical method.
+	 *
+	 * @tparam T The numeric type for the calculation.
+	 * @param func The function for which to find a root.
+	 * @param error The desired proportional error for convergence.
+	 * @param rounds The maximum number of iterations to perform.
+	 * @return An ApproximateResult containing the outcome of the root-finding process.
+	 */
 	template <typename T>
 	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16)
 	{
@@ -35,7 +57,7 @@ namespace Approximate
 
 		uint8_t round = 0;
 
-		// Find the interval containing first root
+		// Find an interval containing the first root by expanding the search window.
 		while ((signbit(leftValue) == signbit(rightValue)) && (round < rounds))
 		{
 			leftInput = rightInput;
@@ -47,13 +69,16 @@ namespace Approximate
 
 		do
 		{
+			// Use the secant method to find the next approximation of the root.
 			midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
+			// If the secant method fails, fall back to the bisection method.
 			if (midInput <= leftInput || midInput >= rightInput)
 			{
 				midInput = leftInput + (rightInput - leftInput) / 2;
 			}
 			midValue = func(midInput);
 
+			// Narrow the search interval based on the sign of the function value.
 			if (signbit(leftValue) == signbit(midValue))
 			{
 				leftInput = midInput;
@@ -65,12 +90,12 @@ namespace Approximate
 				rightValue = midValue;
 			}
 
-			// This should check if proportional error is less than the threshold
+			// Check for convergence based on the proportional error.
 			if ((rightInput - leftInput) / rightInput <= error)
 			{
 				return ApproximateResult<T>(true, midInput);
 			}
-			// need a block to see if the convergence rate has dropped below some threshold, and return if we're not making progress, but we're close enough.
+			// TODO: Add a check for convergence rate to exit early if progress stalls.
 
 		} while (round++ < rounds);
 		return ApproximateResult<T>(false, midInput);

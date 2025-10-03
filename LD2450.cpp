@@ -15,11 +15,21 @@
 
 #include "LD2450.h"
 
-LD2450::LD2450() // Constructor function
+/**
+ * @brief Constructs a new LD2450 object.
+ *
+ * Initializes the radar sensor driver.
+ */
+LD2450::LD2450()
 {
 }
 
-LD2450::~LD2450() // Destructor function
+/**
+ * @brief Destroys the LD2450 object.
+ *
+ * Handles cleanup of resources used by the radar sensor driver.
+ */
+LD2450::~LD2450()
 {
 }
 
@@ -126,25 +136,28 @@ LD2450::RadarTarget LD2450::getTarget(uint16_t _target_id)
 }
 int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
 {
-    int redreshed_targets = 0;
+    int refreshed_targets = 0;
     for (int i = 0; i < len; i++)
     {
-        // Checking the header and footer
+        // Check for the correct frame header and footer
         if (rec_buf[i] == 0xAA && rec_buf[i + 1] == 0xFF && rec_buf[i + 2] == 0x03 && rec_buf[i + 3] == 0x00 && rec_buf[i + 28] == 0x55 && rec_buf[i + 29] == 0xCC)
         {
-            int index = i + 4; // Skip header and in-frame data length fields
+            int index = i + 4; // Skip header and data length fields
 
             for (uint16_t targetCounter = 0; targetCounter < LD2450_MAX_SENSOR_TARGETS; targetCounter++)
             {
                 if (index + 7 < len)
                 {
+                    // Assign a unique ID to each target
                     LD2450::radarTargets[targetCounter].id = targetCounter + 1;
+
+                    // Extract and combine bytes to form target data
                     LD2450::radarTargets[targetCounter].x = (int16_t)(rec_buf[index] | (rec_buf[index + 1] << 8));
                     LD2450::radarTargets[targetCounter].y = (int16_t)(rec_buf[index + 2] | (rec_buf[index + 3] << 8));
                     LD2450::radarTargets[targetCounter].speed = (int16_t)(rec_buf[index + 4] | (rec_buf[index + 5] << 8));
                     LD2450::radarTargets[targetCounter].resolution = (uint16_t)(rec_buf[index + 6] | (rec_buf[index + 7] << 8));
 
-                    // Check the highest bit of x and y. Adjust the sign
+                    // Adjust the sign of x, y, and speed based on the highest bit
                     if (rec_buf[index + 1] & 0x80)
                         LD2450::radarTargets[targetCounter].x -= 0x8000;
                     else
@@ -158,29 +171,28 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
                     else
                         LD2450::radarTargets[targetCounter].speed = -LD2450::radarTargets[targetCounter].speed;
 
-
-                    // IF A RESOLUTION IS PRESENT THEN WE CAN ASSUME THAT A TARGET WAS FOUND
+                    // A non-zero resolution indicates a valid target
                     LD2450::radarTargets[targetCounter].valid = LD2450::radarTargets[targetCounter].resolution != 0;
 
-                    index += 8; // Move to the start of the next target data
+                    index += 8; // Move to the next target's data
+                    refreshed_targets++;
 
-                    redreshed_targets++;
-
-                    // SKIP IF USER ONLY REQUESTED X VALID TARGETS
-                    if (redreshed_targets >= LD2450::numTargets)
+                    // Exit if the desired number of targets has been processed
+                    if (refreshed_targets >= LD2450::numTargets)
                     {
                         break;
                     }
                 }
                 else
                 {
+                    // Mark the target as invalid if data is incomplete
                     LD2450::radarTargets[targetCounter].valid = false;
                 }
             }
-            i = index; // Updating the index of an external loop
+            i = index; // Update the outer loop's index
         }
     }
-    return redreshed_targets;
+    return refreshed_targets;
 }
 
 #endif
