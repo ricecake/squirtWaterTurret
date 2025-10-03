@@ -66,7 +66,7 @@ private:
 private:
 	PositionVector targetAimpoint();
 	std::array<Target, 32> target;
-	// Target target[32]; // Target zero is for special overrides, without messing with radar targets
+	std::array<Target, 3> radarTarget; // Separate the two -- by default populate the radar target and prefer the target list if possible
 	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
 																	{ return left->run_after >= right->run_after; })>
 		commandQueue;

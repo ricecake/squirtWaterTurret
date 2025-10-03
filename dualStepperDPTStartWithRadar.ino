@@ -150,9 +150,13 @@ void refreshTargets() {
 
 			if (result_target.valid)
 			{
-				// This should be using updateNearestTarget -- maybe a 2d variant?
-				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 0);
+				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 1.1);
 				dptState.updateNearestTarget2d(result_target.valid, newPositionObservation, 8);
+				// Have this update a list of radar targets, and the other update a list of external targets.
+				// Radar targets get a pre-defined guess at average height of target point.
+				// This should reduce the amount of calculation in refresh cycle.
+				// When selecting a target, can instead pick the best from each list, falling back to radar if no external targets.
+				// Separate the two -- by default populate the radar target and prefer the target list if possible
 			}
 		}
 	}
@@ -181,11 +185,16 @@ void generateFireActions() {
 	}
 }
 
-	if (target.actionIdleExceeds(seconds(3)) && dptState.targetTravelDistance() < 10) {
-		Serial.println("Fire");
-		dptState.queueFire(250);
-		target.IncrementAction();
-	}
+void selectTarget() {
+/*
+	// Should find the nearest target not acted upon recently
+	Then the distance should be calculated in the fire action
+	the fire action should be told about the target, not the duration.
+	Queue fire should take the number of shots, and then calculate the times to start and stop.
+	select target will also pay attention to if the position has been overridden, so that it can make smart choices
+	refresh targets will need to be reworked into "check radar" and "check external comms"
+	since external comms may include things like position changes, and fire commands.
+*/
 }
 
 void targetingLoop(void *pvParameters)
@@ -193,6 +202,7 @@ void targetingLoop(void *pvParameters)
 	for (;;)
 	{
 		refreshTargets();
+		selectTarget();
 		generateFireActions();
 		vTaskDelay(10/portTICK_PERIOD_MS);
 		// vTaskDelay(1);
