@@ -180,6 +180,8 @@ void SystemState::actualizePosition()
 		Pitch and yaw each get a controller, and it should output a movement speed for each motor.
 		We should set the speed for each of them and use runSpeed to move at that velocity.
 		It's inputs should be the current position in the respective dimension.
+
+		Specifically, a pid controller on the quaternion of the firing angle with a kalman tracker of some sort for smoothing and prediction.
 		*/
 
 		auto aimpoint = target.interceptPosition();

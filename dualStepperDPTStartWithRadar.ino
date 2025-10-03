@@ -181,11 +181,16 @@ void generateFireActions() {
 	}
 }
 
-	if (target.actionIdleExceeds(seconds(3)) && dptState.targetTravelDistance() < 10) {
-		Serial.println("Fire");
-		dptState.queueFire(250);
-		target.IncrementAction();
-	}
+void selectTarget() {
+/*
+	// Should find the nearest target not acted upon recently
+	Then the distance should be calculated in the fire action
+	the fire action should be told about the target, not the duration.
+	Queue fire should take the number of shots, and then calculate the times to start and stop.
+	select target will also pay attention to if the position has been overridden, so that it can make smart choices
+	refresh targets will need to be reworked into "check radar" and "check external comms"
+	since external comms may include things like position changes, and fire commands.
+*/
 }
 
 void targetingLoop(void *pvParameters)
@@ -193,6 +198,7 @@ void targetingLoop(void *pvParameters)
 	for (;;)
 	{
 		refreshTargets();
+		selectTarget();
 		generateFireActions();
 		vTaskDelay(10/portTICK_PERIOD_MS);
 		// vTaskDelay(1);
