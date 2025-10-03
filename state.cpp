@@ -34,6 +34,13 @@ void SystemState::updateNearestTarget(const bool valid, PositionVector &newPosit
 	updateTarget(idx, valid, newPosition, indifferenceMargin);
 }
 
+void SystemState::updateNearestTarget2d(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin) {
+	auto idx = fetchNearestTarget2dIdx(newPosition);
+	auto prev = fetchTarget(idx);
+	newPosition.Z_coord = prev.Position().Z_coord;
+	updateTarget(idx, valid, newPosition, indifferenceMargin);
+}
+
 void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin)
 {
 	// Serial.printf("saw %f %f %f %f/%f\n", float(newPosition.X_coord), float(newPosition.Y_coord), float(newPosition.Z_coord), float(newPosition.Pitch()), float(newPosition.Yaw()));
@@ -240,8 +247,25 @@ fixed SystemState::targetTravelDistance()
 	auto pitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
 
 	// Serial.printf("At %f %f Want %f %f\n", pitch, yaw, target.Pitch(), target.Yaw());
+			// return atan2(cross(other).magnitude(), dot(other)) * rad2DegFactor;
 
-	return sqrt(pow(yaw - aimpoint.Yaw(), 2) + pow(pitch - aimpoint.Pitch(), 2));
+	// sqrt(sin(yaw)sin(yaw`)cos(pitch-pitch`)+cos(yaw)cos(yaw`)
+
+	// return sqrt(sin(yaw)*sin(aimpoint.Yaw())*cos(pitch-aimpoint.Pitch())+cos(yaw)*cos(aimpoint.Yaw()));
+
+
+	// return sqrt(pow(yaw - aimpoint.Yaw(), 2) + pow(pitch - aimpoint.Pitch(), 2));
+
+    auto delta_yaw = aimpoint.Yaw() - yaw;
+
+    // The argument for arccosine, derived from the Spherical Law of Cosines.
+    auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) +
+                       cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
+
+    // Clamp the value to handle potential floating-point inaccuracies
+    // cos_alpha = max(-1.0, min(1.0, cos_alpha));
+
+    return acos(cos_alpha);
 }
 
 PositionVector SystemState::targetAimpoint()

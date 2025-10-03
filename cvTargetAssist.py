@@ -43,8 +43,8 @@ Here is the mapping of each index to its respective body joint:
 """
 
 class SETTINGS:
-    enable_visualizer = True
-    SERIAL_OUTPUT = False
+    enable_visualizer = False
+    SERIAL_OUTPUT = True
     log_level = dai.LogLevel.WARN
     FPS = 10
     CLOSE_MATCH = 0.16
@@ -490,7 +490,7 @@ class SimpleSync(dai.node.ThreadedHostNode):
     def onStart(self) -> None:
         if SETTINGS.SERIAL_OUTPUT:
             self.serial.port = '/dev/serial0'
-            self.serial.baudrate = 115200
+            self.serial.baudrate = 9600
             self.serial.open()
         return super().onStart()
 

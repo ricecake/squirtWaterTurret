@@ -5,3 +5,11 @@
 a.out
 test*.cpp
 example*
+buildNotes.txt
+output.wat
+packetData.txt
+serialDataDumpTest.py
+serialParseTest.py
+serialReader.xcpp
+simpleNNTest.py
+test.xcpp
