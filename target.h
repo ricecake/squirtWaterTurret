@@ -82,11 +82,6 @@ public:
 	TimeInterval timeSinceLastSeen() const;
 	bool actionIdleExceeds(const ChronoDuration auto limit) const
 	{
-		// Serial.println("last action time");
-		// Serial.println(timeSinceLastAction().microseconds());
-		// Serial.println((limit).microseconds());
-		// Serial.println(AsSeconds(limit).microseconds());
-		// return timeSinceLastAction() > AsSeconds(limit);
 		return timeSinceLastAction() > limit;
 	}
 
@@ -159,7 +154,6 @@ private:
 constexpr const VelocityVector operator/(const DistanceVector &D, const ChronoDuration auto &interval)
 {
 	auto scale = interval.count();
-	// auto scale = AsSeconds(interval).count();
 	return VelocityVector(
 		D.X_coord / scale,
 		D.Y_coord / scale,
@@ -187,9 +181,3 @@ constexpr const DistanceVector operator-(const PositionVector &A, const Position
 		A.Y_coord - B.Y_coord,
 		A.Z_coord - B.Z_coord);
 }
-
-// VelocityVector const operator/(const DistanceVector &, const ChronoDuration auto &interval);
-// DistanceVector operator*(const VelocityVector &, const TimeInterval<> &interval);
-
-// PositionVector const operator+(const PositionVector &, const DistanceVector &);
-// DistanceVector const operator-(const PositionVector &, const PositionVector &);

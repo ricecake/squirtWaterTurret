@@ -27,7 +27,6 @@ struct IOWrapper {
 
 
 IOWrapper wrapped(testSerial);
-// IOWrapper wrapped(Serial);
 
 cerializer::Deserializer deserializer(wrapped);
 LD2450 ld2450;
@@ -61,12 +60,9 @@ void setup()
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);
 	randomSeed(analogRead(0));
 
-	Serial.println("SETUP_FINISHED");
-
-	// initTestData();
-
-	// dptState.setTarget(1);
 	dptState.queueSelectTarget(1, 3*1000);
+
+	Serial.println("SETUP_FINISHED");
 
 	Serial.println("Ready!");
 
@@ -106,36 +102,9 @@ void systemControlLoop(void *pvParameters)
 {
 	for (;;)
 	{
-		/*
-		Change the flow to be fetching from the command queue while the commands are scheduled for now or earlier.
-		Each command will get a reference to the dptState, and can mutate it.
-		Then we actualize the dptState.
-		set firing pin to the set dptState.
-		load move orders
-
-		This means that targeting system finds targets and updates the dptState
-		the command queue contains updates on which target to select
-
-		later, when pose estimation is in place, it can send data and the targeter can tweak the specific coordinates of each target as appropriate
-		*/
 		dptState.processCommandQueue();
 		dptState.actualizeState();
-		// dptState.steppers.run();
 		vTaskDelay(1);
-
-/*
-		// x_Setpoint = next.H *-0.1125;
-		// y_Setpoint = next.V * 0.1125;
-		// x_Input = (a_pos - b_pos) / 2;
-		// y_Input = (a_pos + b_pos) / 2;
-		int interval = 2000;
-		if (millis() - last_time > interval) {
-			last_time += interval;
-			long a_pos = dptState.stepperA.currentPosition();
-			long b_pos = dptState.stepperB.currentPosition();
-			Serial.printf("Target: [%0.2f %0.2f] At: [[%0.2f %0.2f]]\n", next.H *-0.1125, next.V * 0.1125, dptState.angleToStep*float(b_pos - a_pos) / 2, dptState.angleToStep*float(a_pos + b_pos) / 2);
-		}
-*/
 	}
 }
 
@@ -143,14 +112,12 @@ void refreshTargets() {
 	const int sensor_got_valid_targets = ld2450.read();
 	if (sensor_got_valid_targets > 0)
 	{
-		// GET THE DETECTED TARGETS
 		for (int i = 0; i < sensor_got_valid_targets; i++)
 		{
 			LD2450::RadarTarget result_target = ld2450.getTarget(i);
 
 			if (result_target.valid)
 			{
-				// This should be using updateNearestTarget -- maybe a 2d variant?
 				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 0);
 				dptState.updateNearestTarget2d(result_target.valid, newPositionObservation, 8);
 			}
@@ -159,16 +126,12 @@ void refreshTargets() {
 
 	deserializer.ParseStream(std::function<void(cerializer::BasePointer &)>([](cerializer::BasePointer &thing) {
 		auto thingCode = thing->Code();
-		Serial.println(thingCode);
 		switch (thing->Code()) {
 		case cerializer::Target::Type():
 			auto target = static_cast<cerializer::Target*>(thing.get());
 
-			Serial.printf("%i -> %i\n", target->id, target->valid);
-
 			auto newPositionObservation = PositionVector(fixed(target->x)/1000, fixed(target->y)/1000, fixed(target->z)/1000);
 			dptState.updateTargetById(target->id, target->valid, newPositionObservation, 8);
-			// dptState.updateNearestTarget(target->valid, newPositionObservation, 8);
 		}
 	}));
 }
@@ -201,6 +164,5 @@ void targetingLoop(void *pvParameters)
 		selectTarget();
 		generateFireActions();
 		vTaskDelay(10/portTICK_PERIOD_MS);
-		// vTaskDelay(1);
 	}
 }

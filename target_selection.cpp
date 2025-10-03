@@ -13,17 +13,6 @@ void TargetSelection::Execute(SystemState *state)
 		}
 		else {
 			timeout = 3 * 1000;
-			// Serial.print("Tracking target ");
-			// Serial.print(target_id);
-			// Serial.print(":::");
-			// Serial.print(currTarget.id);
-			// Serial.print(":::");
-			// Serial.print(float(currTarget.Position().X_coord));
-			// Serial.print(":::");
-			// Serial.print(float(currTarget.Position().Y_coord));
-			// Serial.print(":::");
-			// Serial.print(float(currTarget.Position().Z_coord));
-			// Serial.println();
 		}
 	}
 

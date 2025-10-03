@@ -20,11 +20,6 @@ class SystemState
 private:
 	const int motorInterfaceType = 1;
 
-	// Define pin connections
-	// const int stepPinB = 32;
-	// const int dirPinB = 33;
-	// const int stepPinA = 25;
-	// const int dirPinA = 26;
 	const int stepPinA = 32;
 	const int dirPinA = 33;
 	const int stepPinB = 25;
@@ -33,11 +28,6 @@ private:
 	const int firePin = 2;
 
 public:
-	// Define motor limits
-	// const int maxSpeed = maxSpeed; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
-	// const int acceleration = 120;
-
-	// Define other constants
 	const int stepFraction = 16; // The microstep fraction
 
 	const int h_max = 500;
@@ -66,7 +56,6 @@ private:
 private:
 	PositionVector targetAimpoint();
 	std::array<Target, 32> target;
-	// Target target[32]; // Target zero is for special overrides, without messing with radar targets
 	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
 																	{ return left->run_after >= right->run_after; })>
 		commandQueue;

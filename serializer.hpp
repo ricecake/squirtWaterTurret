@@ -94,8 +94,6 @@ namespace cerializer
 
 	template <typename Dest, typename... Ts, typename Cont>
 		requires(std::is_trivially_copyable_v<Ts> && ...)
-				// && (std::is_trivially_constructible_v<Ts> && ...)
-				// && (std::is_constructible_v<Dest, Ts...>)
 				&& Container<Cont, char>
 	constexpr inline Dest unpack(const Cont &binaryData)
 	{
@@ -206,31 +204,6 @@ namespace cerializer
 		return std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>{char('<'), char(std::get<2>(formatSize<Ts>()))...};
 	}
 
-	// using creatorFunc = void(*)(void);
-	// using infoFunc = std::tuple<uint8_t, creatorFunc>(*)(void);
-	// infoFunc creators[32];
-
-	// class Registry
-	// {
-	// 	public:
-	// 	constexpr Registry() {
-	// 		 bool registered = register_class();
-	// 	}
-	// 	protected:
-	// 	static bool register_class() {
-	// 		auto n= [] (const auto& ... args) -> Base { return Base((args, ...)); };
-	// 	creators[Derived::Type()] =
-
-	// 		[] (const auto& ... args) -> Derived { return std::make_unique<Derived>((args, ...)); };
-	// 		return true;
-	// 	}
-	// };
-
-	// class Base {
-	// 	public:
-	// 	// std::map<uint8_t, std::function<Base(auto&...)>> registry;
-	// };
-
 	class BasePacket
 	{
 	public:
@@ -266,10 +239,6 @@ namespace cerializer
 	{
 	public:
 		static bool registered;
-		//  = MessageMaker::Register(TypeVal, [](const std::span<char> &binaryData) -> std::unique_ptr<Derived> {
-		// 	auto obj = Derived::LoadBinary(binaryData);
-		// 	return std::make_unique<Derived>(obj);
-		// });
 
 	public:
 		constexpr uint8_t Code() override {
@@ -369,7 +338,6 @@ namespace cerializer
 			if (buffer.size() < value.size())
 			{
 				next_size = value.size();
-				// next_size += value.size() - buffer.size();
 			}
 			else if (buffer.size() >= value.size())
 			{
