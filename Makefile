@@ -18,9 +18,9 @@ SRCS = \
 
 # Test files
 TEST_SRCS = \
-    test/main.cpp \
-    test/test_vector.cpp \
-    test/test_approximate_math.cpp
+    why_doesnt_this_work2_new.bak/main.cpp \
+    why_doesnt_this_work2_new.bak/test_vector.cpp \
+    why_doesnt_this_work2_new.bak/test_approximate_math.cpp
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)
@@ -41,7 +41,7 @@ $(TARGET): $(OBJS) $(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Compile test files
-test/%.o: test/%.cpp
+why_doesnt_this_work2_new.bak/%.o: why_doesnt_this_work2_new.bak/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Run the tests
