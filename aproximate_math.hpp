@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <stdint.h>
+#include <cmath> // For std::signbit
 #include "fpm_adapter.hpp"
 
 using fixed = fixed_16_16;
@@ -45,7 +46,7 @@ namespace Approximate
 	 * @return An ApproximateResult containing the outcome of the root-finding process.
 	 */
 	template <typename T>
-	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16)
+	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 32)
 	{
 		T leftInput = 0;
 		T rightInput = 0.01;
@@ -57,8 +58,24 @@ namespace Approximate
 
 		uint8_t round = 0;
 
+		auto sign_bit = [](auto val) {
+			if constexpr (fpm::is_fixed<T>::value) {
+				return fpm::signbit(val);
+			} else {
+				return std::signbit(val);
+			}
+		};
+
+		auto abs_val = [](auto val) {
+			if constexpr (fpm::is_fixed<T>::value) {
+				return fpm::abs(val);
+			} else {
+				return std::abs(val);
+			}
+		};
+
 		// Find an interval containing the first root by expanding the search window.
-		while ((signbit(leftValue) == signbit(rightValue)) && (round < rounds))
+		while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds))
 		{
 			leftInput = rightInput;
 			leftValue = rightValue;
@@ -67,19 +84,22 @@ namespace Approximate
 			round++;
 		}
 
+		round = 0; // Reset round counter for the refinement loop
 		do
 		{
-			// Use the secant method to find the next approximation of the root.
-			midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
-			// If the secant method fails, fall back to the bisection method.
-			if (midInput <= leftInput || midInput >= rightInput)
+			// Use the bisection method to find the midpoint of the interval.
+			midInput = leftInput + (rightInput - leftInput) / 2;
+
+			// If the midpoint is the same as an endpoint, we've reached the precision limit.
+			if (midInput == leftInput || midInput == rightInput)
 			{
-				midInput = leftInput + (rightInput - leftInput) / 2;
+				return ApproximateResult<T>(true, midInput);
 			}
+
 			midValue = func(midInput);
 
 			// Narrow the search interval based on the sign of the function value.
-			if (signbit(leftValue) == signbit(midValue))
+			if (sign_bit(leftValue) == sign_bit(midValue))
 			{
 				leftInput = midInput;
 				leftValue = midValue;
@@ -90,8 +110,8 @@ namespace Approximate
 				rightValue = midValue;
 			}
 
-			// Check for convergence based on the proportional error.
-			if ((rightInput - leftInput) / rightInput <= error)
+			// Check for convergence based on the absolute width of the interval.
+			if (abs_val(rightInput - leftInput) <= error)
 			{
 				return ApproximateResult<T>(true, midInput);
 			}

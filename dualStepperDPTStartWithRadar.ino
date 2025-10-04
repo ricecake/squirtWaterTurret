@@ -1,3 +1,4 @@
+#ifdef ARDUINO
 #include <Arduino.h>
 #include <AccelStepper.h>
 #include <MultiStepper.h>
@@ -166,3 +167,4 @@ void targetingLoop(void *pvParameters)
 		vTaskDelay(10/portTICK_PERIOD_MS);
 	}
 }
+#endif

@@ -3,8 +3,11 @@
 #include <functional>
 #include <stdint.h>
 #include <queue>
+
+#ifdef ARDUINO
 #include <AccelStepper.h>
 #include <MultiStepper.h>
+#endif
 
 #include "command.h"
 #include "state.h"

@@ -3,8 +3,14 @@
 #include <functional>
 #include <stdint.h>
 #include <queue>
+
+#ifdef ARDUINO
 #include <AccelStepper.h>
 #include <MultiStepper.h>
+#include "freertos/semphr.h"
+#else
+#include "tests/mocks.h"
+#endif
 
 #include "vector.hpp"
 #include "command.h"

@@ -14,6 +14,7 @@ class SystemState;
 class Command
 {
 public:
+    virtual ~Command() = default;
     /// @brief Unique identifier for the command, typically based on a timestamp.
 	int64_t id = 0;
 

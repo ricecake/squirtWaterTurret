@@ -1,6 +1,6 @@
 #include <chrono>
 #include <ratio>
-#include "HardwareSerial.h"
+#include <algorithm>
 #include "utilities.h"
 #include "state.h"
 #include "firecontrol.h"
@@ -8,8 +8,15 @@
 #include "fpm_adapter.hpp"
 #include "aproximate_math.hpp"
 
+#ifdef ARDUINO
+#include "HardwareSerial.h"
+#else
+#include "tests/mocks.h"
+#endif
+
 SystemState::SystemState()
 {
+#ifdef ARDUINO
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -22,6 +29,7 @@ SystemState::SystemState()
 	pinMode(firePin, OUTPUT);
 
 	xMutex = xSemaphoreCreateMutex();
+#endif
 }
 
 Target &SystemState::currentTarget()
@@ -165,8 +173,8 @@ void SystemState::actualizePosition()
 	{
 		// Calculate the aimpoint using the target's intercept position
 		auto aimpoint = target.interceptPosition();
-		auto pitch = long(min(max(aimpoint.Pitch(), -60), 60) / angleToStep);
-		auto yaw = long(min(max(aimpoint.Yaw(), -70), 70) / angleToStep);
+		auto pitch = long(std::min(std::max(aimpoint.Pitch(), fixed(-60)), fixed(60)) / angleToStep);
+		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
 
 		// Convert pitch and yaw to motor steps
 		int delta_A = yaw + pitch;

@@ -108,7 +108,7 @@ Target::Target(PositionVector P, VelocityVector V) : position(P), velocity(V)
  * @param P The position vector.
  * @param V The velocity vector.
  */
-Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V) : index(index), valid(valid), position(P), velocity(V)
+Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V) : valid(valid), index(index), position(P), velocity(V)
 {
 }
 

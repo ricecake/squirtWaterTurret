@@ -1,6 +1,8 @@
 #pragma once
 
+#ifdef ARDUINO
 #include <Arduino.h>
+#endif
 
 #include <stdint.h>
 #include "vector.hpp"
