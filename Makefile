@@ -18,9 +18,9 @@ SRCS = \
 
 # Test files
 TEST_SRCS = \
-    tests/main.cpp \
-    tests/test_vector.cpp \
-    tests/test_approximate_math.cpp
+    test/main.cpp \
+    test/test_vector.cpp \
+    test/test_approximate_math.cpp
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)
@@ -41,7 +41,7 @@ $(TARGET): $(OBJS) $(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Compile test files
-tests/%.o: tests/%.cpp
+test/%.o: test/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Run the tests

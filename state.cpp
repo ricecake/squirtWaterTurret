@@ -11,7 +11,7 @@
 #ifdef ARDUINO
 #include "HardwareSerial.h"
 #else
-#include "tests/mocks.h"
+#include "test/mocks.h"
 #endif
 
 SystemState::SystemState()

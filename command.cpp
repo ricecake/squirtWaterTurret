@@ -4,7 +4,7 @@
 #ifdef ARDUINO
 #include <esp_timer.h>
 #else
-#include "tests/mocks.h"
+#include "test/mocks.h"
 #endif
 
 /**
