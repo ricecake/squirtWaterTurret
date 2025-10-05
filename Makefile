@@ -19,8 +19,9 @@ SRCS = \
 # Test files
 TEST_SRCS = \
     why_doesnt_this_work2_new.bak/main.cpp \
-    why_doesnt_this_work2_new.bak/test_vector.cpp \
-    why_doesnt_this_work2_new.bak/test_approximate_math.cpp
+    why_doesnt_this_work2_new.bak/test_command.cpp \
+    why_doesnt_this_work2_new.bak/test_firecontrol.cpp \
+    why_doesnt_this_work2_new.bak/test_target_selection.cpp
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)

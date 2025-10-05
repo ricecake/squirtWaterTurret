@@ -33,7 +33,7 @@ LingerCommand::LingerCommand(int64_t run_after) : Command(run_after) {}
  * @brief Executes the linger command. This method does nothing.
  * @param state A pointer to the system state (unused).
  */
-void LingerCommand::Execute(SystemState *state)
+void LingerCommand::Execute(SystemState * /*state*/)
 {
     // This command intentionally does nothing.
 }
