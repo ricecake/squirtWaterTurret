@@ -65,7 +65,8 @@ private:
 
 private:
 	PositionVector targetAimpoint();
-	std::array<Target, 32> target; ///< Array to store all tracked targets.
+	std::array<Target, 32> target;
+	std::array<Target, 3> radarTarget; // Separate the two -- by default populate the radar target and prefer the target list if possible
 	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
 																	{ return left->run_after >= right->run_after; })>
 		commandQueue; ///< Priority queue for pending commands.

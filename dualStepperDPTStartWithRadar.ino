@@ -119,8 +119,13 @@ void refreshTargets() {
 
 			if (result_target.valid)
 			{
-				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 0);
+				auto newPositionObservation = PositionVector(fixed(result_target.x)/1000, fixed(result_target.y)/1000, 1.1);
 				dptState.updateNearestTarget2d(result_target.valid, newPositionObservation, 8);
+				// Have this update a list of radar targets, and the other update a list of external targets.
+				// Radar targets get a pre-defined guess at average height of target point.
+				// This should reduce the amount of calculation in refresh cycle.
+				// When selecting a target, can instead pick the best from each list, falling back to radar if no external targets.
+				// Separate the two -- by default populate the radar target and prefer the target list if possible
 			}
 		}
 	}
