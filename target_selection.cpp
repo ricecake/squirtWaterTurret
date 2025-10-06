@@ -10,20 +10,15 @@
  *
  * @param state A pointer to the system state.
  */
-void TargetSelection::Execute(SystemState *state)
-{
+void TargetSelection::Execute(SystemState* state) {
 	state->setTarget(target_id, speed);
 	auto currTarget = state->currentTarget();
 
 	uint16_t timeout = 0;
-	if (currTarget.valid)
-	{
-		if (currTarget.idleExceeds(seconds(5)))
-		{
+	if (currTarget.valid) {
+		if (currTarget.idleExceeds(seconds(5))) {
 			currTarget.valid = false;
-		}
-		else
-		{
+		} else {
 			timeout = 3 * 1000;
 		}
 	}
@@ -39,6 +34,8 @@ void TargetSelection::Execute(SystemState *state)
  * @param speed The tracking speed to use.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-TargetSelection::TargetSelection(uint8_t target_id, int speed, int64_t run_after) : Command(run_after), target_id(target_id), speed(speed)
-{
+TargetSelection::TargetSelection(uint8_t target_id, int speed, int64_t run_after) :
+	Command(run_after),
+	target_id(target_id),
+	speed(speed) {
 }

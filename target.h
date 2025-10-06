@@ -4,12 +4,12 @@
 #include <Arduino.h>
 #endif
 
-#include <stdint.h>
-#include "vector.hpp"
-#include "fpm_adapter.hpp"
-#include <chrono>
 #include "aproximate_math.hpp"
+#include "fpm_adapter.hpp"
 #include "utilities.h"
+#include "vector.hpp"
+#include <chrono>
+#include <stdint.h>
 
 using fixed = fixed_16_16;
 
@@ -24,14 +24,14 @@ class VelocityVector;
  *
  * This class is used to define a displacement in 3D space.
  */
-class DistanceVector : public Vector3D<fixed, DistanceVector>
-{
+class DistanceVector: public Vector3D<fixed, DistanceVector> {
 	using Vec = Vector3D<fixed, DistanceVector>;
 
 public:
 	DistanceVector() = default;
-	DistanceVector(const DistanceVector &other) = default;
-	constexpr DistanceVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+	DistanceVector(const DistanceVector& other) = default;
+	constexpr DistanceVector(fixed x, fixed y, fixed z) :
+		Vec(x, y, z) {}
 	DistanceVector(VelocityVector, ChronoDuration auto interval);
 };
 
@@ -41,17 +41,17 @@ public:
  * This class defines a specific point in 3D space and provides methods
  * to calculate pitch, yaw, and distance.
  */
-class PositionVector : public Vector3D<fixed, PositionVector>
-{
+class PositionVector: public Vector3D<fixed, PositionVector> {
 	using Vec = Vector3D<fixed, PositionVector>;
-	fixed _distance = 0; ///< Cached distance value.
-	fixed _pitch = 0;    ///< Cached pitch value.
-	fixed _yaw = 0;      ///< Cached yaw value.
+	fixed _distance = 0;  ///< Cached distance value.
+	fixed _pitch = 0;     ///< Cached pitch value.
+	fixed _yaw = 0;       ///< Cached yaw value.
 
 public:
 	PositionVector() = default;
-	PositionVector(const PositionVector &other) = default;
-	constexpr PositionVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+	PositionVector(const PositionVector& other) = default;
+	constexpr PositionVector(fixed x, fixed y, fixed z) :
+		Vec(x, y, z) {}
 	PositionVector(PositionVector, DistanceVector);
 	PositionVector(PositionVector, VelocityVector, ChronoDuration auto interval);
 
@@ -66,14 +66,14 @@ public:
  *
  * This class is used to define the rate of change of position.
  */
-class VelocityVector : public Vector3D<fixed, VelocityVector>
-{
+class VelocityVector: public Vector3D<fixed, VelocityVector> {
 	using Vec = Vector3D<fixed, VelocityVector>;
 
 public:
 	VelocityVector() = default;
-	VelocityVector(const VelocityVector &other) = default;
-	constexpr VelocityVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+	VelocityVector(const VelocityVector& other) = default;
+	constexpr VelocityVector(fixed x, fixed y, fixed z) :
+		Vec(x, y, z) {}
 	VelocityVector(DistanceVector, TimeInterval interval);
 };
 
@@ -84,11 +84,10 @@ public:
  * position, velocity, and timing information. It also provides methods for
  * predicting future positions and calculating intercept points.
  */
-class Target
-{
+class Target {
 public:
 	Target() = default;
-	Target(const Target &other) = default;
+	Target(const Target& other) = default;
 	Target(PositionVector P, VelocityVector V = VelocityVector(0, 0, 0));
 	Target(uint8_t index, bool valid = false, PositionVector P = PositionVector(0, 0, 0), VelocityVector V = VelocityVector(0, 0, 0));
 
@@ -111,8 +110,7 @@ public:
 	 * @param limit The duration to check against.
 	 * @return True if the idle time exceeds the limit, false otherwise.
 	 */
-	bool actionIdleExceeds(const ChronoDuration auto limit) const
-	{
+	bool actionIdleExceeds(const ChronoDuration auto limit) const {
 		return timeSinceLastAction() > limit;
 	}
 
@@ -121,12 +119,11 @@ public:
 	 * @param limit The duration to check against.
 	 * @return True if the idle time exceeds the limit, false otherwise.
 	 */
-	bool idleExceeds(const ChronoDuration auto limit) const
-	{
+	bool idleExceeds(const ChronoDuration auto limit) const {
 		return timeSinceLastSeen() > limit;
 	}
 
-	void IncrementAction();
+	void           IncrementAction();
 	PositionVector PredictedPositionAtTime(ChronoDuration auto interval);
 
 	/**
@@ -137,20 +134,19 @@ public:
 	 *
 	 * @return The calculated position vector for interception.
 	 */
-	const PositionVector interceptPosition() const
-	{
-		const PositionVector proj_pos = PositionVector(0, 0, 1.5);
-		const PositionVector target_pos = position;
-		const VelocityVector target_velocity = velocity;
-		const fixed_24_8 proj_speed = 20;
+	const PositionVector interceptPosition() const {
+		const PositionVector       proj_pos = PositionVector(0, 0, 1.5);
+		const PositionVector       target_pos = position;
+		const VelocityVector       target_velocity = velocity;
+		const fixed_24_8           proj_speed = 20;
 		const Vector3D<fixed_24_8> Gv(0, 0, 9.814);
-		const fixed_24_8 G = Gv.magnitude();
+		const fixed_24_8           G = Gv.magnitude();
 
 		const fixed_24_8 P = target_velocity.X_coord;
 		const fixed_24_8 Q = target_velocity.Z_coord;
 		const fixed_24_8 R = target_velocity.Y_coord;
 
-		const auto diff = target_pos - proj_pos;
+		const auto       diff = target_pos - proj_pos;
 		const fixed_24_8 H = diff.X_coord;
 		const fixed_24_8 J = diff.Z_coord;
 		const fixed_24_8 K = diff.Y_coord;
@@ -165,8 +161,7 @@ public:
 		const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
 		const fixed_24_8 c4 = diff.dot(diff);
 
-		const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic = [=](const fixed_24_8 t) -> const fixed_24_8
-		{
+		const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic = [=](const fixed_24_8 t) -> const fixed_24_8 {
 			return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
 		};
 
@@ -182,21 +177,20 @@ public:
 	};
 
 public:
-	bool valid = false;
-	uint8_t index;
-	uint8_t id;
+	bool      valid = false;
+	uint8_t   index;
+	uint8_t   id;
 	TimePoint seen;
 	TimePoint last_action;
 
 private:
-	TimePoint last_seen;
+	TimePoint      last_seen;
 	PositionVector position;
 	PositionVector last_position;
 	VelocityVector velocity;
 };
 
-constexpr const VelocityVector operator/(const DistanceVector &D, const ChronoDuration auto &interval)
-{
+constexpr const VelocityVector operator/(const DistanceVector& D, const ChronoDuration auto& interval) {
 	auto scale = interval.count();
 	return VelocityVector(
 		D.X_coord / scale,
@@ -204,22 +198,19 @@ constexpr const VelocityVector operator/(const DistanceVector &D, const ChronoDu
 		D.Z_coord / scale);
 }
 
-constexpr const DistanceVector operator*(const VelocityVector &V, const ChronoDuration auto &interval)
-{
+constexpr const DistanceVector operator*(const VelocityVector& V, const ChronoDuration auto& interval) {
 	auto scale = interval.count();
 	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
 }
 
-constexpr const PositionVector operator+(const PositionVector &A, const DistanceVector &B)
-{
+constexpr const PositionVector operator+(const PositionVector& A, const DistanceVector& B) {
 	return PositionVector(
 		A.X_coord + B.X_coord,
 		A.Y_coord + B.Y_coord,
 		A.Z_coord + B.Z_coord);
 }
 
-constexpr const DistanceVector operator-(const PositionVector &A, const PositionVector &B)
-{
+constexpr const DistanceVector operator-(const PositionVector& A, const PositionVector& B) {
 	return DistanceVector(
 		A.X_coord - B.X_coord,
 		A.Y_coord - B.Y_coord,

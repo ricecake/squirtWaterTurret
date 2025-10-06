@@ -1,17 +1,17 @@
 #pragma once
 
-#include <type_traits>
 #include <concepts>
+#include <type_traits>
 
 /**
  * @brief Concept to check if a type supports basic arithmetic operations.
  */
 template <typename T, typename U>
-concept Number = requires (T obj, U thi) {
+concept Number = requires(T obj, U thi) {
 	requires std::is_arithmetic_v<T> || requires {
 		obj + thi;
 		obj - thi;
-		obj * thi;
+		obj* thi;
 		obj / thi;
 	};
 };
@@ -24,9 +24,9 @@ class Vector3D;
  */
 template <typename T, typename Numeric>
 concept VectorCompatible = requires(T vec) {
-	{ vec.X_coord } -> std::same_as<Numeric &>;
-	{ vec.Y_coord } -> std::same_as<Numeric &>;
-	{ vec.Z_coord } -> std::same_as<Numeric &>;
+	{ vec.X_coord } -> std::same_as<Numeric&>;
+	{ vec.Y_coord } -> std::same_as<Numeric&>;
+	{ vec.Z_coord } -> std::same_as<Numeric&>;
 };
 
 /**
@@ -46,8 +46,7 @@ using Either = std::conditional_t<std::is_same_v<ExplicitType, void>, Default, E
  * @tparam Derived The derived class type for CRTP.
  */
 template <typename Numeric, typename Derived = void>
-class Vector3D
-{
+class Vector3D {
 public:
 	using NumericType = Numeric;
 	using ClassType = Either<Derived, Vector3D<NumericType>>;
@@ -61,66 +60,65 @@ public:
 	constexpr static Vector3D<Numeric> Forward = Vector3D<Numeric>(0, 1, 0);
 	constexpr static Vector3D<Numeric> Backward = Vector3D<Numeric>(0, -1, 0);
 
-	NumericType X_coord; ///< The X-coordinate of the vector.
-	NumericType Y_coord; ///< The Y-coordinate of the vector.
-	NumericType Z_coord; ///< The Z-coordinate of the vector.
+	NumericType X_coord;  ///< The X-coordinate of the vector.
+	NumericType Y_coord;  ///< The Y-coordinate of the vector.
+	NumericType Z_coord;  ///< The Z-coordinate of the vector.
 
-	constexpr explicit Vector3D() : X_coord(0), Y_coord(0), Z_coord(0) {}
-	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord) : X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
+	constexpr explicit Vector3D() :
+		X_coord(0),
+		Y_coord(0),
+		Z_coord(0) {}
+	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord) :
+		X_coord(X_coord),
+		Y_coord(Y_coord),
+		Z_coord(Z_coord) {}
 
 	/**
 	 * @brief Checks if the vector is non-zero.
 	 */
-	operator bool() const
-	{
+	operator bool() const {
 		return X_coord || Y_coord || Z_coord;
 	}
 
 	/**
 	 * @brief Adds two vectors.
 	 */
-	ClassType operator+(const VectorCompatible<NumericType> auto &other) const
-	{
+	ClassType operator+(const VectorCompatible<NumericType> auto& other) const {
 		return ClassType(X_coord + other.X_coord, Y_coord + other.Y_coord, Z_coord + other.Z_coord);
 	}
 
 	/**
 	 * @brief Subtracts one vector from another.
 	 */
-	ClassType operator-(const VectorCompatible<NumericType> auto &other) const
-	{
+	ClassType operator-(const VectorCompatible<NumericType> auto& other) const {
 		return ClassType(X_coord - other.X_coord, Y_coord - other.Y_coord, Z_coord - other.Z_coord);
 	}
 
 	/**
 	 * @brief Multiplies the vector by a scalar.
 	 */
-	constexpr ClassType operator*(const NumericType& scalar) const
-	{
+	constexpr ClassType operator*(const NumericType& scalar) const {
 		return ClassType(X_coord * scalar, Y_coord * scalar, Z_coord * scalar);
 	}
 
 	/**
 	 * @brief Divides the vector by a scalar.
 	 */
-	ClassType operator/(NumericType scalar) const
-	{
+	ClassType operator/(NumericType scalar) const {
 		return ClassType(X_coord / scalar, Y_coord / scalar, Z_coord / scalar);
 	}
 
 	/**
 	 * @brief Computes the dot product of two vectors.
 	 */
-	NumericType dot(const VectorCompatible<NumericType> auto &other) const
-	{
+	NumericType dot(const VectorCompatible<NumericType> auto& other) const {
 		return X_coord * other.X_coord + Y_coord * other.Y_coord + Z_coord * other.Z_coord;
 	}
 
 	/**
 	 * @brief Computes the cross product of two vectors.
 	 */
-	ClassType cross(const VectorCompatible<NumericType> auto &other) const
-	{
+	ClassType cross(const VectorCompatible<NumericType> auto& other) const {
 		return ClassType(
 			Y_coord * other.Z_coord - Z_coord * other.Y_coord,
 			Z_coord * other.X_coord - X_coord * other.Z_coord,
@@ -130,43 +128,37 @@ public:
 	/**
 	 * @brief Computes the magnitude (length) of the vector.
 	 */
-	NumericType magnitude() const
-	{
+	NumericType magnitude() const {
 		return sqrt((X_coord * X_coord) + (Y_coord * Y_coord) + (Z_coord * Z_coord));
 	}
 
 	/**
 	 * @brief Computes the magnitude in the XY plane.
 	 */
-	NumericType magnitudeXY() const
-	{
+	NumericType magnitudeXY() const {
 		return sqrt(X_coord * X_coord + Y_coord * Y_coord);
 	}
 
 	/**
 	 * @brief Computes the magnitude in the XZ plane.
 	 */
-	NumericType magnitudeXZ() const
-	{
+	NumericType magnitudeXZ() const {
 		return sqrt(X_coord * X_coord + Z_coord * Z_coord);
 	}
 
 	/**
 	 * @brief Computes the magnitude in the YZ plane.
 	 */
-	NumericType magnitudeYZ() const
-	{
+	NumericType magnitudeYZ() const {
 		return sqrt(Y_coord * Y_coord + Z_coord * Z_coord);
 	}
 
 	/**
 	 * @brief Computes the normalized vector (unit vector).
 	 */
-	ClassType normalize() const
-	{
+	ClassType normalize() const {
 		NumericType mag = magnitude();
-		if (mag != 0)
-		{
+		if (mag != 0) {
 			return ClassType(X_coord / mag, Y_coord / mag, Z_coord / mag);
 		}
 		return ClassType(X_coord, Y_coord, Z_coord);
@@ -175,23 +167,21 @@ public:
 	/**
 	 * @brief Computes the pitch angle of the vector.
 	 */
-	NumericType pitch() const
-	{
+	NumericType pitch() const {
 		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor;
 	}
 
 	/**
 	 * @brief Computes the yaw angle of the vector.
 	 */
-	NumericType yaw() const
-	{
+	NumericType yaw() const {
 		return atan2(X_coord, Y_coord) * rad2DegFactor;
 	}
 
 	/**
 	 * @brief Computes the angle to another vector.
 	 */
-	NumericType angleTo(const VectorCompatible<NumericType> auto &other) const {
+	NumericType angleTo(const VectorCompatible<NumericType> auto& other) const {
 		return atan2(cross(other).magnitude(), dot(other)) * rad2DegFactor;
 	}
 };

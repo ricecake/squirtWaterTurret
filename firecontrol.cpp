@@ -1,6 +1,7 @@
+#include "firecontrol.h"
 #include "utilities.h"
 #include <stdint.h>
-#include "firecontrol.h"
+
 
 /**
  * @brief Constructs a new FireControl object.
@@ -9,8 +10,10 @@
  * @param duration The duration for the firing state.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-FireControl::FireControl(bool active, uint16_t duration, int64_t run_after) : Command(run_after), active(active), duration(duration)
-{
+FireControl::FireControl(bool active, uint16_t duration, int64_t run_after) :
+	Command(run_after),
+	active(active),
+	duration(duration) {
 }
 
 /**
@@ -22,24 +25,20 @@ FireControl::FireControl(bool active, uint16_t duration, int64_t run_after) : Co
  *
  * @param state A pointer to the system state.
  */
-void FireControl::Execute(SystemState *state)
-{
-	Target &target = state->currentTarget();
+void FireControl::Execute(SystemState* state) {
+	Target& target = state->currentTarget();
 
 	// Do nothing if the desired fire state is already the current state
-	if (state->getFireState() == active)
-	{
+	if (state->getFireState() == active) {
 		return;
 	}
 
 	// Activate firing if the target has been idle longer than the action interval
-	if (active && target.actionIdleExceeds(fireActionInterval))
-	{
+	if (active && target.actionIdleExceeds(fireActionInterval)) {
 		state->setFire(active);
 	}
 	// Deactivate firing after the specified duration and increment the action counter
-	else if (!active && target.actionIdleExceeds(milliseconds(duration, fireActionInterval)))
-	{
+	else if (!active && target.actionIdleExceeds(milliseconds(duration, fireActionInterval))) {
 		state->setFire(active);
 		target.IncrementAction();
 	}

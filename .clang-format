@@ -1,4 +1,4 @@
-﻿---
+---
 AccessModifierOffset: '-4'
 AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveDeclarations: 'true'
@@ -42,5 +42,3 @@ SpacesInParentheses: 'false'
 Standard: Cpp11
 TabWidth: '4'
 UseTab: ForContinuationAndIndentation
-
-...

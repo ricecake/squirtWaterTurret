@@ -43,8 +43,7 @@ concept ChronoPoint = std::is_base_of_v<std::chrono::time_point<typename T::Cloc
  * @tparam Period The period of the duration (e.g., std::milli, std::ratio<1>).
  */
 template <typename Rep, typename Period = std::ratio<1>>
-class DynamicTimeInterval
-{
+class DynamicTimeInterval {
 public:
 	using DurationType = std::chrono::duration<Rep, Period>;
 	using rep = DurationType::rep;
@@ -53,44 +52,43 @@ public:
 	template <typename ORep, typename OPeriod>
 	friend class DynamicTimeInterval;
 
-	DynamicTimeInterval(const DynamicTimeInterval &other) = default;
+	DynamicTimeInterval(const DynamicTimeInterval& other) = default;
 
 	/**
 	 * @brief Constructs a DynamicTimeInterval from a std::chrono::duration.
 	 */
-	constexpr DynamicTimeInterval(DurationType d) : m_duration(d) {}
+	constexpr DynamicTimeInterval(DurationType d) :
+		m_duration(d) {}
 
 	/**
 	 * @brief Constructs a DynamicTimeInterval from a raw count of ticks.
 	 */
-	constexpr DynamicTimeInterval(Rep count) : m_duration(count) {}
+	constexpr DynamicTimeInterval(Rep count) :
+		m_duration(count) {}
 
 	template <typename Orep, typename Operiod>
-	constexpr DynamicTimeInterval(std::chrono::duration<Orep, Operiod> d) : m_duration(std::chrono::duration_cast<DurationType>(d))
-	{
+	constexpr DynamicTimeInterval(std::chrono::duration<Orep, Operiod> d) :
+		m_duration(std::chrono::duration_cast<DurationType>(d)) {
 	}
 
 	/**
 	 * @brief Gets the underlying std::chrono::duration object.
 	 */
-	constexpr DurationType get_duration() const
-	{
+	constexpr DurationType get_duration() const {
 		return m_duration;
 	}
 
 	/**
 	 * @brief Gets the count of ticks for this interval.
 	 */
-	constexpr Rep count() const
-	{
+	constexpr Rep count() const {
 		return m_duration.count();
 	}
 
 	/**
 	 * @brief Gets the duration in microseconds.
 	 */
-	constexpr uint64_t microseconds() const
-	{
+	constexpr uint64_t microseconds() const {
 		return std::chrono::duration_cast<
 				   std::chrono::duration<uint64_t, std::micro>>(m_duration)
 			.count();
@@ -100,21 +98,18 @@ public:
 	 * @brief Converts the interval to another representation and period.
 	 */
 	template <typename TargetRep, typename TargetPeriod>
-	constexpr DynamicTimeInterval<TargetRep, TargetPeriod> as() const
-	{
+	constexpr DynamicTimeInterval<TargetRep, TargetPeriod> as() const {
 		return DynamicTimeInterval<TargetRep, TargetPeriod>(
 			std::chrono::duration_cast<std::chrono::duration<TargetRep, TargetPeriod>>(m_duration));
 	}
 
 	template <typename T, typename P>
-	constexpr DynamicTimeInterval operator+(const DynamicTimeInterval<T, P> &other)
-	{
+	constexpr DynamicTimeInterval operator+(const DynamicTimeInterval<T, P>& other) {
 		return DynamicTimeInterval(m_duration + std::chrono::duration_cast<std::chrono::duration<Rep, Period>>(other.m_duration));
 	}
 
 	template <typename T, typename P>
-	constexpr bool operator>(const DynamicTimeInterval<T, P> &other)
-	{
+	constexpr bool operator>(const DynamicTimeInterval<T, P>& other) {
 		return m_duration > other.m_duration;
 	}
 
@@ -128,34 +123,31 @@ using TimeInterval = DynamicTimeInterval<uint64_t, std::ratio<1>>;
  * DEPRECATE
  * This function is not used anywhere in the codebase.
  */
-constexpr auto AsSeconds = [](const ChronoDuration auto &d)
-{
+constexpr auto AsSeconds = [](const ChronoDuration auto& d) {
 	return TimeInterval(d.get_duration());
 };
 
 // System-wide constants
-const int motorInterfaceType = 1;      ///< Stepper motor driver interface type.
-const int maxSpeed = 1000;	           ///< Maximum speed for the motors.
-const int acceleration = 3000;         ///< Acceleration for the motors.
-constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131); ///< Conversion factor from radians to degrees.
-const fixed_16_16 Gz = -9.80665;        ///< Acceleration due to gravity.
-const int altitude = 1320;             ///< Default altitude for calculations.
-const fixed_16_16 projectileSpeed = 20; ///< Speed of the projectile.
+const int                    motorInterfaceType = 1;                      ///< Stepper motor driver interface type.
+const int                    maxSpeed = 1000;                             ///< Maximum speed for the motors.
+const int                    acceleration = 3000;                         ///< Acceleration for the motors.
+constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131);  ///< Conversion factor from radians to degrees.
+const fixed_16_16            Gz = -9.80665;                               ///< Acceleration due to gravity.
+const int                    altitude = 1320;                             ///< Default altitude for calculations.
+const fixed_16_16            projectileSpeed = 20;                        ///< Speed of the projectile.
 
 /**
  * @brief Creates a time interval in milliseconds with an optional offset.
  */
 template <typename T, typename P>
-constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t millis, const DynamicTimeInterval<T, P> offset)
-{
+constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t millis, const DynamicTimeInterval<T, P> offset) {
 	return DynamicTimeInterval<uint64_t, std::milli>(millis) + DynamicTimeInterval<uint64_t, std::milli>(offset.get_duration());
 }
 
 /**
  * @brief Creates a time interval in milliseconds.
  */
-constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t millis)
-{
+constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t millis) {
 	return std::chrono::duration<uint64_t, std::milli>(millis);
 }
 
@@ -163,16 +155,14 @@ constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t 
  * @brief Creates a time interval in seconds with an optional offset.
  */
 template <typename T, typename P>
-constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds, DynamicTimeInterval<T, P> offset)
-{
+constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds, DynamicTimeInterval<T, P> offset) {
 	return DynamicTimeInterval<uint64_t>(seconds) + DynamicTimeInterval<uint64_t>(offset.get_duration());
 }
 
 /**
  * @brief Creates a time interval in seconds.
  */
-constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds)
-{
+constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds) {
 	return std::chrono::duration<uint64_t, std::ratio<1>>(seconds);
 }
 

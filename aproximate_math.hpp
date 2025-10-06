@@ -1,9 +1,9 @@
 #pragma once
 
+#include "fpm_adapter.hpp"
+#include <cmath>  // For std::signbit
 #include <functional>
 #include <stdint.h>
-#include <cmath> // For std::signbit
-#include "fpm_adapter.hpp"
 
 using fixed = fixed_16_16;
 
@@ -13,17 +13,15 @@ using fixed = fixed_16_16;
  * This namespace contains a collection of mathematical functions that use
  * approximation algorithms to compute their results, suitable for fixed-point arithmetic.
  */
-namespace Approximate
-{
+namespace Approximate {
 	/**
 	 * @brief Represents the result of an approximation calculation.
 	 * @tparam T The type of the result.
 	 */
 	template <typename T>
-	struct ApproximateResult
-	{
-		bool converged = false; ///< Indicates whether the approximation converged to a solution.
-		T result;               ///< The result of the approximation.
+	struct ApproximateResult {
+		bool converged = false;  ///< Indicates whether the approximation converged to a solution.
+		T    result;             ///< The result of the approximation.
 	};
 
 	fixed sin(fixed);
@@ -46,8 +44,7 @@ namespace Approximate
 	 * @return An ApproximateResult containing the outcome of the root-finding process.
 	 */
 	template <typename T>
-	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16)
-	{
+	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
 		T leftInput = 0;
 		T rightInput = 0.01;
 		T midInput;
@@ -67,8 +64,7 @@ namespace Approximate
 		};
 
 		// Find an interval containing the first root by expanding the search window.
-		while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds))
-		{
+		while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds)) {
 			leftInput = rightInput;
 			leftValue = rightValue;
 			rightInput *= 4;
@@ -76,33 +72,27 @@ namespace Approximate
 			// round++; -- TODO: evaluate the impact of this check.
 		}
 
-		round = 0; // Reset round counter for the refinement loop
-		do
-		{
+		round = 0;  // Reset round counter for the refinement loop
+		do {
 			// Secant method - zero of secant of function at best guess
 			midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
 			// If secant intersects outside our boundary, pick next best guess to be midpoint between edges instead.
-			if (midInput <= leftInput || midInput >= rightInput)
-			{
+			if (midInput <= leftInput || midInput >= rightInput) {
 				midInput = leftInput + (rightInput - leftInput) / 2;
 			}
 			midValue = func(midInput);
 
 			// Narrow the search interval based on the sign of the function value.
-			if (sign_bit(leftValue) == sign_bit(midValue))
-			{
+			if (sign_bit(leftValue) == sign_bit(midValue)) {
 				leftInput = midInput;
 				leftValue = midValue;
-			}
-			else
-			{
+			} else {
 				rightInput = midInput;
 				rightValue = midValue;
 			}
 
 			// This should check if proportional error is less than the threshold
-			if ((rightInput - leftInput) / rightInput <= error)
-			{
+			if ((rightInput - leftInput) / rightInput <= error) {
 				return ApproximateResult<T>(true, midInput);
 			}
 			// TODO: Add a check for convergence rate to exit early if progress stalls.
@@ -110,4 +100,4 @@ namespace Approximate
 		} while (round++ < rounds);
 		return ApproximateResult<T>(false, midInput);
 	}
-}
+}  // namespace Approximate

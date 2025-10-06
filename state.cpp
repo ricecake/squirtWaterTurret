@@ -1,12 +1,12 @@
+#include "state.h"
+#include "aproximate_math.hpp"
+#include "firecontrol.h"
+#include "fpm_adapter.hpp"
+#include "target_selection.h"
+#include "utilities.h"
+#include <algorithm>
 #include <chrono>
 #include <ratio>
-#include <algorithm>
-#include "utilities.h"
-#include "state.h"
-#include "firecontrol.h"
-#include "target_selection.h"
-#include "fpm_adapter.hpp"
-#include "aproximate_math.hpp"
 
 #ifdef ARDUINO
 #include "HardwareSerial.h"
@@ -14,8 +14,7 @@
 #include "tests/mocks.h"
 #endif
 
-SystemState::SystemState()
-{
+SystemState::SystemState() {
 #ifdef ARDUINO
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
@@ -32,42 +31,34 @@ SystemState::SystemState()
 #endif
 }
 
-Target &SystemState::currentTarget()
-{
+Target& SystemState::currentTarget() {
 	return target[selectedTarget];
 }
 
-void SystemState::updateNearestTarget(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin)
-{
+void SystemState::updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
 	auto idx = fetchNearestTargetIdx(newPosition);
 	updateTarget(idx, valid, newPosition, indifferenceMargin);
 }
 
-void SystemState::updateNearestTarget2d(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin)
-{
+void SystemState::updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
 	auto idx = fetchNearestTarget2dIdx(newPosition);
 	auto prev = fetchTarget(idx);
 	newPosition.Z_coord = prev.Position().Z_coord;
 	updateTarget(idx, valid, newPosition, indifferenceMargin);
 }
 
-void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin)
-{
+void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
 	bool doUpdate = true;
-	if (indifferenceMargin > 0)
-	{
+	if (indifferenceMargin > 0) {
 		auto oldTarget = target[idx];
 		auto oldTargetPos = oldTarget.Position();
-		if (oldTargetPos)
-		{
-
+		if (oldTargetPos) {
 			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
 			doUpdate = (travelAngle) > indifferenceMargin;
 		}
 	}
 
-	if (doUpdate)
-	{
+	if (doUpdate) {
 		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
 		target[idx].Update(newPosition);
 		target[idx].valid = valid;
@@ -75,66 +66,56 @@ void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVect
 	}
 }
 
-void SystemState::setTarget(uint8_t index, uint8_t speed)
-{
+void SystemState::setTarget(uint8_t index, uint8_t speed) {
 	selectedTarget = index;
 	trackingSpeed = speed;
 	needTrackingUpdate = true;
 }
 
-void SystemState::setFire(bool active)
-{
+void SystemState::setFire(bool active) {
 	fireState = active;
 }
 
-bool SystemState::getFireState()
-{
+bool SystemState::getFireState() {
 	return fireState;
 }
 
-void SystemState::queueFire(uint16_t fireDuration)
-{
+void SystemState::queueFire(uint16_t fireDuration) {
 	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
 	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
 
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-	{
+	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
 		commandQueue.push(new FireControl(true, fireDuration, start.microseconds()));
 		commandQueue.push(new FireControl(false, fireDuration, end.microseconds()));
 		xSemaphoreGive(xMutex);
 	}
 }
 
-void SystemState::queueLinger(uint8_t milliseconds)
-{
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-	{
+void SystemState::queueLinger(uint8_t milliseconds) {
+	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
 		commandQueue.push(new LingerCommand(milliseconds * 1000));
 		xSemaphoreGive(xMutex);
 	}
 }
 
-void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds)
-{
+void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
 	commandQueue.push(new TargetSelection(
-		index, 0xFF, milliseconds * 1000));
+		index,
+		0xFF,
+		milliseconds * 1000));
 }
 
 /**
  * @brief Processes the command queue, executing any commands that are due.
  */
-void SystemState::processCommandQueue()
-{
+void SystemState::processCommandQueue() {
 	auto now = esp_timer_get_time();
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-	{
-		while (!commandQueue.empty())
-		{
+	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+		while (!commandQueue.empty()) {
 			auto comm = commandQueue.top();
 
 			// Since the queue is sorted by execution time, we can stop when we find a command that is not yet due.
-			if (now <= comm->run_after)
-			{
+			if (now <= comm->run_after) {
 				break;
 			}
 
@@ -149,8 +130,7 @@ void SystemState::processCommandQueue()
 /**
  * @brief Updates the physical state of the system to match the desired state.
  */
-void SystemState::actualizeState()
-{
+void SystemState::actualizeState() {
 	actualizePosition();
 	actualizeFiring();
 }
@@ -158,19 +138,16 @@ void SystemState::actualizeState()
 /**
  * @brief Activates or deactivates the firing pin based on the current fire state.
  */
-void SystemState::actualizeFiring()
-{
+void SystemState::actualizeFiring() {
 	digitalWrite(firePin, fireState ? HIGH : LOW);
 }
 
 /**
  * @brief Updates the motor positions to track the current target.
  */
-void SystemState::actualizePosition()
-{
+void SystemState::actualizePosition() {
 	auto target = currentTarget();
-	if (needTrackingUpdate && target.valid)
-	{
+	if (needTrackingUpdate && target.valid) {
 		// Calculate the aimpoint using the target's intercept position
 		auto aimpoint = target.interceptPosition();
 		auto pitch = long(std::min(std::max(aimpoint.Pitch(), fixed(-60)), fixed(60)) / angleToStep);
@@ -194,18 +171,15 @@ void SystemState::actualizePosition()
 	}
 
 	// Continuously run the motors to move towards the target
-	if (stepperA.distanceToGo() || stepperB.distanceToGo())
-	{
+	if (stepperA.distanceToGo() || stepperB.distanceToGo()) {
 		stepperA.run();
 		stepperB.run();
 	}
 }
 
-fixed SystemState::targetTravelDistance()
-{
+fixed SystemState::targetTravelDistance() {
 	auto target = currentTarget();
-	if (!target.valid)
-	{
+	if (!target.valid) {
 		return INT_MAX;
 	}
 	auto aimpoint = target.interceptPosition();
@@ -221,8 +195,7 @@ fixed SystemState::targetTravelDistance()
 	return acos(cos_alpha);
 }
 
-PositionVector SystemState::targetAimpoint()
-{
+PositionVector SystemState::targetAimpoint() {
 	const auto target = currentTarget();
 	return target.interceptPosition();
 }

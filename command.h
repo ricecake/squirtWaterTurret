@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdint.h>
 #include "state.h"
 #include <compare>
+#include <stdint.h>
 
 class SystemState;
 
@@ -12,8 +12,7 @@ class SystemState;
  * This class defines an interface for executing operations. Each command is a standalone
  * object that encapsulates a request.
  */
-class Command
-{
+class Command {
 public:
 	virtual ~Command() = default;
 	/// @brief Unique identifier for the command, typically based on a timestamp.
@@ -28,7 +27,7 @@ public:
 	 * This is a pure virtual function that must be implemented by derived classes.
 	 * @param state A pointer to the system state, allowing the command to interact with the system.
 	 */
-	virtual void Execute(SystemState *state) = 0;
+	virtual void Execute(SystemState* state) = 0;
 
 	/**
 	 * @brief Constructs a new Command object.
@@ -41,18 +40,12 @@ public:
 /// @param  left command
 /// @param  right command
 /// @return ordering
-constexpr auto operator<=>(const Command &left, const Command &right)
-{
-	if (left.run_after > right.run_after)
-	{
+constexpr auto operator<=>(const Command& left, const Command& right) {
+	if (left.run_after > right.run_after) {
 		return std::weak_ordering::less;
-	}
-	else if (left.run_after < right.run_after)
-	{
+	} else if (left.run_after < right.run_after) {
 		return std::weak_ordering::greater;
-	}
-	else
-	{
+	} else {
 		return std::weak_ordering::equivalent;
 	}
 }
@@ -62,14 +55,13 @@ constexpr auto operator<=>(const Command &left, const Command &right)
  *
  * This command is used to introduce a pause in the command queue processing.
  */
-class LingerCommand : public Command
-{
+class LingerCommand: public Command {
 public:
 	/**
 	 * @brief Executes the linger command (does nothing).
 	 * @param state A pointer to the system state.
 	 */
-	void Execute(SystemState *state) override;
+	void Execute(SystemState* state) override;
 
 	/**
 	 * @brief Constructs a new LingerCommand object.
