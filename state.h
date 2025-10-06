@@ -21,6 +21,9 @@ using fixed = fixed_16_16;
 
 class Command;
 
+const inline auto CommandPointerComparator = [](const auto& left, const auto& right)
+{ return left->run_after >= right->run_after; };
+
 /**
  * @brief Manages the overall state of the system.
  *
@@ -67,8 +70,7 @@ private:
 	PositionVector targetAimpoint();
 	std::array<Target, 32> target;
 	std::array<Target, 3> radarTarget; // Separate the two -- by default populate the radar target and prefer the target list if possible
-	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
-																	{ return left->run_after >= right->run_after; })>
+	std::priority_queue<Command *, std::vector<Command *>, decltype(CommandPointerComparator)>
 		commandQueue; ///< Priority queue for pending commands.
 
 public:

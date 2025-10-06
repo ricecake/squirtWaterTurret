@@ -66,14 +66,6 @@ namespace Approximate
 			}
 		};
 
-		auto abs_val = [](auto val) {
-			if constexpr (fpm::is_fixed<T>::value) {
-				return fpm::abs(val);
-			} else {
-				return std::abs(val);
-			}
-		};
-
 		// Find an interval containing the first root by expanding the search window.
 		while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds))
 		{
