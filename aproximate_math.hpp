@@ -46,7 +46,7 @@ namespace Approximate
 	 * @return An ApproximateResult containing the outcome of the root-finding process.
 	 */
 	template <typename T>
-	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 32)
+	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16)
 	{
 		T leftInput = 0;
 		T rightInput = 0.01;
@@ -81,21 +81,19 @@ namespace Approximate
 			leftValue = rightValue;
 			rightInput *= 4;
 			rightValue = func(rightInput);
-			round++;
+			// round++; -- TODO: evaluate the impact of this check.
 		}
 
 		round = 0; // Reset round counter for the refinement loop
 		do
 		{
-			// Use the bisection method to find the midpoint of the interval.
-			midInput = leftInput + (rightInput - leftInput) / 2;
-
-			// If the midpoint is the same as an endpoint, we've reached the precision limit.
-			if (midInput == leftInput || midInput == rightInput)
+			// Secant method - zero of secant of function at best guess
+			midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
+			// If secant intersects outside our boundary, pick next best guess to be midpoint between edges instead.
+			if (midInput <= leftInput || midInput >= rightInput)
 			{
-				return ApproximateResult<T>(true, midInput);
+				midInput = leftInput + (rightInput - leftInput) / 2;
 			}
-
 			midValue = func(midInput);
 
 			// Narrow the search interval based on the sign of the function value.
@@ -110,8 +108,8 @@ namespace Approximate
 				rightValue = midValue;
 			}
 
-			// Check for convergence based on the absolute width of the interval.
-			if (abs_val(rightInput - leftInput) <= error)
+			// This should check if proportional error is less than the threshold
+			if ((rightInput - leftInput) / rightInput <= error)
 			{
 				return ApproximateResult<T>(true, midInput);
 			}
