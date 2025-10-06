@@ -3,7 +3,6 @@
 *.s
 *.xpp
 a.out
-test*.cpp
 example*
 buildNotes.txt
 output.wat

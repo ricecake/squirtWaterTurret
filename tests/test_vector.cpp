@@ -2,7 +2,7 @@
 #include <cmath>
 #include "vector.hpp"
 #include "fpm_adapter.hpp"
-#include "why_doesnt_this_work2_new.bak/test_vector.h"
+#include "tests/test_vector.h"
 
 using fixed = fixed_16_16;
 

@@ -9,7 +9,7 @@
 #include <MultiStepper.h>
 #include "freertos/semphr.h"
 #else
-#include "why_doesnt_this_work2_new.bak/mocks.h"
+#include "tests/mocks.h"
 #endif
 
 #include "vector.hpp"

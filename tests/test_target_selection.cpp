@@ -1,8 +1,8 @@
 #include <cassert>
 #include "target_selection.h"
 #include "state.h"
-#include "why_doesnt_this_work2_new.bak/mocks.h"
-#include "why_doesnt_this_work2_new.bak/test_target_selection.h"
+#include "tests/mocks.h"
+#include "tests/test_target_selection.h"
 
 // Test case for the TargetSelection command
 void test_TargetSelection_execute()

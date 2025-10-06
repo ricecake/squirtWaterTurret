@@ -2,7 +2,7 @@
 #include <cmath>
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"
-#include "why_doesnt_this_work2_new.bak/test_approximate_math.h"
+#include "tests/test_approximate_math.h"
 
 // Test for the small_root function
 void test_small_root() {

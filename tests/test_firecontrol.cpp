@@ -3,8 +3,8 @@
 #include <thread>
 #include "firecontrol.h"
 #include "state.h"
-#include "why_doesnt_this_work2_new.bak/mocks.h"
-#include "why_doesnt_this_work2_new.bak/test_firecontrol.h"
+#include "tests/mocks.h"
+#include "tests/test_firecontrol.h"
 #include "utilities.h"
 
 // Test case for activating the firing mechanism

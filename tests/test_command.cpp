@@ -1,11 +1,11 @@
 #include <cassert>
 #include "command.h"
 #include "state.h"
-#include "why_doesnt_this_work2_new.bak/mocks.h"
-#include "why_doesnt_this_work2_new.bak/test_command.h"
+#include "tests/mocks.h"
+#include "tests/test_command.h"
 
 // Test case for the LingerCommand
-#include "why_doesnt_this_work2_new.bak/mocks.h"
+#include "tests/mocks.h"
 
 void test_LingerCommand_initialization()
 {
