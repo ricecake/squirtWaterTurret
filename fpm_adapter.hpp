@@ -73,7 +73,7 @@ namespace std {
 	 * @brief Overload of std::pow for the FixedAdapter type.
 	 */
 	template <typename T, typename O>
-	requires same_as<T, FixedAdapter<typename T::params, typename T::i, T::f, T::e>>
+		requires same_as<T, FixedAdapter<typename T::params, typename T::i, T::f, T::e>>
 	constexpr FixedAdapter<typename T::params, typename T::i, T::f, T::e> pow(const T& A, const O& B) {
 		return FixedAdapter<typename T::params, typename T::i, T::f, T::e>(fpm::pow(A, B));
 	}
