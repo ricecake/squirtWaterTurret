@@ -13,3 +13,5 @@ serialReader.xcpp
 simpleNNTest.py
 test.xcpp
 test_runner
+*.sqlite*
+.depthai_cached_models
