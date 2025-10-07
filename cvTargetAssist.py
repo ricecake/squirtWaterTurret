@@ -28,6 +28,7 @@ import sys
 import select
 import struct
 import time
+import argparse
 from math import atan2, degrees
 from typing import Tuple
 
@@ -48,29 +49,102 @@ from depthai_nodes.message.keypoints import Keypoint
 # ======================================================================================
 
 class ScriptSettings:
-    """Global settings for the script's operation."""
-    # --- General ---
-    ENABLE_VISUALIZER = False  # Enable remote visualizer
-    SERIAL_OUTPUT = True       # Enable sending data over serial port
-    LOG_LEVEL = dai.LogLevel.WARN
-    FPS = 10                   # Camera and pipeline frames per second
+    """
+    Global settings for the script's operation.
+    This class is a container for settings that will be populated by command-line
+    arguments.
+    """
+    # These will be overwritten by parse_and_setup_settings()
+    ENABLE_VISUALIZER: bool
+    SERIAL_OUTPUT: bool
+    LOG_LEVEL: dai.LogLevel
+    FPS: int
+    CLOSE_MATCH_THRESHOLD: float
+    MEDIUM_MATCH_THRESHOLD: float
+    FAR_MATCH_THRESHOLD: float
+    MODE: str
+    STATE: str
 
-    # --- Identification Logic ---
-    # TODO: These thresholds are critical to performance and may need tuning.
-    #       They are currently hardcoded.
-    # Suggested: Make these configurable via command-line arguments using argparse
-    #            to allow for easier tuning without modifying the source code.
-    CLOSE_MATCH_THRESHOLD = 0.16  # Distance for a confident match
-    MEDIUM_MATCH_THRESHOLD = 0.22 # Distance for a potential match (requires validation)
-    FAR_MATCH_THRESHOLD = 0.30    # Distance for a weak match (likely a new person)
+def parse_and_setup_settings():
+    """
+    Parses command-line arguments and populates the ScriptSettings class.
+    """
+    parser = argparse.ArgumentParser(description="Luxonis DepthAI Target Acquisition and Identification System")
 
-    # --- Modes ---
-    # TODO: The 'FACE' mode seems less developed than 'POSE' mode. The cropping logic
-    #       for face recognition might need review and refinement.
-    # Suggested: Add a command-line argument to switch between 'POSE' and 'FACE' modes.
-    #            This would make the script more flexible for different use cases.
-    MODE = 'POSE'  # 'POSE' for body-based targeting, 'FACE' for face recognition
-    STATE = 'TEST' # A state identifier, used for naming the database and output folders.
+    # General settings
+    parser.add_argument(
+        '--enable-visualizer',
+        action='store_true',
+        default=False,
+        help='Enable remote visualizer (default: False).'
+    )
+    parser.add_argument(
+        '--serial-output',
+        action='store_true',
+        default=False,
+        help='Enable sending data over serial port (default: False).'
+    )
+    parser.add_argument(
+        '--log-level',
+        default='WARN',
+        choices=['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'],
+        help='Set the logging level (default: WARN).'
+    )
+    parser.add_argument(
+        '--fps',
+        type=int,
+        default=10,
+        help='Camera and pipeline frames per second (default: 10).'
+    )
+
+    # Identification logic settings
+    parser.add_argument(
+        '--close-match-threshold',
+        type=float,
+        default=0.16,
+        help='Distance threshold for a confident match (default: 0.16).'
+    )
+    parser.add_argument(
+        '--medium-match-threshold',
+        type=float,
+        default=0.22,
+        help='Distance threshold for a potential match (default: 0.22).'
+    )
+    parser.add_argument(
+        '--far-match-threshold',
+        type=float,
+        default=0.30,
+        help='Distance threshold for a weak match (default: 0.30).'
+    )
+
+    # Mode settings
+    parser.add_argument(
+        '--mode',
+        default='POSE',
+        choices=['POSE', 'FACE'],
+        help="Operating mode: 'POSE' for body targeting, 'FACE' for face recognition (default: POSE)."
+    )
+    parser.add_argument(
+        '--state',
+        default='TEST',
+        help='A state identifier for database and output folders (default: TEST).'
+    )
+
+    args = parser.parse_args()
+
+    # Populate the ScriptSettings class with parsed arguments
+    ScriptSettings.ENABLE_VISUALIZER = args.enable_visualizer
+    ScriptSettings.SERIAL_OUTPUT = args.serial_output
+    ScriptSettings.LOG_LEVEL = getattr(dai.LogLevel, args.log_level.upper())
+    ScriptSettings.FPS = args.fps
+    ScriptSettings.CLOSE_MATCH_THRESHOLD = args.close_match_threshold
+    ScriptSettings.MEDIUM_MATCH_THRESHOLD = args.medium_match_threshold
+    ScriptSettings.FAR_MATCH_THRESHOLD = args.far_match_threshold
+    ScriptSettings.MODE = args.mode
+    ScriptSettings.STATE = args.state
+
+# Parse arguments and configure settings when the script is loaded
+parse_and_setup_settings()
 
 
 # ======================================================================================
