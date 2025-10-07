@@ -12,3 +12,4 @@ serialParseTest.py
 serialReader.xcpp
 simpleNNTest.py
 test.xcpp
+test_runner
