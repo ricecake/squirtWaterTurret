@@ -64,6 +64,7 @@ class ScriptSettings:
     FAR_MATCH_THRESHOLD: float
     MODE: str
     STATE: str
+    HEIGHT: int
 
 def parse_and_setup_settings():
     """
@@ -95,6 +96,12 @@ def parse_and_setup_settings():
         type=int,
         default=10,
         help='Camera and pipeline frames per second (default: 10).'
+    )
+    parser.add_argument(
+        '--height',
+        type=int,
+        default=1000,
+        help='Camera height above the ground in mm (default: 1000).'
     )
 
     # Identification logic settings
@@ -142,6 +149,7 @@ def parse_and_setup_settings():
     ScriptSettings.FAR_MATCH_THRESHOLD = args.far_match_threshold
     ScriptSettings.MODE = args.mode
     ScriptSettings.STATE = args.state
+    ScriptSettings.HEIGHT = args.height
 
 
 # Parse arguments and configure settings when the script is loaded
@@ -845,9 +853,12 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
             # Extract coordinates and map them to the desired coordinate system.
             # DepthAI's coordinate system: X is right, Y is up, Z is forward.
             # Desired system: X is right, Y is forward, Z is up.
+            # Coordinates are measured from the center of the frame - not a problem for X and Y,
+            # but Z needs to be an offset from the camera height.
+            # TODO: factor in incline of camera for more precision.
             x_coord = int(spatial_data.spatialCoordinates.x)
-            y_coord = int(spatial_data.spatialCoordinates.z) # Map DepthAI 'z' to our 'y'
-            z_coord = int(spatial_data.spatialCoordinates.y) # Map DepthAI 'y' to our 'z'
+            y_coord = int(spatial_data.spatialCoordinates.z)  # Map DepthAI 'z' to our 'y'
+            z_coord = int(ScriptSettings.HEIGHT - spatial_data.spatialCoordinates.y)  # Map DepthAI 'y' to our 'z', as offset from camera height
 
             # Parse identity info from the label string created by the IdentificationNode
             emit_str, name, id_str = detection.label_name.split('-')
