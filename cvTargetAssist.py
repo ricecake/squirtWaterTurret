@@ -27,6 +27,7 @@ import os
 import sys
 import select
 import struct
+import time
 from math import atan2, degrees
 from typing import Tuple
 
@@ -702,21 +703,28 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
         self.serial_port = serial.Serial()
 
     def onStart(self) -> None:
-        """Opens the serial port if enabled in the settings."""
+        """
+        Opens the serial port if enabled in the settings.
+        It will retry a few times with a delay before exiting if the port fails to open.
+        """
         if ScriptSettings.SERIAL_OUTPUT:
-            try:
-                self.serial_port.port = '/dev/serial0'
-                self.serial_port.baudrate = 9600
-                self.serial_port.open()
-                print(f"Serial port {self.serial_port.port} opened.")
-            except serial.SerialException as e:
-                print(f"Error opening serial port: {e}")
-                # TODO: The script currently just disables serial output if the port fails
-                #       to open. This might not be the desired behavior.
-                # Suggested: Consider making this a fatal error that stops the script,
-                #            or add a retry mechanism. The user should be clearly
-                #            informed that serial output has failed.
-                ScriptSettings.SERIAL_OUTPUT = False
+            retries = 3
+            for i in range(retries):
+                try:
+                    self.serial_port.port = '/dev/serial0'
+                    self.serial_port.baudrate = 9600
+                    self.serial_port.open()
+                    print(f"Serial port {self.serial_port.port} opened successfully.")
+                    return super().onStart()
+                except serial.SerialException as e:
+                    print(f"Warning: Could not open serial port: {e}.")
+                    if i < retries - 1:
+                        print(f"Retrying in 2 seconds... ({i + 1}/{retries})")
+                        time.sleep(2)
+
+            print("\nFATAL: Could not open serial port after multiple retries. Exiting.")
+            sys.exit(1)
+
         return super().onStart()
 
     def onStop(self) -> None:
