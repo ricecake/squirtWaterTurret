@@ -143,6 +143,7 @@ def parse_and_setup_settings():
     ScriptSettings.MODE = args.mode
     ScriptSettings.STATE = args.state
 
+
 # Parse arguments and configure settings when the script is loaded
 parse_and_setup_settings()
 
@@ -842,11 +843,11 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
                 continue
 
             # Extract coordinates and map them to the desired coordinate system.
-            # DepthAI's coordinate system: X is right, Y is down, Z is forward.
+            # DepthAI's coordinate system: X is right, Y is up, Z is forward.
             # Desired system: X is right, Y is forward, Z is up.
             x_coord = int(spatial_data.spatialCoordinates.x)
             y_coord = int(spatial_data.spatialCoordinates.z) # Map DepthAI 'z' to our 'y'
-            z_coord = int(-1 * spatial_data.spatialCoordinates.y) # Map DepthAI 'y' to our 'z'
+            z_coord = int(spatial_data.spatialCoordinates.y) # Map DepthAI 'y' to our 'z'
 
             # Parse identity info from the label string created by the IdentificationNode
             emit_str, name, id_str = detection.label_name.split('-')
