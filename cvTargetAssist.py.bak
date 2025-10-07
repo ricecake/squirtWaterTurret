@@ -44,7 +44,7 @@ Here is the mapping of each index to its respective body joint:
 
 class SETTINGS:
     enable_visualizer = False
-    SERIAL_OUTPUT = False
+    SERIAL_OUTPUT = True
     log_level = dai.LogLevel.WARN
     FPS = 10
     CLOSE_MATCH = 0.16

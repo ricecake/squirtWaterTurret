@@ -73,7 +73,7 @@ def parse_and_setup_settings():
 
     # General settings
     parser.add_argument(
-        '--enable-visualizer',
+        '-v', '--enable-visualizer',
         action='store_true',
         default=False,
         help='Enable remote visualizer (default: False).'
@@ -328,11 +328,18 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
     2.  `crop_config_output`: Sends `ImgDetections` messages with bounding boxes
         to be used by an `ImageManip` node for cropping the person for recognition.
     """
-    def __init__(self) -> None:
-        """Initializes the node and its output queues."""
+    def __init__(self, config_template: dai.SpatialLocationCalculatorConfigData) -> None:
+        """
+        Initializes the node and its output queues.
+
+        Args:
+            config_template: A `SpatialLocationCalculatorConfigData` object to use as a
+                             template for generating ROIs.
+        """
         super().__init__()
         self.depth_config_output = self.createOutput()
         self.crop_config_output = self.createOutput()
+        self.config_template = config_template
 
     def build(self, detection_msg) -> "DetectionTargetingConfigurationNode":
         """
@@ -347,7 +354,7 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         self.link_args(detection_msg)
         return self
 
-    def process(self, dets_msg) -> None:
+    def process(self, dets_msg: ImgDetectionsExtended) -> None:
         """
         Processes a message containing pose detections.
 
@@ -355,7 +362,6 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         1. A `SpatialLocationCalculatorConfig` for the depth node.
         2. An `ImgDetections` message to configure a cropping node.
         """
-        assert isinstance(dets_msg, ImgDetectionsExtended)
         depth_rois = []
         recognition_crops = []
         valid_detections = []
@@ -387,15 +393,9 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
             # Configure the spatial location calculator with the new ROIs
             spatial_config = dai.SpatialLocationCalculatorConfig()
             for roi in depth_rois:
-                # TODO: This uses a global `config` object (`initial_spatial_config`)
-                #       which is not ideal. It makes the node less reusable and can
-                #       lead to unexpected behavior if the global object is modified elsewhere.
-                # Suggested: Replace `config.roi = roi` with `initial_spatial_config.roi = roi`
-                #            and then `spatial_config.addROI(initial_spatial_config)`.
-                #            Even better, pass the config object into this node's constructor
-                #            to avoid global state entirely.
-                config.roi = roi
-                spatial_config.addROI(config)
+                # Use the config template passed during initialization
+                self.config_template.roi = roi
+                spatial_config.addROI(self.config_template)
 
             # Configure the image manipulator with the new crop rectangles
             crop_config_message = dai.ImgDetections()
@@ -940,7 +940,7 @@ with dai.Pipeline(device) as pipeline:
     det_nn.input.setMaxSize(2)
 
     # --- Custom Targeting Node ---
-    target_detection_node = pipeline.create(DetectionTargetingConfigurationNode).build(
+    target_detection_node = DetectionTargetingConfigurationNode(initial_spatial_config).build(
         det_nn.out,
     )
 
