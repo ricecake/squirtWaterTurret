@@ -354,7 +354,7 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         self.link_args(detection_msg)
         return self
 
-    def process(self, dets_msg: ImgDetectionsExtended) -> None:
+    def process(self, dets_msg) -> None:
         """
         Processes a message containing pose detections.
 
@@ -362,6 +362,9 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         1. A `SpatialLocationCalculatorConfig` for the depth node.
         2. An `ImgDetections` message to configure a cropping node.
         """
+
+        assert isinstance(dets_msg, ImgDetectionsExtended)
+
         depth_rois = []
         recognition_crops = []
         valid_detections = []
