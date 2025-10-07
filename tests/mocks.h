@@ -16,10 +16,6 @@ struct AccelStepper {
 	long currentPosition() { return 0; }
 };
 
-struct MultiStepper {
-	void addStepper(AccelStepper&) {}
-};
-
 using SemaphoreHandle_t = int;
 
 // From state.cpp

@@ -2,7 +2,6 @@
 #include <AccelStepper.h>
 #include <Arduino.h>
 #include <HardwareSerial.h>
-#include <MultiStepper.h>
 #include <vector>
 
 #include "DptHelpers.h"

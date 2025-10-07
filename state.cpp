@@ -24,9 +24,6 @@ SystemState::SystemState() {
 	stepperA.setAcceleration(acceleration);
 	stepperB.setAcceleration(acceleration);
 
-	steppers.addStepper(stepperA);
-	steppers.addStepper(stepperB);
-
 	pinMode(firePin, OUTPUT);
 
 	xMutex = xSemaphoreCreateMutex();

@@ -8,7 +8,6 @@
 	#include "freertos/semphr.h"
 
 	#include <AccelStepper.h>
-	#include <MultiStepper.h>
 #else
 	#include "tests/mocks.h"
 #endif
@@ -59,7 +58,6 @@ public:
 public:
 	AccelStepper stepperA;  ///< Stepper motor A instance.
 	AccelStepper stepperB;  ///< Stepper motor B instance.
-	MultiStepper steppers;  ///< Stepper motor group instance.
 
 	SemaphoreHandle_t
 		xMutex;  ///< Mutex for thread-safe access to shared resources.

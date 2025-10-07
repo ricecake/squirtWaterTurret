@@ -6,7 +6,6 @@
 
 #ifdef ARDUINO
 	#include <AccelStepper.h>
-	#include <MultiStepper.h>
 #endif
 
 #include "command.h"
