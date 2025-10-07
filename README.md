@@ -1,69 +1,73 @@
-# Project: Over-Engineered Sentry Turret Thingamajig
+# Project: Automated Sentry Squirt Gun
 
-> "I saw a pigeon, and I thought... 'I could automate that.' So I did. You're welcome, world."
+An exercise in applying computer vision, real-time control, and a bit of math to the important task of squirting things with water.
 
-## Overview
+## How It Works
 
-Welcome to the pinnacle of "because I could" engineering. This project is a sophisticated, and frankly, quite unnecessary, automated turret system. It's designed to track and... *interact*... with targets, using a combination of cutting-edge computer vision and robust, real-time motor control. Think of it as a very, very smart rock.
+The system is comprised of two primary components: a computer vision module for target identification and a microcontroller for aiming and firing.
 
-It was born from a simple question: "What if my cat had a laser pointer, but with, like, *way* more microcontrollers?" The result is this beautiful monstrosity, a testament to what happens when you have too many spare parts and not enough adult supervision.
+### The "Brains": Computer Vision & Target Management
 
-## How It (Allegedly) Works
+The high-level logic runs as a Python script, leveraging a Luxonis OAK-D camera for its perception capabilities.
 
-The system is a glorious chimera, a two-headed beast of Python and C++.
+*   **`depthai`:** Used for its powerful, on-device neural processing. A YOLO-based pose estimation model identifies and tracks potential targets in real-time.
+*   **`sqlite-vec`:** Provides on-device vector similarity search. This allows the system to store embeddings for identified individuals and recognize them later, because it's important to remember who you've squirted.
+*   **Target Serialization:** Once a valid target is acquired, its 3D coordinates are serialized and transmitted to the control system over a serial connection.
 
-### The "Brains": The All-Seeing Eye
+### The "Brawn": Firmware & Real-Time Control
 
-This is the part that does the thinking. Or at least, a convincing imitation of it. Running on a platform that can handle the heavy lifting (like a PC or a Raspberry Pi), the Python-based computer vision component uses a Luxonis OAK-D camera to see the world.
+The low-level control system is a C++ application running on an ESP32 microcontroller.
 
-*   **`depthai`:** This is the magic that lets us tap into the OAK-D's powerful neural processing capabilities. We use it for real-time pose estimation, identifying unsuspecting targets (people, mostly) with alarming accuracy.
-*   **`sqlite-vec`:** Because just seeing people isn't enough, we had to give it a memory. This amazing little library allows us to perform vector similarity searches *on-device*. In layman's terms, it can recognize people it's seen before. Whether this is a feature or a threat is up for debate.
-*   **Target Serialization:** Once a target is identified and deemed worthy of attention, its coordinates are serialized and sent over to the "Brawn" for... *processing*.
+*   **Motion System:** It controls a pan/tilt turret built with two stepper motors, using the `AccelStepper` and `MultiStepper` libraries for smooth, coordinated movement.
+*   **Dual-Mode Input:** The firmware can operate in two modes. It can either receive target coordinates from the main CV system or function independently using an LD2450 radar module for basic motion detection.
+*   **Command Queue:** To manage operations, the firmware uses a time-sequenced command queue. Actions like "move to coordinates," "select target," and "fire" are scheduled and executed in order. This allows for sequencing complex behaviors without blocking the main control loop.
 
-### The "Brawn": The Pointy End
+### The Math: Ballistic Compensation
 
-This is where the thinking turns into doing. The firmware, written in C++ and running on an ESP32, is the muscle of the operation. It's a lean, mean, motor-controlling machine.
+To hit a target at a distance, you can't just point and shoot. You have to account for gravity.
 
-*   **Dual Stepper Motors:** For precise and surprisingly quiet movement. It can pan and tilt with a grace that belies its crude purpose.
-*   **Dual-Mode Operation:** The firmware is a versatile beast. It can take its orders from the high-tech "Brains" over a serial connection, or it can operate independently using a simpler, but effective, **LD2450 Radar Sensor**. So, even if the all-seeing eye is offline, it can still detect movement. It's resourceful like that.
-*   **Real-Time, Interrupt-Driven:** It's built to react, and react fast. Because when you're dealing with... *dynamic*... targets, every millisecond counts.
+*   **The Problem:** Calculating the correct launch angle to hit a target at a given distance and height involves solving a rather nasty quartic equation, which is computationally expensive for a microcontroller.
+*   **The Solution:** Instead of solving it directly, we use a numerical approximation method. This approach finds a "good enough" solution in a fixed, predictable amount of time, making it suitable for real-time applications. The result is a system that can arc a stream of water with surprising accuracy.
 
-## "Features" (Or Bugs, Depending on Your Perspective)
+## Frequently Asked Questions
 
-*   **Autonomous Target Acquisition and Tracking:** It finds things and points at them. All by itself.
-*   **Person Recognition:** It remembers faces. And maybe holds a grudge.
-*   **Dual-Input System:** Can be driven by complex CV data or a simple radar. It's not picky.
-*   **Modular Design:** The "Brains" and "Brawn" are separate, so you can swap out one without (completely) breaking the other.
-*   **Vaguely Humorous and Sarcastic Tone:** A key feature, baked right into the documentation.
+### Isn't this massively too complicated for a squirt gun?
+Yes. Next question.
 
-## The Guts (Technology Stack)
+### Why the custom serialization protocol?
+Because inventing a marginally adequate solution from scratch is an important part of the learning process. It also avoids adding another dependency.
+
+### What was the thinking behind the library design?
+The C++ code is structured to be as modular as possible within the constraints of the Arduino environment. State, targeting logic, and hardware control are separated into their own classes to improve testability and allow for easier modification. For instance, the stepper control logic is abstracted away from the main state machine, which only cares about high-level commands.
+
+### What kind of targets?
+Unsuspecting.
+
+## Technology Stack
 
 ### Hardware
-*   **Luxonis OAK-D:** For seeing things.
-*   **ESP32:** For doing things.
-*   **Dual NEMA-17 Stepper Motors:** For moving things.
-*   **LD2450 Radar Sensor:** For when you want to see things, but with radio waves.
-*   **A 3D-Printed Mount:** Because duct tape, while effective, is not a permanent solution.
+*   Luxonis OAK-D
+*   ESP32 Microcontroller
+*   Dual NEMA-17 Stepper Motors
+*   LD2450 Radar Sensor
+*   A water pump and nozzle assembly
+*   A 3D-Printed Mount
 
 ### Software & Libraries
-*   **Python:** The language of the "Brains."
-*   **C++ (Arduino Framework):** The language of the "Brawn."
-*   **`depthai`:** The all-powerful eye in the sky.
-*   **`sqlite-vec`:** The elephant's memory.
-*   **`AccelStepper` & `MultiStepper`:** For making the motors go brrr.
-*   **A custom serialization protocol:** Because why use a standard when you can invent your own?
+*   Python 3
+*   C++ (Arduino Framework)
+*   `depthai`
+*   `sqlite-vec`
+*   `AccelStepper` & `MultiStepper`
 
-## A Vague "How to Use" Section
+## Getting Started
 
-1.  Assemble the hardware. Good luck.
-2.  Flash the firmware to the ESP32. You'll probably need the Arduino IDE or PlatformIO.
-3.  Run the Python script on a machine connected to the OAK-D.
-4.  Connect the "Brains" to the "Brawn" via serial.
-5.  Power it all on.
-6.  Pray.
+1.  Assemble the hardware. You're on your own here.
+2.  Flash the firmware in `dualStepperDPTStartWithRadar.ino` to the ESP32 using your preferred tool (e.g., Arduino IDE, PlatformIO).
+3.  Run the `cvTargetAssist.py` script on a machine connected to the OAK-D camera.
+4.  Ensure the Python script can communicate with the ESP32 over a serial port.
+5.  Add water. Power on.
+6.  Try not to make a mess.
 
 ## Disclaimer
-
-Look, this is a toy. A very, *very* elaborate toy. It's not a weapon, it's not a security system, and it's definitely not a substitute for a responsible adult. If you build this, you are responsible for what it does. Don't point it at people, pets, or anything you value. The author of this project is not liable for any robot uprisings, interdimensional portals, or startled cats. You have been warned.
-
-Now, go build something ridiculous.
+This is a hobby project. It is provided as-is, without warranty of any kind. The author is not responsible for any water damage, startled pets, or annoyed housemates that may result from its use.
