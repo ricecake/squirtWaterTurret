@@ -50,8 +50,8 @@ from depthai_nodes.message.keypoints import Keypoint
 class ScriptSettings:
     """Global settings for the script's operation."""
     # --- General ---
-    ENABLE_VISUALIZER = False  # Enable remote visualizer
-    SERIAL_OUTPUT = True       # Enable sending data over serial port
+    ENABLE_VISUALIZER = True  # Enable remote visualizer
+    SERIAL_OUTPUT = False       # Enable sending data over serial port
     LOG_LEVEL = dai.LogLevel.WARN
     FPS = 10                   # Camera and pipeline frames per second
 
@@ -273,7 +273,7 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         self.link_args(detection_msg)
         return self
 
-    def process(self, dets_msg: ImgDetectionsExtended) -> None:
+    def process(self, dets_msg) -> None:
         """
         Processes a message containing pose detections.
 
@@ -281,6 +281,7 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         1. A `SpatialLocationCalculatorConfig` for the depth node.
         2. An `ImgDetections` message to configure a cropping node.
         """
+        assert isinstance(dets_msg, ImgDetectionsExtended)
         depth_rois = []
         recognition_crops = []
         valid_detections = []
