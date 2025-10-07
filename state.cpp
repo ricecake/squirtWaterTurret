@@ -1,17 +1,19 @@
 #include "state.h"
+
+#include <algorithm>
+#include <chrono>
+#include <ratio>
+
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
 #include "fpm_adapter.hpp"
 #include "target_selection.h"
 #include "utilities.h"
-#include <algorithm>
-#include <chrono>
-#include <ratio>
 
 #ifdef ARDUINO
-#include "HardwareSerial.h"
+	#include "HardwareSerial.h"
 #else
-#include "tests/mocks.h"
+	#include "tests/mocks.h"
 #endif
 
 SystemState::SystemState() {

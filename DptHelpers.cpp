@@ -7,12 +7,14 @@
  */
 
 #ifdef ARDUINO
-#include "HardwareSerial.h"
-#include "esp32-hal-gpio.h"
-#include "esp_timer.h"
-#include <Arduino.h>
+	#include "HardwareSerial.h"
+	#include "esp32-hal-gpio.h"
+	#include "esp_timer.h"
+
+	#include <Arduino.h>
 #endif
 
 #include "DptHelpers.h"
+
 #include <climits>
 #include <stdint.h>

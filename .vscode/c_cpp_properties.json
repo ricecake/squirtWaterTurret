@@ -8,7 +8,7 @@
                 "~/.arduino15/packages/esp32/**"
             ],
             "defines": [
-                "ARDUINO=150"
+                // "ARDUINO=150"
             ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c23",

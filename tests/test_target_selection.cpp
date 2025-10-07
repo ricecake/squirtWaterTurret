@@ -1,8 +1,10 @@
 #include "tests/test_target_selection.h"
+
+#include <cassert>
+
 #include "state.h"
 #include "target_selection.h"
 #include "tests/mocks.h"
-#include <cassert>
 
 // Test case for the TargetSelection command
 void test_TargetSelection_execute() {

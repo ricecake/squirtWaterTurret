@@ -5,11 +5,12 @@
 #include <stdint.h>
 
 #ifdef ARDUINO
-#include "freertos/semphr.h"
-#include <AccelStepper.h>
-#include <MultiStepper.h>
+	#include "freertos/semphr.h"
+
+	#include <AccelStepper.h>
+	#include <MultiStepper.h>
 #else
-#include "tests/mocks.h"
+	#include "tests/mocks.h"
 #endif
 
 #include "command.h"

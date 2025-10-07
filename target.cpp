@@ -1,11 +1,12 @@
-#include "DptHelpers.h"
+#include "target.h"
+
 #include <climits>
+#include <math.h>
 #include <stdint.h>
 
+#include "DptHelpers.h"
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"
-#include "target.h"
-#include <math.h>
 
 /**
  * @brief Constructs a DistanceVector from a VelocityVector and a time interval.

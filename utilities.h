@@ -1,7 +1,8 @@
 #pragma once
 
-#include "fpm_adapter.hpp"
 #include <chrono>
+
+#include "fpm_adapter.hpp"
 
 // struct FixedReprHighResClock : public std::chrono::high_resolution_clock {
 // 	using rep = fixed;

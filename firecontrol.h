@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 #ifdef ARDUINO
-#include <AccelStepper.h>
-#include <MultiStepper.h>
+	#include <AccelStepper.h>
+	#include <MultiStepper.h>
 #endif
 
 #include "command.h"

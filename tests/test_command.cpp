@@ -1,8 +1,10 @@
 #include "tests/test_command.h"
+
+#include <cassert>
+
 #include "command.h"
 #include "state.h"
 #include "tests/mocks.h"
-#include <cassert>
 
 // Test case for the LingerCommand
 #include "tests/mocks.h"

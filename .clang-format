@@ -23,7 +23,9 @@ BreakInheritanceList: AfterColon
 ColumnLimit: '0'
 CompactNamespaces: 'false'
 ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
+IncludeBlocks: Regroup
 IndentCaseLabels: 'false'
+IndentPPDirectives: BeforeHash
 IndentWidth: '4'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
 Language: Cpp
@@ -42,3 +44,8 @@ SpacesInParentheses: 'false'
 Standard: Cpp11
 TabWidth: '4'
 UseTab: ForContinuationAndIndentation
+IncludeCategories:
+- Regex:           '<[[:alnum:].]+>'
+  Priority:        1
+- Regex:           '.*'
+  Priority:        2

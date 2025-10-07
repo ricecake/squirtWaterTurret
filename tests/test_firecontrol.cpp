@@ -1,11 +1,13 @@
 #include "tests/test_firecontrol.h"
+
+#include <cassert>
+#include <chrono>
+#include <thread>
+
 #include "firecontrol.h"
 #include "state.h"
 #include "tests/mocks.h"
 #include "utilities.h"
-#include <cassert>
-#include <chrono>
-#include <thread>
 
 // Test case for activating the firing mechanism
 void test_FireControl_activate() {

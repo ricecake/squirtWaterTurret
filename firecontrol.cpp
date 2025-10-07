@@ -1,6 +1,8 @@
 #include "firecontrol.h"
-#include "utilities.h"
+
 #include <stdint.h>
+
+#include "utilities.h"
 
 
 /**
