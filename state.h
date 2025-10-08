@@ -5,9 +5,9 @@
 #include <stdint.h>
 
 #ifdef ARDUINO
-	#include "freertos/semphr.h"
-
 	#include <AccelStepper.h>
+
+	#include "freertos/semphr.h"
 #else
 	#include "tests/mocks.h"
 #endif
@@ -72,49 +72,52 @@ private:
 		0;  ///< The index of the currently selected target.
 
 private:
-	PositionVector         targetAimpoint();
-	std::array<Target, 32> target;
-	std::array<Target, 3>
-		radarTarget;  // Separate the two -- by default populate the radar
-					  // target and prefer the target list if possible
+	PositionVector targetAimpoint();
 	std::priority_queue<Command*, std::vector<Command*>,
 						decltype(CommandPointerComparator)>
 		commandQueue;  ///< Priority queue for pending commands.
 
 public:
+	std::array<Target, 32> target;
+	std::array<Target, 3>  radarTarget;  // Separate the two -- by default populate the radar
+										 // target and prefer the target list if possible
+
+public:
 	SystemState();
 	Target&          currentTarget();
 	constexpr size_t size() { return target.size(); }
-	void             updateTarget(const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+	void             updateTarget(const auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 
 	/**
 	 * @brief Updates a target by its ID.
 	 * If the ID is not found, it tries to use an invalid target or the oldest
 	 * one.
 	 */
-	inline void updateTargetById(const uint8_t id, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
+	inline void updateTargetById(const auto& targetArray, const uint8_t id, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
 		auto pred = [&](Target& item) { return item.id == id; };
-		auto found = std::ranges::find_if(target, pred);
+		auto found = std::ranges::find_if(targetArray, pred);
 
-		if (found == target.end()) {
+		if (found == targetArray.end()) {
 			auto pred = [&](Target& item) { return item.valid == false; };
-			found = std::ranges::find_if(target, pred);
+			found = std::ranges::find_if(targetArray, pred);
 		}
 
-		if (found == target.end()) {
+		if (found == targetArray.end()) {
 			auto pred = [&](Target& item) { return item.seen; };
-			found = std::ranges::min_element(target, std::ranges::less{}, pred);
+			found = std::ranges::min_element(targetArray, std::ranges::less{}, pred);
 		}
 
-		updateTarget(found->index, valid, newPosition, indifferenceMargin);
-		target[found->index].id = id;
+		updateTarget(targetArray, found->index, valid, newPosition, indifferenceMargin);
+		targetArray[found->index].id = id;
 	};
 
 	void updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void setTarget(uint8_t index, uint8_t speed = 0xFF);
 	void setFire(bool active);
+	void setMove(bool active);
 	bool getFireState();
+	bool getMoveState();
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
 	void queueFire(uint16_t milliseconds);
 	void queueLinger(uint8_t milliseconds);

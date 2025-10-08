@@ -34,22 +34,10 @@ Target& SystemState::currentTarget() {
 	return target[selectedTarget];
 }
 
-void SystemState::updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
-	auto idx = fetchNearestTargetIdx(newPosition);
-	updateTarget(idx, valid, newPosition, indifferenceMargin);
-}
-
-void SystemState::updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
-	auto idx = fetchNearestTarget2dIdx(newPosition);
-	auto prev = fetchTarget(idx);
-	newPosition.Z_coord = prev.Position().Z_coord;
-	updateTarget(idx, valid, newPosition, indifferenceMargin);
-}
-
-void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
+void SystemState::updateTarget(const auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
 	bool doUpdate = true;
 	if (indifferenceMargin > 0) {
-		auto oldTarget = target[idx];
+		auto oldTarget = targetArray[idx];
 		auto oldTargetPos = oldTarget.Position();
 		if (oldTargetPos) {
 			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
@@ -59,8 +47,8 @@ void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVect
 
 	if (doUpdate) {
 		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
-		target[idx].Update(newPosition);
-		target[idx].valid = valid;
+		targetArray[idx].Update(newPosition);
+		targetArray[idx].valid = valid;
 		needTrackingUpdate = true;
 	}
 }
@@ -75,8 +63,16 @@ void SystemState::setFire(bool active) {
 	fireState = active;
 }
 
+void SystemState::setMove(bool active) {
+	moveState = active;
+}
+
 bool SystemState::getFireState() {
 	return fireState;
+}
+
+bool SystemState::getMoveState() {
+	return moveState;
 }
 
 void SystemState::queueFire(uint16_t fireDuration) {
@@ -145,6 +141,10 @@ void SystemState::actualizeFiring() {
  * @brief Updates the motor positions to track the current target.
  */
 void SystemState::actualizePosition() {
+	if (!moveState) {
+		return;
+	}
+
 	auto target = currentTarget();
 	if (needTrackingUpdate && target.valid) {
 		// Calculate the aimpoint using the target's intercept position
