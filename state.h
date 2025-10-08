@@ -62,11 +62,14 @@ public:
 	SemaphoreHandle_t
 		xMutex;  ///< Mutex for thread-safe access to shared resources.
 
+public:
+	bool cv_system_active = false;
+
 private:
 	bool moveState = true;   ///< Flag indicating if movement is enabled.
 	bool fireState = false;  ///< Flag indicating the current firing state.
 	bool needTrackingUpdate =
-		false;                    ///< Flag indicating if a tracking update is required.
+		false;  ///< Flag indicating if a tracking update is required.
 	uint8_t trackingSpeed = 255;  ///< The speed for tracking movements.
 	uint8_t selectedTarget =
 		0;  ///< The index of the currently selected target.

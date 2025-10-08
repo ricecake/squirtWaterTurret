@@ -327,6 +327,27 @@ namespace cerializer {
 	};
 
 	/**
+	 * @brief A message to indicate the source of targeting data.
+	 *
+	 * This message is sent by the CV system to the microcontroller to indicate
+	 * whether it is online and providing target data. This allows the microcontroller
+	 * to switch between using CV data and its own radar sensor.
+	 */
+	class TargetSourceMessage: public Message<TargetSourceMessage, 1, bool> {
+	public:
+		const bool cv_active;
+
+	public:
+		constexpr inline TargetSourceMessage(bool cv_active) noexcept :
+			cv_active(cv_active) {
+			assert(registered);
+		}
+		constexpr std::array<char, Size()> encode() const {
+			return pack(cv_active);
+		}
+	};
+
+	/**
 	 * @brief Concept to identify types that support I/O operations.
 	 */
 	template <typename T>
