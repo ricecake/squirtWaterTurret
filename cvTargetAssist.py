@@ -501,299 +501,56 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         return (new_detection, depth_roi, crop_config)
 
 
-class IdentificationNode(dai.node.HostNode):
+class HostProcessingNode(dai.node.ThreadedHostNode):
     """
-    A custom DepthAI node that identifies individuals using a recognition model
-    and a persistent database.
+    A consolidated host-side processing node that handles identification, database
+    management, and serial communication.
 
-    This node receives feature vectors (embeddings) from a recognition NN and
-    compares them against a database of known individuals. It implements logic
-    to decide whether a detection is a known person, a new person, or requires
-    further validation. It then annotates the detection message with this
-    identity information.
+    This node receives detection data, recognition embeddings, and spatial location data
+    from the device. It synchronizes these streams, performs person identification against
+    a SQLite database, and sends the final target information over a serial port.
+    It also receives cropped images of detections to save for later review.
     """
     def __init__(self) -> None:
-        """Initializes the node and the database connection."""
+        """Initializes inputs, the serial port, and the database connection."""
         super().__init__()
+        # Inputs for synchronized data streams from the device
+        self.detections_input = self.createInput()
+        self.recognition_input = self.createInput()
+        self.depth_input = self.createInput()
+
+        # Serial port for communicating with the motor controller
+        self.serial_port = serial.Serial()
+
+        # Database for person identification
         db_path = f"./personDb-{ScriptSettings.MODE}-{ScriptSettings.STATE}.sqlite"
         self.db = sqlite3.connect(db_path, check_same_thread=False)
 
-    def build(self, gather_data_msg, frame) -> "IdentificationNode":
-        """
-        Links the node's inputs.
-
-        Args:
-            gather_data_msg: The output from a `GatherData` node, containing synchronized
-                             detections and recognition NN results.
-            frame: The passthrough frame from the detection network, used for saving
-                   images of new individuals.
-        """
-        self.link_args(gather_data_msg, frame)
-        return self
-
     def onStart(self) -> None:
-        """Initializes the database schema and loads the vector extension."""
+        """
+        Initializes the database schema and opens the serial port.
+        """
+        # --- Initialize Database ---
         print("Initializing identification database...")
         # self.db.set_trace_callback(print) # Uncomment for debugging SQL queries
         self.db.enable_load_extension(True)
         sqlite_vec.load(self.db)
         self.db.enable_load_extension(False)
-
-        # Create virtual table for fast vector similarity search
-        self.db.execute("""
-            CREATE VIRTUAL TABLE IF NOT EXISTS person_vector USING vec0(
-                id INTEGER PRIMARY KEY,
-                embedding FLOAT[512] DISTANCE_METRIC=cosine
-            )
-        """)
-        # Create table for person metadata (e.g., name, validation status)
+        self.db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS person_vector USING vec0(embedding FLOAT[512])")
         self.db.execute("""
             CREATE TABLE IF NOT EXISTS person (
-               id INTEGER PRIMARY KEY,
-               name TEXT,
-               type TEXT  -- e.g., 'valid', 'invalid', 'guest'
+               id INTEGER PRIMARY KEY, name TEXT, type TEXT
             )
         """)
-        # Create link table to associate multiple embeddings with a single person
         self.db.execute("""
             CREATE TABLE IF NOT EXISTS person_vector_link (
-                id INTEGER PRIMARY KEY,
-                validated BOOLEAN,
-                vector_id REFERENCES person_vector(id),
-                person_id REFERENCES person(id)
+                id INTEGER PRIMARY KEY, validated BOOLEAN,
+                vector_id REFERENCES person_vector(id), person_id REFERENCES person(id)
             )
         """)
         print("Database initialized.")
-        return super().onStart()
 
-    def onStop(self) -> None:
-        """Closes the database connection gracefully."""
-        print("Closing identification database.")
-        self.db.close()
-        return super().onStop()
-
-    def process(self, gather_data_msg, frame_msg) -> None:
-        """
-        Processes recognition results, compares them to the database, and updates
-        the detection message with identity information.
-        """
-        dets_msg: ImgDetectionsExtended = gather_data_msg.reference_data
-        rec_msg_list: list[dai.NNData] = gather_data_msg.gathered
-        img_frame: dai.ImgFrame = frame_msg
-
-        cv_frame = img_frame.getCvFrame()
-
-        new_detection_message = dets_msg.copy()
-        new_detection_message.detections = []
-
-        for detection, rec_nn_data in zip(dets_msg.detections, rec_msg_list):
-            if detection.confidence < 0.75 or not len(detection.keypoints):
-                continue
-
-            new_detection = detection.copy()
-            embedding = rec_nn_data.getTensor("output", dequantize=True)
-            should_emit, person_name, person_id = self._process_recognition(new_detection, embedding, cv_frame)
-
-            # Encode the result into the label string for the next node to parse.
-            # This is a simple way to pass structured data between host nodes.
-            new_detection.label_name = f"{should_emit}-{person_name}-{person_id}"
-            new_detection_message.detections.append(new_detection)
-
-        self.out.send(new_detection_message)
-
-    def _process_recognition(
-        self, detection: ImgDetectionExtended, embedding: list[float], cv_frame
-    ) -> Tuple[bool, str | None, str | None]:
-        """
-        Handles the core logic of matching an embedding against the database.
-
-        This function implements a state machine to decide whether to:
-        - Emit a "valid target" event.
-        - Create a new person entry in the database.
-        - Create a new vector link for an existing person.
-        - Save an image of the person for later review/validation.
-
-        Args:
-            detection: The detection associated with the embedding.
-            embedding: The feature vector from the recognition network.
-            cv_frame: The full video frame, used for cropping and saving images.
-
-        Returns:
-            A tuple containing:
-            - bool: Whether to emit a valid target event.
-            - str: The name of the identified person.
-            - str: The ID of the identified person.
-        """
-        # --- Decision Logic Summary ---
-        #
-        # | Match Type   | Link Status | Person Status | Action
-        # |--------------|-------------|---------------|--------------------------------------------------
-        # | Close        | Valid       | Valid         | Emit event.
-        # | Medium       | Valid       | Valid         | Emit event, create new (validated) link.
-        # | Medium       | *           | *             | Create new (unvalidated) link, save image.
-        # | Far          | Valid       | *             | Create new (unvalidated) link, save image.
-        # | Far          | Invalid     | *             | Create new person and link, save image.
-        # | Miss         | -           | -             | Create new person and link, save image.
-        #
-        # Note: An event is ONLY emitted if both the link and the person are 'valid'.
-
-        def get_match_type(distance: float) -> str:
-            """Categorizes the embedding distance into 'close', 'medium', 'far', or 'miss'."""
-            if not (0.0 <= distance <= 1.0):
-                return "miss"
-            if distance < ScriptSettings.CLOSE_MATCH_THRESHOLD:
-                return "close"
-            if distance < ScriptSettings.MEDIUM_MATCH_THRESHOLD:
-                return "medium"
-            if distance < ScriptSettings.FAR_MATCH_THRESHOLD:
-                return "far"
-            return "miss"
-
-        # --- Initialize State Variables ---
-        create_new_person = False
-        create_new_link = False
-        save_image_file = False
-        emit_target_event = False
-
-        person_id = None
-        person_name = "unknown"
-        distance = -1.0
-        link_is_validated = False
-        person_is_valid = False
-        person_vector_link_id = None # Initialize to avoid UnboundLocalError
-        vector_id = None
-
-        # --- Query Database for Best Match ---
-        with self.db as cur:
-            res = cur.execute(
-                """
-                -- Find the single best match for the given embedding vector
-                SELECT
-                    pv.id as vector_id,
-                    p.id as person_id,
-                    p.name,
-                    p.type,
-                    pvl.validated,
-                    distance -- This is a special column provided by sqlite-vec
-                FROM person_vector pv
-                JOIN person_vector_link pvl ON pvl.vector_id = pv.id
-                JOIN person p ON pvl.person_id = p.id
-                WHERE pv.embedding MATCH ? AND k = 1 -- k=1 returns the top 1 match
-                ORDER BY distance
-                """,
-                [embedding],
-            )
-            row = res.fetchone()
-
-        if row:
-            # Unpack the results if a match was found
-            (vector_id, person_id, person_name, person_type, link_is_validated, distance) = row
-            person_is_valid = (person_type == 'valid')
-
-        match_type = get_match_type(distance)
-
-        # --- Determine Actions Based on Match Type and Status ---
-        if match_type == 'close':
-            emit_target_event = True
-        elif match_type == 'medium':
-            emit_target_event = True
-            create_new_link = True
-            save_image_file = not link_is_validated # Save if the matched link was not yet validated
-        elif match_type == 'far':
-            save_image_file = True
-            if link_is_validated:
-                create_new_link = True # Known person, but poor match. Add a new vector for review.
-            else:
-                create_new_person = True # Unvalidated link, poor match. Assume it's a new person.
-        elif match_type == 'miss':
-            save_image_file = True
-            create_new_person = True
-
-        if create_new_person:
-            create_new_link = True # A new person always gets a new link.
-
-        # Crucial final check: only emit a "valid target" event for a valid person
-        # that was matched with a previously validated embedding link.
-        if not (link_is_validated and person_is_valid):
-            emit_target_event = False
-
-        # --- Execute Database and File System Actions ---
-        if create_new_person or create_new_link:
-            person_name = 'Unknown'
-            # A new link from a medium match to a valid person can be auto-validated.
-            new_link_is_validated = (link_is_validated and match_type == 'medium')
-
-            with self.db as cur:
-                if create_new_person:
-                    cur.execute("INSERT INTO person(name, type) VALUES (?, ?)", ['Unknown', 'invalid'])
-                    person_id = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
-
-                if create_new_link:
-                    cur.execute("INSERT INTO person_vector(embedding) VALUES (?)", [embedding])
-                    vector_id = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
-                    cur.execute(
-                        "INSERT INTO person_vector_link(vector_id, person_id, validated) VALUES (?, ?, ?)",
-                        [vector_id, person_id, new_link_is_validated]
-                    )
-                    person_vector_link_id = cur.execute("SELECT last_insert_rowid()").fetchone()[0]
-                cur.commit()
-
-        if save_image_file:
-            # TODO: The face cropping logic here is duplicated from the targeting node.
-            #       This is inefficient and prone to bugs if one is updated and the other is not.
-            # Suggested: Create a helper function or class method that takes keypoints and returns
-            #            a RotatedRect for a face crop. Call this function from both
-            #            `_calculate_target_and_configs` and here. Also, if MODE is 'POSE',
-            #            this should save the body crop, not attempt to calculate a face crop.
-            rect = detection.rotated_rect
-            if ScriptSettings.MODE == 'FACE':
-                l_shoulder = detection.keypoints[5]
-                r_shoulder = detection.keypoints[6]
-                nose = detection.keypoints[0]
-                l_ear = detection.keypoints[3]
-                r_ear = detection.keypoints[4]
-                center_shoulder_y = (l_shoulder.y + r_shoulder.y) / 2
-
-                rect = RotatedRect()
-                rect.center.x = nose.x
-                rect.center.y = nose.y
-                rect.size.width = abs(r_ear.x - l_ear.x) * 1.25
-                rect.size.height = abs(nose.y - center_shoulder_y) * 2.5
-                rect.angle = degrees(atan2(r_ear.y - l_ear.y, l_ear.x - r_ear.x))
-
-            path = f"TestFrames/{ScriptSettings.MODE}-{ScriptSettings.STATE}/"
-            os.makedirs(path, exist_ok=True)
-
-            min_x, min_y, max_x, max_y = rect.denormalize(
-                width=cv_frame.shape[1], height=cv_frame.shape[0]
-            ).getOuterRect()
-
-            crop_image = cv_frame[int(min_y):int(max_y), int(min_x):int(max_x)]
-            if crop_image.any():
-                # Filename includes IDs for easier cross-referencing with the database.
-                filename = f"{path}/{person_id}-{person_vector_link_id}-{vector_id}-{person_name}.png"
-                cv2.imwrite(filename, crop_image)
-
-        return (emit_target_event, person_name, person_id)
-
-
-class SerialSyncNode(dai.node.ThreadedHostNode):
-    """
-    A custom node to synchronize detection/identification results with spatial data
-    and send the final target information over a serial port.
-    """
-    def __init__(self) -> None:
-        """Initializes the node, its inputs, and the serial port object."""
-        super().__init__()
-        self.detections_input = self.createInput()
-        self.depth_input = self.createInput()
-        self.serial_port = serial.Serial()
-
-    def onStart(self) -> None:
-        """
-        Opens the serial port if enabled in the settings.
-        It will retry a few times with a delay before exiting if the port fails to open.
-        """
+        # --- Open Serial Port ---
         if ScriptSettings.SERIAL_OUTPUT:
             retries = 3
             for i in range(retries):
@@ -808,106 +565,228 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
                     if i < retries - 1:
                         print(f"Retrying in 2 seconds... ({i + 1}/{retries})")
                         time.sleep(2)
-
             print("\nFATAL: Could not open serial port after multiple retries. Exiting.")
             sys.exit(1)
 
         return super().onStart()
 
     def onStop(self) -> None:
-        """Closes the serial port if it is open."""
+        """Closes the serial port and database connection."""
         if self.serial_port.is_open:
             self.serial_port.close()
             print("Serial port closed.")
+        print("Closing identification database.")
+        self.db.close()
         return super().onStop()
 
     def run(self):
         """
-        Main loop for the threaded node. It continuously tries to get synchronized
-        messages from its input queues.
+        Main loop for the threaded node. It pulls messages from all input streams,
+        buffers them, and processes them once a synchronized set is available.
         """
+        # Get the queue for the cropped image stream from the device
+        cropped_stream = self.pipeline.getOutputQueue("cropped_stream")
+
+        # Internal buffers to hold messages, keyed by sequence number
+        self.buffers = {
+            "detections": {}, "recognition": {}, "depth": {}, "crop": {}
+        }
+        input_map = {
+            "detections": self.detections_input,
+            "recognition": self.recognition_input,
+            "depth": self.depth_input,
+            "crop": cropped_stream
+        }
+
         while self.isRunning():
             try:
-                # Blocking get() to ensure we have both messages before processing
-                detections_msg = self.detections_input.get()
-                depth_msg = self.depth_input.get()
-                self.process(detections_msg, depth_msg)
-            except dai.MessageQueue.QueueException:
-                # This exception is thrown when the queue is closed (e.g., pipeline stopping)
-                break
+                # Check all inputs for new messages and add them to buffers
+                for name, queue in input_map.items():
+                    msg = queue.tryGet()
+                    if msg:
+                        seq = msg.getSequenceNum()
+                        self.buffers[name][seq] = msg
 
-    def process(self, detections_msg, spatial_data_msg) -> None:
+                # Check for synchronized sequences and process them
+                self._process_buffers()
+
+            except dai.MessageQueue.QueueException:
+                break # Queue has been closed, exit the loop
+            time.sleep(0.001) # Prevent busy-waiting
+
+    def _process_buffers(self):
         """
-        Processes synchronized detection and depth messages, creates a `TargetMessage`,
-        serializes it, and sends it over the serial port.
+        Iterates through the primary buffer (detections) and looks for a complete
+        set of synchronized messages in the other buffers.
+        """
+        processed_sequences = []
+        for seq, detections_msg in self.buffers["detections"].items():
+            # Check if this sequence number exists in all other buffers
+            if all(seq in self.buffers[name] for name in ["recognition", "depth", "crop"]):
+                # A complete, synchronized set is found.
+                rec_msg = self.buffers["recognition"][seq]
+                depth_msg = self.buffers["depth"][seq]
+                crop_msg = self.buffers["crop"][seq]
+
+                # Process the synchronized messages
+                self.process(detections_msg, rec_msg, depth_msg, crop_msg)
+
+                # Add the sequence number to the list of processed items
+                processed_sequences.append(seq)
+
+        # Clean up processed messages from all buffers
+        for seq in processed_sequences:
+            for buffer in self.buffers.values():
+                if seq in buffer:
+                    del buffer[seq]
+
+    def process(self, detections_msg, rec_msg, spatial_data_msg, crop_msg) -> None:
+        """
+        Processes a synchronized set of data, performs identification, and sends
+        the final target information over the serial port.
         """
         spatial_locations = spatial_data_msg.getSpatialLocations()
+        # The recognition NN and cropped image streams send a list of messages
+        # per detection, so we get the raw data list.
+        rec_nn_list = rec_msg.getData()
+        cropped_frames = crop_msg.getData()
+
         if not ScriptSettings.SERIAL_OUTPUT:
             print("--- TARGET PACKET ---")
 
-        for detection, spatial_data in zip(detections_msg.detections, spatial_locations):
-            # Keypoint 17 is the calculated target point. If it's not present, skip.
-            if len(detection.keypoints) < 18:
+        for i, detection in enumerate(detections_msg.detections):
+            # Ensure all data is present for this specific detection
+            if len(detection.keypoints) < 18 or i >= len(rec_nn_list) or i >= len(cropped_frames):
                 continue
 
-            # Extract coordinates and map them to the desired coordinate system.
-            # DepthAI's coordinate system: X is right, Y is up, Z is forward.
-            # Desired system: X is right, Y is forward, Z is up.
-            # Coordinates are measured from the center of the frame - not a problem for X and Y,
-            # but Z needs to be an offset from the camera height.
-            # TODO: factor in incline of camera for more precision.
+            embedding = rec_nn_list[i].getTensor("output", dequantize=True)
+            cv_frame = cropped_frames[i].getCvFrame()
+
+            # Perform person identification using the embedding and save image if needed
+            should_emit, name, person_id = self._process_recognition(detection, embedding, cv_frame)
+
+            # Get spatial coordinates for the target
+            spatial_data = spatial_locations[i]
             x_coord = int(spatial_data.spatialCoordinates.x)
-            y_coord = int(spatial_data.spatialCoordinates.z)  # Map DepthAI 'z' to our 'y'
-            z_coord = int(ScriptSettings.HEIGHT - spatial_data.spatialCoordinates.y)  # Map DepthAI 'y' to our 'z', as offset from camera height
+            y_coord = int(spatial_data.spatialCoordinates.z)
+            z_coord = int(ScriptSettings.HEIGHT - spatial_data.spatialCoordinates.y)
 
-            # Parse identity info from the label string created by the IdentificationNode
-            emit_str, name, id_str = detection.label_name.split('-')
-            should_emit = (emit_str == 'True')
-            target_id = int(id_str) if id_str != 'None' else -1
-
-            # Create and serialize the message
-            target_packet = TargetMessage(target_id, should_emit, x_coord, y_coord, z_coord).serialize()
+            # Create and send the final target message
+            target_packet = TargetMessage(person_id or -1, should_emit, x_coord, y_coord, z_coord).serialize()
 
             if ScriptSettings.SERIAL_OUTPUT:
                 if self.serial_port.is_open:
                     self.serial_port.write(target_packet)
             else:
                 # Print for debugging if serial is off
-                print(f"\tSeq: {detections_msg.getSequenceNum()}, TS: {detections_msg.getTimestamp()}")
-                print(f"\tID: {target_id}, Name: {name}, Emit: {should_emit}")
+                print(f"\tSeq: {detections_msg.getSequenceNum()}, Name: {name}, Emit: {should_emit}")
                 print(f"\tCoords (x,y,z): ({x_coord}, {y_coord}, {z_coord})")
                 print(f"\tPacket: {target_packet.hex()}")
+
+    def _process_recognition(
+        self, detection: ImgDetectionExtended, embedding: list[float], cv_frame
+    ) -> Tuple[bool, str | None, int | None]:
+        """
+        Handles the core logic of matching an embedding against the database.
+        This is largely the same logic as the original IdentificationNode.
+        """
+        def get_match_type(distance: float) -> str:
+            if not (0.0 <= distance <= 1.0): return "miss"
+            if distance < ScriptSettings.CLOSE_MATCH_THRESHOLD: return "close"
+            if distance < ScriptSettings.MEDIUM_MATCH_THRESHOLD: return "medium"
+            if distance < ScriptSettings.FAR_MATCH_THRESHOLD: return "far"
+            return "miss"
+
+        create_new_person = create_new_link = save_image_file = emit_target_event = False
+        person_id = None
+        person_name = "unknown"
+        distance = -1.0
+        link_is_validated = person_is_valid = False
+        vector_id = None
+
+        with self.db as cur:
+            res = cur.execute(
+                "SELECT p.id, p.name, p.type, pvl.validated, pv.id, distance "
+                "FROM person_vector pv "
+                "JOIN person_vector_link pvl ON pvl.vector_id = pv.id "
+                "JOIN person p ON pvl.person_id = p.id "
+                "WHERE pv.embedding MATCH ? AND k = 1 ORDER BY distance",
+                [embedding],
+            ).fetchone()
+
+        if res:
+            person_id, person_name, person_type, link_is_validated, vector_id, distance = res
+            person_is_valid = (person_type == 'valid')
+
+        match_type = get_match_type(distance)
+
+        if match_type == 'close':
+            emit_target_event = True
+        elif match_type == 'medium':
+            emit_target_event = True
+            create_new_link = True
+            save_image_file = not link_is_validated
+        elif match_type == 'far':
+            save_image_file = True
+            create_new_link = link_is_validated
+            create_new_person = not link_is_validated
+        elif match_type == 'miss':
+            save_image_file = True
+            create_new_person = True
+
+        if create_new_person:
+            create_new_link = True
+
+        if not (link_is_validated and person_is_valid):
+            emit_target_event = False
+
+        if create_new_person or create_new_link:
+            person_name = 'Unknown'
+            new_link_is_validated = (link_is_validated and match_type == 'medium')
+            with self.db as cur:
+                if create_new_person:
+                    person_id = cur.execute("INSERT INTO person(name, type) VALUES (?, ?)", ['Unknown', 'invalid']).lastrowid
+                if create_new_link:
+                    vector_id = cur.execute("INSERT INTO person_vector(embedding) VALUES (?)", [embedding]).lastrowid
+                    cur.execute(
+                        "INSERT INTO person_vector_link(vector_id, person_id, validated) VALUES (?, ?, ?)",
+                        [vector_id, person_id, new_link_is_validated]
+                    )
+
+        if save_image_file and cv_frame.any():
+            path = f"TestFrames/{ScriptSettings.MODE}-{ScriptSettings.STATE}/"
+            os.makedirs(path, exist_ok=True)
+            filename = f"{path}/{person_id}-{vector_id}-{person_name}.png"
+            cv2.imwrite(filename, cv_frame)
+
+        return (emit_target_event, person_name, person_id)
 
 
 # ======================================================================================
 # --- Pipeline Construction ---
 # ======================================================================================
 
-# This script node is a workaround to dynamically generate ImageManip configs
-# based on the output of the detection network. It acts as a bridge between
-# the detection node and the ImageManip node for cropping.
-# TODO: This `Script` node adds complexity and overhead. The logic it contains
-#       (iterating detections and creating crop configs) is very similar to what's
-#       in `DetectionTargetingConfigurationNode`.
-# Suggested: It might be possible to merge this logic into the
-#            `DetectionTargetingConfigurationNode` itself. The node could be modified
-#            to output the `ImageManipConfig` directly, removing the need for this
-#            intermediate script node and simplifying the pipeline graph.
+# This script node is responsible for generating ImageManip configurations for
+# cropping based on detection data. It receives detection and depth configuration
+# messages and outputs an `ImageManipConfig` message to the cropping node.
+# The video frame itself is passed directly from the detection network to the
+# cropping node on the device, avoiding a costly device-to-host round trip.
 image_manip_script_content = f"""
 try:
     while True:
-        frame = node.inputs['preview'].get()
+        # The script now only receives detection and depth configurations.
+        # It no longer needs to handle the video frame itself.
         dets  = node.inputs['det_in'].tryGet()
         depth = node.inputs['depth_in'].tryGet()
 
-        if not (frame and dets and depth):
+        if not (dets and depth):
             continue
 
         if len(dets.detections) == 0:
             continue
 
-        # Passthrough the frame and depth config
-        node.outputs['manip_img'].send(frame)
+        # Passthrough the depth config. The frame for cropping will be
+        # linked directly from the detection NN to the ImageManip node.
         node.outputs['depth_cfg'].send(depth)
 
         for index, det in enumerate(dets.detections):
@@ -922,7 +801,8 @@ try:
 
             cfg.addCropRotatedRect(rect, True)
             cfg.setOutputSize({recognition_model_width}, {recognition_model_height}, ImageManipConfig.ResizeMode.CENTER_CROP)
-            # Reuse the input image for subsequent crops in the same message
+            # Reuse the input image for subsequent crops in the same message.
+            # This is crucial for performance, as it avoids re-sending the frame.
             cfg.setReusePreviousImage(index < len(dets.detections) - 1)
             node.outputs['manip_cfg'].send(cfg)
 
@@ -962,7 +842,7 @@ with dai.Pipeline(device) as pipeline:
     # --- Script node for dynamic cropping ---
     image_manip_script_node = pipeline.create(dai.node.Script)
     image_manip_script_node.setScript(image_manip_script_content)
-    det_nn.passthrough.link(image_manip_script_node.inputs["preview"])
+    # The script no longer receives the full frame ('preview').
     target_detection_node.crop_config_output.link(image_manip_script_node.inputs["det_in"])
     target_detection_node.depth_config_output.link(image_manip_script_node.inputs['depth_in'])
 
@@ -971,29 +851,23 @@ with dai.Pipeline(device) as pipeline:
     crop_node.inputConfig.setWaitForMessage(True)
     crop_node.initialConfig.setOutputSize(recognition_model_width, recognition_model_height)
     image_manip_script_node.outputs["manip_cfg"].link(crop_node.inputConfig)
-    image_manip_script_node.outputs["manip_img"].link(crop_node.inputImage)
+    # The full frame is now linked directly from the detection NN to the crop node,
+    # keeping the image data on the device.
+    det_nn.passthrough.link(crop_node.inputImage)
+
+    # --- Stream Cropped Images to Host ---
+    # This XLinkOut node sends the small, cropped images to the host computer.
+    # This is far more efficient than sending the entire video frame.
+    cropped_stream = pipeline.create(dai.node.XLinkOut)
+    cropped_stream.setStreamName("cropped_stream")
+    crop_node.out.link(cropped_stream.input)
 
     # --- Recognition NN ---
+    # The same cropped output is also sent to the on-device recognition network.
     rec_nn = pipeline.create(ParsingNeuralNetwork).build(
         crop_node.out, rec_nn_archive
     )
     rec_nn.setNNArchive(rec_nn_archive, numShaves=4)
-
-    # --- Data Gathering and Identification ---
-    # TODO: The GatherData node introduces latency by buffering messages to synchronize
-    #       the recognition results with the original detection data.
-    # Suggested: For improved performance, consider integrating the synchronization logic
-    #            directly into the `IdentificationNode`. This would involve passing the
-    #            detection messages directly to the `IdentificationNode` and managing
-    #            a queue internally to match them with the recognition results.
-    gather_data_node = pipeline.create(GatherData).build(camera_fps=ScriptSettings.FPS)
-    rec_nn.out.link(gather_data_node.input_data)
-    target_detection_node.out.link(gather_data_node.input_reference)
-
-    id_node = pipeline.create(IdentificationNode).build(
-        gather_data_msg=gather_data_node.out,
-        frame=det_nn.passthrough,
-    )
 
     # --- Stereo Cameras and Depth Calculation ---
     mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
@@ -1020,17 +894,22 @@ with dai.Pipeline(device) as pipeline:
     spatial_location_calculator.inputDepth.setBlocking(False)
     spatial_location_calculator.inputDepth.setMaxSize(2)
 
-    # --- Final Sync and Serial Output ---
-    sync_node = pipeline.create(SerialSyncNode)
-    id_node.out.link(sync_node.detections_input)
-    spatial_location_calculator.out.link(sync_node.depth_input)
+    # --- Host-Side Processing ---
+    # The consolidated HostProcessingNode receives all necessary data streams from the device.
+    host_processing_node = pipeline.create(HostProcessingNode)
+    target_detection_node.out.link(host_processing_node.detections_input)
+    rec_nn.out.link(host_processing_node.recognition_input)
+    spatial_location_calculator.out.link(host_processing_node.depth_input)
+
 
     # --- Optional Visualizer ---
     if ScriptSettings.ENABLE_VISUALIZER:
         print("Starting visualizer...")
         visualizer = dai.RemoteConnection(address='0.0.0.0', httpPort=8082)
         visualizer.addTopic("Video", det_nn.passthrough, "images")
-        visualizer.addTopic("Objects", id_node.out, "images")
+        # The "Objects" topic is removed because the new consolidated HostProcessingNode
+        # does not output a displayable ImgDetections message. Its purpose is to process
+        # data and send it via serial, not to visualize it directly in the pipeline.
 
     # ======================================================================================
     # --- Main Loop ---
