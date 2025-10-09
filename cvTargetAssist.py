@@ -501,7 +501,7 @@ class DetectionTargetingConfigurationNode(dai.node.HostNode):
         return (new_detection, depth_roi, crop_config)
 
 
-class IdentificationNode(dai.node.HostNode):
+class IdentificationNode(dai.node.ThreadedHostNode):
     """
     A custom DepthAI node that identifies individuals using a recognition model
     and a persistent database.
@@ -518,18 +518,15 @@ class IdentificationNode(dai.node.HostNode):
         db_path = f"./personDb-{ScriptSettings.MODE}-{ScriptSettings.STATE}.sqlite"
         self.db = sqlite3.connect(db_path, check_same_thread=False)
 
-    def build(self, gather_data_msg, frame) -> "IdentificationNode":
-        """
-        Links the node's inputs.
+        # Create input queues for the different message types
+        self.detections_in = self.createInput()
+        self.recognitions_in = self.createInput()
+        self.frame_in = self.createInput()
 
-        Args:
-            gather_data_msg: The output from a `GatherData` node, containing synchronized
-                             detections and recognition NN results.
-            frame: The passthrough frame from the detection network, used for saving
-                   images of new individuals.
-        """
-        self.link_args(gather_data_msg, frame)
-        return self
+        # Buffers to hold messages while waiting for synchronization
+        self.det_buffer = {}
+        self.rec_buffer = {}
+        self.frame_buffer = {}
 
     def onStart(self) -> None:
         """Initializes the database schema and loads the vector extension."""
@@ -572,21 +569,78 @@ class IdentificationNode(dai.node.HostNode):
         self.db.close()
         return super().onStop()
 
-    def process(self, gather_data_msg, frame_msg) -> None:
+    def run(self):
         """
-        Processes recognition results, compares them to the database, and updates
-        the detection message with identity information.
+        Main loop for the threaded node. It continuously tries to get messages
+        from its input queues, buffers them, and processes them once a complete
+        set (detections, recognitions, frame) is available for a given sequence number.
         """
-        dets_msg: ImgDetectionsExtended = gather_data_msg.reference_data
-        rec_msg_list: list[dai.NNData] = gather_data_msg.gathered
-        img_frame: dai.ImgFrame = frame_msg
+        while self.isRunning():
+            try:
+                # Use tryGet to avoid blocking and allow processing of all queues
+                det_msg = self.detections_in.tryGet()
+                if det_msg:
+                    seq = det_msg.getSequenceNum()
+                    self.det_buffer[seq] = det_msg
+                    # A recognition message is generated for each detection, so we need a sub-buffer
+                    if seq not in self.rec_buffer:
+                        self.rec_buffer[seq] = {}
 
-        cv_frame = img_frame.getCvFrame()
+                rec_msg = self.recognitions_in.tryGet()
+                if rec_msg:
+                    # The recognition message instance number corresponds to the detection index
+                    seq = rec_msg.getSequenceNum()
+                    instance_num = rec_msg.getInstanceNum()
+                    if seq not in self.rec_buffer:
+                        self.rec_buffer[seq] = {}
+                    self.rec_buffer[seq][instance_num] = rec_msg
 
+                frame_msg = self.frame_in.tryGet()
+                if frame_msg:
+                    seq = frame_msg.getSequenceNum()
+                    self.frame_buffer[seq] = frame_msg
+
+                # --- Synchronization and Processing ---
+                # Find sequence numbers that are present in all buffers
+                processed_seqs = []
+                for seq in self.det_buffer:
+                    if seq in self.frame_buffer and seq in self.rec_buffer:
+                        # Check if all recognition messages for this sequence have arrived
+                        num_detections = len(self.det_buffer[seq].detections)
+                        num_recognitions = len(self.rec_buffer[seq])
+                        if num_detections == num_recognitions:
+                            # Complete set found, process it
+                            self.process(
+                                self.det_buffer[seq],
+                                self.rec_buffer[seq],
+                                self.frame_buffer[seq]
+                            )
+                            processed_seqs.append(seq)
+
+                # --- Buffer Cleanup ---
+                for seq in processed_seqs:
+                    del self.det_buffer[seq]
+                    del self.rec_buffer[seq]
+                    del self.frame_buffer[seq]
+
+            except dai.MessageQueue.QueueException:
+                # This exception is thrown when the queue is closed (e.g., pipeline stopping)
+                break
+
+    def process(self, dets_msg, rec_msgs, frame_msg) -> None:
+        """
+        Processes synchronized messages, compares recognition results to the database,
+        and updates the detection message with identity information.
+        """
+        cv_frame = frame_msg.getCvFrame()
         new_detection_message = dets_msg.copy()
         new_detection_message.detections = []
 
-        for detection, rec_nn_data in zip(dets_msg.detections, rec_msg_list):
+        # The recognition messages are in a dictionary, sort by instance number (detection index)
+        # to ensure they are processed in the correct order.
+        sorted_rec_items = sorted(rec_msgs.items())
+
+        for (instance_num, rec_nn_data), detection in zip(sorted_rec_items, dets_msg.detections):
             if detection.confidence < 0.75 or not len(detection.keypoints):
                 continue
 
@@ -599,7 +653,8 @@ class IdentificationNode(dai.node.HostNode):
             new_detection.label_name = f"{should_emit}-{person_name}-{person_id}"
             new_detection_message.detections.append(new_detection)
 
-        self.out.send(new_detection_message)
+        if len(new_detection_message.detections) > 0:
+            self.out.send(new_detection_message)
 
     def _process_recognition(
         self, detection: ImgDetectionExtended, embedding: list[float], cv_frame
@@ -979,21 +1034,13 @@ with dai.Pipeline(device) as pipeline:
     )
     rec_nn.setNNArchive(rec_nn_archive, numShaves=4)
 
-    # --- Data Gathering and Identification ---
-    # TODO: The GatherData node introduces latency by buffering messages to synchronize
-    #       the recognition results with the original detection data.
-    # Suggested: For improved performance, consider integrating the synchronization logic
-    #            directly into the `IdentificationNode`. This would involve passing the
-    #            detection messages directly to the `IdentificationNode` and managing
-    #            a queue internally to match them with the recognition results.
-    gather_data_node = pipeline.create(GatherData).build(camera_fps=ScriptSettings.FPS)
-    rec_nn.out.link(gather_data_node.input_data)
-    target_detection_node.out.link(gather_data_node.input_reference)
-
-    id_node = pipeline.create(IdentificationNode).build(
-        gather_data_msg=gather_data_node.out,
-        frame=det_nn.passthrough,
-    )
+    # --- Identification Node ---
+    # This custom node synchronizes detection results, recognition results, and the
+    # video frame. It then performs database lookups to identify individuals.
+    id_node = pipeline.create(IdentificationNode)
+    target_detection_node.out.link(id_node.detections_in)
+    rec_nn.out.link(id_node.recognitions_in)
+    det_nn.passthrough.link(id_node.frame_in)
 
     # --- Stereo Cameras and Depth Calculation ---
     mono_left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
