@@ -13,27 +13,19 @@
 #include <stdint.h>
 #include <vector>
 
-// -#include "HardwareSerial.h"
-// -#include <climits>
-// -#include "esp32-hal-gpio.h"
-// -#include <stdint.h>
-// -#include <Arduino.h>
-// -#include "esp_timer.h"
-// -#include "DptHelpers.h"
-
 HardwareSerial RadarSerial(1);
 HardwareSerial testSerial(2);
 
 struct IOWrapper {
 	HardwareSerial& io;
 	size_t          readsome(char* buf, size_t count) {
-				 return io.readBytes(buf, count);
+        return io.readBytes(buf, count);
 	};
 	bool good() {
 		return bool(io);
 	};
 	IOWrapper(HardwareSerial& io) :
-		io(io){};
+		io(io) {};
 };
 
 IOWrapper wrapped(testSerial);

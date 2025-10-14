@@ -1,17 +1,17 @@
 #include "state.h"
 
+#include "HardwareSerial.h"
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
-#include "fpm_adapter.hpp"
+#include "target.h"
 #include "target_selection.h"
 #include "utilities.h"
-#include "target.h"
+
+#include "fpm_adapter.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <ratio>
-
-#include "HardwareSerial.h"
 
 SystemState::SystemState() {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);

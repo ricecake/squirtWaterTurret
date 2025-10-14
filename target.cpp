@@ -1,6 +1,7 @@
 #include "target.h"
 
 #include "aproximate_math.hpp"
+
 #include "fpm_adapter.hpp"
 
 #include <climits>
