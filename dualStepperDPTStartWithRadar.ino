@@ -1,16 +1,25 @@
-#include <vector>
-
-#include "DptHelpers.h"
+#include "HardwareSerial.h"
+#include "LD2450.h"
+#include "esp32-hal-gpio.h"
+#include "esp_timer.h"
 #include "serializer.hpp"
 #include "state.h"
 #include "utilities.h"
 
-#ifndef ARDUINO
-	#include <AccelStepper.h>
-	#include <Arduino.h>
-	#include <HardwareSerial.h>
+#include <AccelStepper.h>
+#include <Arduino.h>
+#include <HardwareSerial.h>
+#include <climits>
+#include <stdint.h>
+#include <vector>
 
-	#include "LD2450.h"
+// -#include "HardwareSerial.h"
+// -#include <climits>
+// -#include "esp32-hal-gpio.h"
+// -#include <stdint.h>
+// -#include <Arduino.h>
+// -#include "esp_timer.h"
+// -#include "DptHelpers.h"
 
 HardwareSerial RadarSerial(1);
 HardwareSerial testSerial(2);
@@ -18,13 +27,13 @@ HardwareSerial testSerial(2);
 struct IOWrapper {
 	HardwareSerial& io;
 	size_t          readsome(char* buf, size_t count) {
-        return io.readBytes(buf, count);
+				 return io.readBytes(buf, count);
 	};
 	bool good() {
 		return bool(io);
 	};
 	IOWrapper(HardwareSerial& io) :
-		io(io) {};
+		io(io){};
 };
 
 IOWrapper wrapped(testSerial);
@@ -159,4 +168,3 @@ void targetingLoop(void* pvParameters) {
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 }
-#endif

@@ -1,23 +1,19 @@
 #include "state.h"
 
-#include <algorithm>
-#include <chrono>
-#include <ratio>
-
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
 #include "fpm_adapter.hpp"
 #include "target_selection.h"
 #include "utilities.h"
+#include "target.h"
 
-#ifdef ARDUINO
-	#include "HardwareSerial.h"
-#else
-	#include "tests/mocks.h"
-#endif
+#include <algorithm>
+#include <chrono>
+#include <ratio>
+
+#include "HardwareSerial.h"
 
 SystemState::SystemState() {
-#ifdef ARDUINO
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -27,30 +23,10 @@ SystemState::SystemState() {
 	pinMode(firePin, OUTPUT);
 
 	xMutex = xSemaphoreCreateMutex();
-#endif
 }
 
 Target& SystemState::currentTarget() {
 	return target[selectedTarget];
-}
-
-void SystemState::updateTarget(const auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
-	bool doUpdate = true;
-	if (indifferenceMargin > 0) {
-		auto oldTarget = targetArray[idx];
-		auto oldTargetPos = oldTarget.Position();
-		if (oldTargetPos) {
-			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
-			doUpdate = (travelAngle) > indifferenceMargin;
-		}
-	}
-
-	if (doUpdate) {
-		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
-		targetArray[idx].Update(newPosition);
-		targetArray[idx].valid = valid;
-		needTrackingUpdate = true;
-	}
 }
 
 void SystemState::setTarget(uint8_t index, uint8_t speed) {

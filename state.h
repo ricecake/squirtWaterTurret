@@ -1,21 +1,21 @@
 #pragma once
 
+#include <Arduino.h>
 #include <functional>
 #include <queue>
 #include <stdint.h>
-
-#ifdef ARDUINO
-	#include <AccelStepper.h>
-
-	#include "freertos/semphr.h"
-#else
-	#include "tests/mocks.h"
-#endif
+#include <algorithm>
 
 #include "command.h"
-#include "fpm_adapter.hpp"
 #include "target.h"
 #include "vector.hpp"
+
+#include "fpm_adapter.hpp"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
+#include <AccelStepper.h>
 
 using fixed = fixed_16_16;
 
@@ -86,24 +86,41 @@ public:
 	SystemState();
 	Target&          currentTarget();
 	constexpr size_t size() { return target.size(); }
-	void             updateTarget(const auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+	void             updateTarget(auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
+		bool doUpdate = true;
+		if (indifferenceMargin > 0) {
+			auto oldTarget = targetArray[idx];
+			auto oldTargetPos = oldTarget.Position();
+			if (oldTargetPos) {
+				auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
+				doUpdate = (travelAngle) > indifferenceMargin;
+			}
+		}
+
+		if (doUpdate) {
+			// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
+			targetArray[idx].Update(newPosition);
+			targetArray[idx].valid = valid;
+			needTrackingUpdate = true;
+		}
+	}
 
 	/**
 	 * @brief Updates a target by its ID.
 	 * If the ID is not found, it tries to use an invalid target or the oldest
 	 * one.
 	 */
-	inline void updateTargetById(const auto& targetArray, const uint8_t id, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
-		auto pred = [&](Target& item) { return item.id == id; };
-		auto found = std::ranges::find_if(targetArray, pred);
+	inline void updateTargetById(auto& targetArray, const uint8_t id, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
+		auto pred = [&](const Target& item) { return item.id == id; };
+  		auto found = std::ranges::find_if(targetArray, pred);
 
 		if (found == targetArray.end()) {
-			auto pred = [&](Target& item) { return item.valid == false; };
+			auto pred = [&](const Target& item) { return item.valid == false; };
 			found = std::ranges::find_if(targetArray, pred);
 		}
 
 		if (found == targetArray.end()) {
-			auto pred = [&](Target& item) { return item.seen; };
+			auto pred = [&](const Target& item) { return item.seen; };
 			found = std::ranges::min_element(targetArray, std::ranges::less{}, pred);
 		}
 

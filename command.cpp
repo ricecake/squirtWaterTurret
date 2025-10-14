@@ -1,12 +1,8 @@
 #include "command.h"
 
-#include <chrono>
+#include <esp_timer.h>
 
-#ifdef ARDUINO
-	#include <esp_timer.h>
-#else
-	#include "tests/mocks.h"
-#endif
+#include <chrono>
 
 /**
  * @brief Constructs a new Command object.

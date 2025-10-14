@@ -9,7 +9,6 @@ CXXFLAGS = -std=gnu++23 -I. -Wall -Wextra -g
 # Source files
 # List all .cpp files from the project root that contain core logic.
 SRCS = \
-    DptHelpers.cpp \
     command.cpp \
     firecontrol.cpp \
     state.cpp \
