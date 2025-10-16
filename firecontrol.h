@@ -4,7 +4,9 @@
 #include <queue>
 #include <stdint.h>
 
-#include <AccelStepper.h>
+#ifdef ARDUINO
+	#include <AccelStepper.h>
+#endif
 
 #include "command.h"
 #include "state.h"

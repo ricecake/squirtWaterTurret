@@ -1,8 +1,10 @@
 #include "firecontrol.h"
 
+#include <stdint.h>
+
 #include "utilities.h"
 
-#include <stdint.h>
+
 /**
  * @brief Constructs a new FireControl object.
  *

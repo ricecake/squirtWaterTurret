@@ -1,19 +1,23 @@
 #include "state.h"
 
-#include "HardwareSerial.h"
-#include "aproximate_math.hpp"
-#include "firecontrol.h"
-#include "target.h"
-#include "target_selection.h"
-#include "utilities.h"
-
-#include "fpm_adapter.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <ratio>
 
+#include "aproximate_math.hpp"
+#include "firecontrol.h"
+#include "fpm_adapter.hpp"
+#include "target_selection.h"
+#include "utilities.h"
+
+#ifdef ARDUINO
+	#include "HardwareSerial.h"
+#else
+	#include "tests/mocks.h"
+#endif
+
 SystemState::SystemState() {
+#ifdef ARDUINO
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -23,15 +27,42 @@ SystemState::SystemState() {
 	pinMode(firePin, OUTPUT);
 
 	xMutex = xSemaphoreCreateMutex();
+#endif
 }
 
 Target& SystemState::currentTarget() {
-		if (cvActive) {
-			return cvTarget[selectedTarget];
+	return target[selectedTarget];
+}
+
+void SystemState::updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
+	auto idx = fetchNearestTargetIdx(newPosition);
+	updateTarget(idx, valid, newPosition, indifferenceMargin);
+}
+
+void SystemState::updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
+	auto idx = fetchNearestTarget2dIdx(newPosition);
+	auto prev = fetchTarget(idx);
+	newPosition.Z_coord = prev.Position().Z_coord;
+	updateTarget(idx, valid, newPosition, indifferenceMargin);
+}
+
+void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin) {
+	bool doUpdate = true;
+	if (indifferenceMargin > 0) {
+		auto oldTarget = target[idx];
+		auto oldTargetPos = oldTarget.Position();
+		if (oldTargetPos) {
+			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
+			doUpdate = (travelAngle) > indifferenceMargin;
 		}
-		else {
-			return radarTarget[selectedTarget];
-		}
+	}
+
+	if (doUpdate) {
+		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
+		target[idx].Update(newPosition);
+		target[idx].valid = valid;
+		needTrackingUpdate = true;
+	}
 }
 
 void SystemState::setTarget(uint8_t index, uint8_t speed) {
@@ -44,16 +75,8 @@ void SystemState::setFire(bool active) {
 	fireState = active;
 }
 
-void SystemState::setMove(bool active) {
-	moveState = active;
-}
-
 bool SystemState::getFireState() {
 	return fireState;
-}
-
-bool SystemState::getMoveState() {
-	return moveState;
 }
 
 void SystemState::queueFire(uint16_t fireDuration) {
@@ -79,15 +102,6 @@ void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
 		index,
 		0xFF,
 		milliseconds * 1000));
-}
-
-void SystemState::updateConfig(cerializer::Config* config) {
-	this->config.projectile_speed = fixed(config->projectile_speed);
-	this->config.turret_height = fixed(config->turret_height);
-	stepperA.setMaxSpeed(config->max_speed);
-	stepperA.setAcceleration(config->acceleration);
-	stepperB.setMaxSpeed(config->max_speed);
-	stepperB.setAcceleration(config->acceleration);
 }
 
 /**
@@ -131,10 +145,6 @@ void SystemState::actualizeFiring() {
  * @brief Updates the motor positions to track the current target.
  */
 void SystemState::actualizePosition() {
-	if (!moveState) {
-		return;
-	}
-
 	auto target = currentTarget();
 	if (needTrackingUpdate && target.valid) {
 		// Calculate the aimpoint using the target's intercept position

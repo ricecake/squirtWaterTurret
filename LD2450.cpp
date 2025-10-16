@@ -138,7 +138,7 @@ int LD2450::ProcessSerialDataIntoRadarData(byte rec_buf[], int len)
             {
                 if (index + 7 < len)
                 {
-                    LD2450::radarTargets[targetCounter].id = targetCounter;
+                    LD2450::radarTargets[targetCounter].id = targetCounter + 1;
                     LD2450::radarTargets[targetCounter].x = (int16_t)(rec_buf[index] | (rec_buf[index + 1] << 8));
                     LD2450::radarTargets[targetCounter].y = (int16_t)(rec_buf[index + 2] | (rec_buf[index + 3] << 8));
                     LD2450::radarTargets[targetCounter].speed = (int16_t)(rec_buf[index + 4] | (rec_buf[index + 5] << 8));

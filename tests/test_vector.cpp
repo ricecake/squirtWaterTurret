@@ -1,10 +1,10 @@
 #include "tests/test_vector.h"
 
-#include "fpm_adapter.hpp"
-#include "vector.hpp"
-
 #include <cassert>
 #include <cmath>
+
+#include "fpm_adapter.hpp"
+#include "vector.hpp"
 
 using fixed = fixed_16_16;
 

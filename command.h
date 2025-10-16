@@ -1,9 +1,9 @@
 #pragma once
 
-#include "state.h"
-
 #include <compare>
 #include <stdint.h>
+
+#include "state.h"
 
 class SystemState;
 

@@ -306,7 +306,7 @@ class TargetMessage(SerialMessage):
         y (int): The y-coordinate of the target in millimeters.
         z (int): The z-coordinate of the target in millimeters.
     """
-    format = '<HBI?hhhH'  # <H=start, B=code, I=id, ?=valid, h=x,h=y,h=z, H=end>
+    format = '<HBI?HHHH'  # <H=start, B=code, I=id, ?=valid, H=x,H=y,H=z, H=end>
     code = 0
 
     def __init__(self, target_id: int, is_valid: bool, x: int, y: int, z: int):
