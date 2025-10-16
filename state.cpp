@@ -81,6 +81,15 @@ void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
 		milliseconds * 1000));
 }
 
+void SystemState::updateConfig(cerializer::Config* config) {
+	this->config.projectile_speed = fixed(config->projectile_speed);
+	this->config.turret_height = fixed(config->turret_height);
+	stepperA.setMaxSpeed(config->max_speed);
+	stepperA.setAcceleration(config->acceleration);
+	stepperB.setMaxSpeed(config->max_speed);
+	stepperB.setAcceleration(config->acceleration);
+}
+
 /**
  * @brief Processes the command queue, executing any commands that are due.
  */

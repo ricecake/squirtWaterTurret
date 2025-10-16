@@ -128,9 +128,13 @@ void readSerialCommands() {
 		switch (thing->Code()) {
 		case cerializer::Target::Type():
 			auto target = static_cast<cerializer::Target*>(thing.get());
-
 			auto newPositionObservation = PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
 			dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
+			break;
+
+		case cerializer::Config::Type():
+			dptState.updateConfig(static_cast<cerializer::Config*>(thing.get()));
+			break;
 		}
 	}));
 }

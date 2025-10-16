@@ -9,6 +9,8 @@
 #include <span>
 
 #include "command.h"
+#include "fpm_adapter.hpp"
+#include "serializer.hpp"
 #include "target.h"
 #include "vector.hpp"
 
@@ -20,6 +22,18 @@
 #include <AccelStepper.h>
 
 using fixed = fixed_16_16;
+
+/**
+ * @brief A struct to hold tunable configuration parameters for the system.
+ *
+ * These values are expected to be set at runtime via a configuration message.
+ */
+#include "utilities.h"
+
+struct ConfigParameters {
+	fixed projectile_speed = projectileSpeed;  ///< The initial speed of the projectile in meters/second.
+	fixed turret_height = altitude;     ///< The height of the turret from the ground in meters.
+};
 
 class Command;
 
@@ -58,8 +72,9 @@ public:
 		0.1125};  ///< Conversion factor from angle to motor steps.
 
 public:
-	AccelStepper stepperA;  ///< Stepper motor A instance.
-	AccelStepper stepperB;  ///< Stepper motor B instance.
+	ConfigParameters config;    ///< Runtime configuration parameters.
+	AccelStepper     stepperA;  ///< Stepper motor A instance.
+	AccelStepper     stepperB;  ///< Stepper motor B instance.
 
 	SemaphoreHandle_t
 		xMutex;  ///< Mutex for thread-safe access to shared resources.
@@ -152,6 +167,7 @@ public:
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
 	void queueFire(uint16_t milliseconds);
 	void queueLinger(uint8_t milliseconds);
+	void updateConfig(cerializer::Config* config);
 	void processCommandQueue();
 	void actualizeState();
 
