@@ -26,7 +26,12 @@ SystemState::SystemState() {
 }
 
 Target& SystemState::currentTarget() {
-	return target[selectedTarget];
+		if (cvActive) {
+			return cvTarget[selectedTarget];
+		}
+		else {
+			return radarTarget[selectedTarget];
+		}
 }
 
 void SystemState::setTarget(uint8_t index, uint8_t speed) {

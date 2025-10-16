@@ -126,7 +126,7 @@ void readSerialCommands() {
 			auto target = static_cast<cerializer::Target*>(thing.get());
 
 			auto newPositionObservation = PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
-			dptState.updateTargetById(dptState.target, target->id, target->valid, newPositionObservation, 8);
+			dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
 		}
 	}));
 }
@@ -154,7 +154,7 @@ void selectTarget() {
 void targetingLoop(void* pvParameters) {
 	for (;;) {
 		refreshRadarTargets();
-		readSerialCommands();
+		// readSerialCommands();
 		selectTarget();
 		generateFireActions();
 		vTaskDelay(10 / portTICK_PERIOD_MS);

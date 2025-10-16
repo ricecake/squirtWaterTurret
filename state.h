@@ -1,3 +1,4 @@
+#include <cstddef>
 #pragma once
 
 #include <Arduino.h>
@@ -5,6 +6,7 @@
 #include <queue>
 #include <stdint.h>
 #include <algorithm>
+#include <span>
 
 #include "command.h"
 #include "target.h"
@@ -78,14 +80,26 @@ private:
 		commandQueue;  ///< Priority queue for pending commands.
 
 public:
-	std::array<Target, 32> target;
-	std::array<Target, 3>  radarTarget;  // Separate the two -- by default populate the radar
-										 // target and prefer the target list if possible
+	std::array<Target, 32> cvTarget;
+	std::array<Target, 3>  radarTarget;
 
 public:
 	SystemState();
 	Target&          currentTarget();
-	constexpr size_t size() { return target.size(); }
+	bool cvActive = false;
+
+	/// @brief Return the current target array, based on which target system is active.
+	/// @return a span of targets, referencing the correct target buffer.
+	std::span<Target> currentTargetArray() {
+		if (cvActive) {
+			return std::span(cvTarget.begin(), cvTarget.end());
+		}
+		else {
+			return std::span(radarTarget.begin(), radarTarget.end());
+		}
+	}
+
+	constexpr size_t size() { return currentTargetArray().size(); }
 	void             updateTarget(auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
 		bool doUpdate = true;
 		if (indifferenceMargin > 0) {
@@ -144,7 +158,7 @@ public:
 	/**
 	 * @brief Fetches a target by its index.
 	 */
-	inline Target& fetchTarget(const uint8_t idx) { return target[idx]; }
+	inline Target& fetchTarget(const uint8_t idx) { return currentTargetArray()[idx]; }
 
 	/**
 	 * @brief Finds the index of the nearest target in 3D space.
@@ -157,8 +171,8 @@ public:
 				   pow(pos.Z_coord - point.Z_coord, 2);
 		};
 		auto res =
-			std::ranges::min_element(target, std::ranges::less{}, distance);
-		return std::ranges::distance(target.begin(), res);
+			std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
+		return std::ranges::distance(currentTargetArray().begin(), res);
 	}
 
 	/**
@@ -171,8 +185,8 @@ public:
 				   pow(pos.Y_coord - point.Y_coord, 2);
 		};
 		auto res =
-			std::ranges::min_element(target, std::ranges::less{}, distance);
-		return std::ranges::distance(target.begin(), res);
+			std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
+		return std::ranges::distance(currentTargetArray().begin(), res);
 	}
 
 	fixed targetTravelDistance();
