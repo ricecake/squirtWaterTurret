@@ -1,23 +1,45 @@
+#include <cstddef>
 #pragma once
 
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
 #include <functional>
 #include <queue>
 #include <stdint.h>
-
-#ifdef ARDUINO
-	#include "freertos/semphr.h"
-
-	#include <AccelStepper.h>
-#else
-	#include "tests/mocks.h"
-#endif
+#include <algorithm>
+#include <span>
 
 #include "command.h"
 #include "fpm_adapter.hpp"
+#include "serializer.hpp"
 #include "target.h"
 #include "vector.hpp"
 
+#include "fpm_adapter.hpp"
+
+#ifdef ARDUINO
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
+#include <AccelStepper.h>
+#else
+#include "tests/mocks.h"
+#endif
+
 using fixed = fixed_16_16;
+
+/**
+ * @brief A struct to hold tunable configuration parameters for the system.
+ *
+ * These values are expected to be set at runtime via a configuration message.
+ */
+#include "utilities.h"
+
+struct ConfigParameters {
+	fixed projectile_speed = projectileSpeed;  ///< The initial speed of the projectile in meters/second.
+	fixed turret_height = altitude;     ///< The height of the turret from the ground in meters.
+};
 
 class Command;
 
@@ -56,8 +78,9 @@ public:
 		0.1125};  ///< Conversion factor from angle to motor steps.
 
 public:
-	AccelStepper stepperA;  ///< Stepper motor A instance.
-	AccelStepper stepperB;  ///< Stepper motor B instance.
+	ConfigParameters config;    ///< Runtime configuration parameters.
+	AccelStepper     stepperA;  ///< Stepper motor A instance.
+	AccelStepper     stepperB;  ///< Stepper motor B instance.
 
 	SemaphoreHandle_t
 		xMutex;  ///< Mutex for thread-safe access to shared resources.
@@ -75,59 +98,91 @@ private:
 		0;  ///< The index of the currently selected target.
 
 private:
-	PositionVector         targetAimpoint();
-	std::array<Target, 32> target;
-	std::array<Target, 3>
-		radarTarget;  // Separate the two -- by default populate the radar
-					  // target and prefer the target list if possible
+	PositionVector targetAimpoint();
 	std::priority_queue<Command*, std::vector<Command*>,
 						decltype(CommandPointerComparator)>
 		commandQueue;  ///< Priority queue for pending commands.
 
 public:
+	std::array<Target, 32> cvTarget;
+	std::array<Target, 3>  radarTarget;
+
+public:
 	SystemState();
 	Target&          currentTarget();
-	constexpr size_t size() { return target.size(); }
-	void             updateTarget(const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+
+	/// @brief Return the current target array, based on which target system is active.
+	/// @return a span of targets, referencing the correct target buffer.
+	std::span<Target> currentTargetArray() {
+		if (cv_system_active) {
+			return std::span(cvTarget.begin(), cvTarget.end());
+		}
+		else {
+			return std::span(radarTarget.begin(), radarTarget.end());
+		}
+	}
+
+	constexpr size_t size() { return currentTargetArray().size(); }
+	void             updateTarget(auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
+		bool doUpdate = true;
+		if (indifferenceMargin > 0) {
+			auto oldTarget = targetArray[idx];
+			auto oldTargetPos = oldTarget.Position();
+			if (oldTargetPos) {
+				auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
+				doUpdate = (travelAngle) > indifferenceMargin;
+			}
+		}
+
+		if (doUpdate) {
+			// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
+			targetArray[idx].Update(newPosition);
+			targetArray[idx].valid = valid;
+			needTrackingUpdate = true;
+		}
+	}
 
 	/**
 	 * @brief Updates a target by its ID.
 	 * If the ID is not found, it tries to use an invalid target or the oldest
 	 * one.
 	 */
-	inline void updateTargetById(const uint8_t id, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
-		auto pred = [&](Target& item) { return item.id == id; };
-		auto found = std::ranges::find_if(target, pred);
+	inline void updateTargetById(auto& targetArray, const uint8_t id, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
+		auto pred = [&](const Target& item) { return item.id == id; };
+		auto found = std::ranges::find_if(targetArray, pred);
 
-		if (found == target.end()) {
-			auto pred = [&](Target& item) { return item.valid == false; };
-			found = std::ranges::find_if(target, pred);
+		if (found == targetArray.end()) {
+			auto pred = [&](const Target& item) { return item.valid == false; };
+			found = std::ranges::find_if(targetArray, pred);
 		}
 
-		if (found == target.end()) {
-			auto pred = [&](Target& item) { return item.seen; };
-			found = std::ranges::min_element(target, std::ranges::less{}, pred);
+		if (found == targetArray.end()) {
+			auto pred = [&](const Target& item) { return item.seen; };
+			found = std::ranges::min_element(targetArray, std::ranges::less{}, pred);
 		}
 
-		updateTarget(found->index, valid, newPosition, indifferenceMargin);
-		target[found->index].id = id;
+		updateTarget(targetArray, found->index, valid, newPosition, indifferenceMargin);
+		targetArray[found->index].id = id;
 	};
 
 	void updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void setTarget(uint8_t index, uint8_t speed = 0xFF);
 	void setFire(bool active);
+	void setMove(bool active);
 	bool getFireState();
+	bool getMoveState();
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
 	void queueFire(uint16_t milliseconds);
 	void queueLinger(uint8_t milliseconds);
+	void updateConfig(cerializer::Config* config);
 	void processCommandQueue();
 	void actualizeState();
 
 	/**
 	 * @brief Fetches a target by its index.
 	 */
-	inline Target& fetchTarget(const uint8_t idx) { return target[idx]; }
+	inline Target& fetchTarget(const uint8_t idx) { return currentTargetArray()[idx]; }
 
 	/**
 	 * @brief Finds the index of the nearest target in 3D space.
@@ -140,8 +195,8 @@ public:
 				   pow(pos.Z_coord - point.Z_coord, 2);
 		};
 		auto res =
-			std::ranges::min_element(target, std::ranges::less{}, distance);
-		return std::ranges::distance(target.begin(), res);
+			std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
+		return std::ranges::distance(currentTargetArray().begin(), res);
 	}
 
 	/**
@@ -154,8 +209,8 @@ public:
 				   pow(pos.Y_coord - point.Y_coord, 2);
 		};
 		auto res =
-			std::ranges::min_element(target, std::ranges::less{}, distance);
-		return std::ranges::distance(target.begin(), res);
+			std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
+		return std::ranges::distance(currentTargetArray().begin(), res);
 	}
 
 	fixed targetTravelDistance();

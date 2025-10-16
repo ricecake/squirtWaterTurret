@@ -329,7 +329,7 @@ class TargetSourceMessage(SerialMessage):
         cv_active (bool): True if the CV system is online, False otherwise.
     """
     format = '<HB?H'  # <H=start, B=code, ?=cv_active, H=end>
-    code = 1
+    code = 2
 
     def __init__(self, cv_active: bool):
         self.cv_active = cv_active

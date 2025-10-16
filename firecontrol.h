@@ -5,7 +5,9 @@
 #include <stdint.h>
 
 #ifdef ARDUINO
-	#include <AccelStepper.h>
+#include <AccelStepper.h>
+#else
+#include "tests/mocks.h"
 #endif
 
 #include "command.h"

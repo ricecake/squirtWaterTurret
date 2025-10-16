@@ -1,16 +1,16 @@
 #pragma once
 
-#ifdef ARDUINO
-	#include <Arduino.h>
-#endif
-
-#include <chrono>
-#include <stdint.h>
-
 #include "aproximate_math.hpp"
-#include "fpm_adapter.hpp"
 #include "utilities.h"
 #include "vector.hpp"
+
+#include "fpm_adapter.hpp"
+
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
+#include <chrono>
+#include <stdint.h>
 
 using fixed = fixed_16_16;
 

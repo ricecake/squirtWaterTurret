@@ -327,13 +327,40 @@ namespace cerializer {
 	};
 
 	/**
+	 * @brief A message for setting runtime configuration parameters.
+	 *
+	 * This message is used to send updated configuration values to the firmware,
+	 * allowing for on-the-fly tuning of the system's behavior. The float values
+	 * are intended to be converted to fixed-point format on the device.
+	 */
+	class Config: public Message<Config, 1, float, float, uint16_t, uint16_t> {
+	public:
+		const float    projectile_speed;
+		const float    turret_height;
+		const uint16_t max_speed;
+		const uint16_t acceleration;
+
+	public:
+		constexpr inline Config(float projectile_speed, float turret_height, uint16_t max_speed, uint16_t acceleration) noexcept :
+			projectile_speed(projectile_speed),
+			turret_height(turret_height),
+			max_speed(max_speed),
+			acceleration(acceleration) {
+			assert(registered);
+		}
+		constexpr std::array<char, Size()> encode() const {
+			return pack(projectile_speed, turret_height, max_speed, acceleration);
+		}
+	};
+
+	/**
 	 * @brief A message to indicate the source of targeting data.
 	 *
 	 * This message is sent by the CV system to the microcontroller to indicate
 	 * whether it is online and providing target data. This allows the microcontroller
 	 * to switch between using CV data and its own radar sensor.
 	 */
-	class TargetSourceMessage: public Message<TargetSourceMessage, 1, bool> {
+	class TargetSourceMessage: public Message<TargetSourceMessage, 2, bool> {
 	public:
 		const bool cv_active;
 

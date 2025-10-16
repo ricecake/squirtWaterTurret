@@ -1,14 +1,17 @@
-#ifdef ARDUINO
-#include <AccelStepper.h>
-#include <Arduino.h>
-#include <HardwareSerial.h>
-#include <vector>
-
-#include "DptHelpers.h"
+#include "HardwareSerial.h"
 #include "LD2450.h"
+#include "esp32-hal-gpio.h"
+#include "esp_timer.h"
 #include "serializer.hpp"
 #include "state.h"
 #include "utilities.h"
+
+#include <AccelStepper.h>
+#include <Arduino.h>
+#include <HardwareSerial.h>
+#include <climits>
+#include <stdint.h>
+#include <vector>
 
 HardwareSerial RadarSerial(1);
 HardwareSerial testSerial(2);
@@ -16,7 +19,11 @@ HardwareSerial testSerial(2);
 struct IOWrapper {
 	HardwareSerial& io;
 	size_t          readsome(char* buf, size_t count) {
-        return io.readBytes(buf, count);
+		size_t available = io.available();
+		if (available > 0) {
+			return io.readBytes(buf, min(count, available));
+		}
+		return 0;
 	};
 	bool good() {
 		return bool(io);
@@ -96,7 +103,7 @@ void systemControlLoop(void* pvParameters) {
 	}
 }
 
-void refreshTargets() {
+void refreshRadarTargets() {
 	const int sensor_got_valid_targets = ld2450.read();
 	if (sensor_got_valid_targets > 0) {
 		for (int i = 0; i < sensor_got_valid_targets; i++) {
@@ -104,7 +111,7 @@ void refreshTargets() {
 
 			if (result_target.valid) {
 				auto newPositionObservation = PositionVector(fixed(result_target.x) / 1000, fixed(result_target.y) / 1000, 1.1);
-				dptState.updateNearestTarget2d(result_target.valid, newPositionObservation, 8);
+				dptState.updateTargetById(dptState.radarTarget, result_target.id, result_target.valid, newPositionObservation, 8);
 				// Have this update a list of radar targets, and the other update a list of external targets.
 				// Radar targets get a pre-defined guess at average height of target point.
 				// This should reduce the amount of calculation in refresh cycle.
@@ -113,7 +120,9 @@ void refreshTargets() {
 			}
 		}
 	}
+}
 
+void readSerialCommands() {
 	deserializer.ParseStream(std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
 		auto thingCode = thing->Code();
 		switch (thing->Code()) {
@@ -121,8 +130,12 @@ void refreshTargets() {
 			if (dptState.cv_system_active) {
 				auto target = static_cast<cerializer::Target*>(thing.get());
 				auto newPositionObservation = PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
-				dptState.updateTargetById(target->id, target->valid, newPositionObservation, 8);
+				dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
 			}
+			break;
+		}
+		case cerializer::Config::Type(): {
+			dptState.updateConfig(static_cast<cerializer::Config*>(thing.get()));
 			break;
 		}
 		case cerializer::TargetSourceMessage::Type(): {
@@ -156,10 +169,10 @@ void selectTarget() {
 
 void targetingLoop(void* pvParameters) {
 	for (;;) {
-		refreshTargets();
+		refreshRadarTargets();
+		readSerialCommands();
 		selectTarget();
 		generateFireActions();
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 }
-#endif
