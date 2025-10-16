@@ -1,6 +1,8 @@
 #include "state.h"
 
+#ifdef ARDUINO
 #include "HardwareSerial.h"
+#endif
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
 #include "target.h"
@@ -26,7 +28,7 @@ SystemState::SystemState() {
 }
 
 Target& SystemState::currentTarget() {
-		if (cvActive) {
+		if (cv_system_active) {
 			return cvTarget[selectedTarget];
 		}
 		else {
@@ -100,7 +102,7 @@ void SystemState::processCommandQueue() {
 			auto comm = commandQueue.top();
 
 			// Since the queue is sorted by execution time, we can stop when we find a command that is not yet due.
-			if (now <= comm->run_after) {
+			if (now < comm->run_after) {
 				break;
 			}
 

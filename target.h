@@ -6,7 +6,9 @@
 
 #include "fpm_adapter.hpp"
 
+#ifdef ARDUINO
 #include <Arduino.h>
+#endif
 #include <chrono>
 #include <stdint.h>
 

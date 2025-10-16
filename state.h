@@ -1,7 +1,9 @@
 #include <cstddef>
 #pragma once
 
+#ifdef ARDUINO
 #include <Arduino.h>
+#endif
 #include <functional>
 #include <queue>
 #include <stdint.h>
@@ -16,10 +18,14 @@
 
 #include "fpm_adapter.hpp"
 
+#ifdef ARDUINO
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
 #include <AccelStepper.h>
+#else
+#include "tests/mocks.h"
+#endif
 
 using fixed = fixed_16_16;
 
@@ -79,11 +85,14 @@ public:
 	SemaphoreHandle_t
 		xMutex;  ///< Mutex for thread-safe access to shared resources.
 
+public:
+	bool cv_system_active = false;
+
 private:
 	bool moveState = true;   ///< Flag indicating if movement is enabled.
 	bool fireState = false;  ///< Flag indicating the current firing state.
 	bool needTrackingUpdate =
-		false;                    ///< Flag indicating if a tracking update is required.
+		false;  ///< Flag indicating if a tracking update is required.
 	uint8_t trackingSpeed = 255;  ///< The speed for tracking movements.
 	uint8_t selectedTarget =
 		0;  ///< The index of the currently selected target.
@@ -101,12 +110,11 @@ public:
 public:
 	SystemState();
 	Target&          currentTarget();
-	bool cvActive = false;
 
 	/// @brief Return the current target array, based on which target system is active.
 	/// @return a span of targets, referencing the correct target buffer.
 	std::span<Target> currentTargetArray() {
-		if (cvActive) {
+		if (cv_system_active) {
 			return std::span(cvTarget.begin(), cvTarget.end());
 		}
 		else {
@@ -141,7 +149,7 @@ public:
 	 */
 	inline void updateTargetById(auto& targetArray, const uint8_t id, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
 		auto pred = [&](const Target& item) { return item.id == id; };
-  		auto found = std::ranges::find_if(targetArray, pred);
+		auto found = std::ranges::find_if(targetArray, pred);
 
 		if (found == targetArray.end()) {
 			auto pred = [&](const Target& item) { return item.valid == false; };

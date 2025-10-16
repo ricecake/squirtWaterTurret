@@ -1,6 +1,10 @@
 #include "command.h"
 
+#ifdef ARDUINO
 #include <esp_timer.h>
+#else
+#include "tests/mocks.h"
+#endif
 
 #include <chrono>
 

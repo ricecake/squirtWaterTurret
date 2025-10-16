@@ -306,7 +306,7 @@ class TargetMessage(SerialMessage):
         y (int): The y-coordinate of the target in millimeters.
         z (int): The z-coordinate of the target in millimeters.
     """
-    format = '<HBI?hhhH'  # <H=start, B=code, I=id, ?=valid, h=x,h=y,h=z, H=end>
+    format = '<HBI?HHHH'  # <H=start, B=code, I=id, ?=valid, H=x,H=y,H=z, H=end>
     code = 0
 
     def __init__(self, target_id: int, is_valid: bool, x: int, y: int, z: int):
@@ -319,6 +319,24 @@ class TargetMessage(SerialMessage):
     def _get_payload_data(self) -> tuple:
         """Returns the payload data for the TargetMessage."""
         return (self.target_id, self.is_valid, self.x, self.y, self.z)
+
+
+class TargetSourceMessage(SerialMessage):
+    """
+    Message to signal the operational status of the CV system.
+
+    Attributes:
+        cv_active (bool): True if the CV system is online, False otherwise.
+    """
+    format = '<HB?H'  # <H=start, B=code, ?=cv_active, H=end>
+    code = 2
+
+    def __init__(self, cv_active: bool):
+        self.cv_active = cv_active
+
+    def _get_payload_data(self) -> tuple:
+        """Returns the payload data for the TargetSourceMessage."""
+        return (self.cv_active,)
 
 
 # ======================================================================================
@@ -802,6 +820,10 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
                     self.serial_port.baudrate = 9600
                     self.serial_port.open()
                     print(f"Serial port {self.serial_port.port} opened successfully.")
+                    # Signal that the CV system is now active
+                    cv_active_packet = TargetSourceMessage(cv_active=True).serialize()
+                    self.serial_port.write(cv_active_packet)
+                    print(f"Sent CV_ACTIVE=TRUE: {cv_active_packet.hex()}")
                     return super().onStart()
                 except serial.SerialException as e:
                     print(f"Warning: Could not open serial port: {e}.")
@@ -817,6 +839,10 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
     def onStop(self) -> None:
         """Closes the serial port if it is open."""
         if self.serial_port.is_open:
+            # Signal that the CV system is shutting down
+            cv_inactive_packet = TargetSourceMessage(cv_active=False).serialize()
+            self.serial_port.write(cv_inactive_packet)
+            print(f"Sent CV_ACTIVE=FALSE: {cv_inactive_packet.hex()}")
             self.serial_port.close()
             print("Serial port closed.")
         return super().onStop()
