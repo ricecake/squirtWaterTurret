@@ -1,10 +1,10 @@
 #include "tests/test_approximate_math.h"
 
-#include <cassert>
-#include <cmath>
-
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"
+
+#include <cassert>
+#include <cmath>
 
 // Test for the small_root function
 void test_small_root() {

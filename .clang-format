@@ -46,6 +46,12 @@ TabWidth: '4'
 UseTab: ForContinuationAndIndentation
 IncludeCategories:
 - Regex:           '<[[:alnum:].]+>'
-  Priority:        1
-- Regex:           '.*'
+  Priority:        5
+- Regex:           '<[A-Z].+>'
+  Priority:        4
+- Regex:           'freertos/.*.h'
+  Priority:        3
+- Regex:           'fpm.*'
   Priority:        2
+- Regex:           '.*'
+  Priority:        1
