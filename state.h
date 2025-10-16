@@ -14,6 +14,7 @@
 
 #include "command.h"
 #include "fpm_adapter.hpp"
+#include "serializer.hpp"
 #include "target.h"
 #include "vector.hpp"
 
@@ -24,10 +25,11 @@ using fixed = fixed_16_16;
  *
  * These values are expected to be set at runtime via a configuration message.
  */
+#include "utilities.h"
+
 struct ConfigParameters {
-	fixed projectile_speed;  ///< The initial speed of the projectile in meters/second.
-	fixed turret_height;     ///< The height of the turret from the ground in meters.
-	fixed gravity;           ///< The acceleration due to gravity (should be ~9.8 m/s^2).
+	fixed projectile_speed = projectileSpeed;  ///< The initial speed of the projectile in meters/second.
+	fixed turret_height = altitude;     ///< The height of the turret from the ground in meters.
 };
 
 class Command;
@@ -130,6 +132,7 @@ public:
 	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
 	void queueFire(uint16_t milliseconds);
 	void queueLinger(uint8_t milliseconds);
+	void updateConfig(cerializer::Config* config);
 	void processCommandQueue();
 	void actualizeState();
 

@@ -333,25 +333,23 @@ namespace cerializer {
 	 * allowing for on-the-fly tuning of the system's behavior. The float values
 	 * are intended to be converted to fixed-point format on the device.
 	 */
-	class Config: public Message<Config, 1, float, float, float, uint16_t, uint16_t> {
+	class Config: public Message<Config, 1, float, float, uint16_t, uint16_t> {
 	public:
 		const float    projectile_speed;
 		const float    turret_height;
-		const float    gravity;
 		const uint16_t max_speed;
 		const uint16_t acceleration;
 
 	public:
-		constexpr inline Config(float projectile_speed, float turret_height, float gravity, uint16_t max_speed, uint16_t acceleration) noexcept :
+		constexpr inline Config(float projectile_speed, float turret_height, uint16_t max_speed, uint16_t acceleration) noexcept :
 			projectile_speed(projectile_speed),
 			turret_height(turret_height),
-			gravity(gravity),
 			max_speed(max_speed),
 			acceleration(acceleration) {
 			assert(registered);
 		}
 		constexpr std::array<char, Size()> encode() const {
-			return pack(projectile_speed, turret_height, gravity, max_speed, acceleration);
+			return pack(projectile_speed, turret_height, max_speed, acceleration);
 		}
 	};
 

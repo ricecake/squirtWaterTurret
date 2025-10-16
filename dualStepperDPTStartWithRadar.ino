@@ -124,14 +124,7 @@ void refreshTargets() {
 			dptState.updateTargetById(target->id, target->valid, newPositionObservation, 8);
 			break;
 		case cerializer::Config::Type():
-			auto config = static_cast<cerializer::Config*>(thing.get());
-			dptState.config.projectile_speed = fixed(config->projectile_speed);
-			dptState.config.turret_height = fixed(config->turret_height);
-			dptState.config.gravity = fixed(config->gravity);
-			dptState.stepperA.setMaxSpeed(config->max_speed);
-			dptState.stepperA.setAcceleration(config->acceleration);
-			dptState.stepperB.setMaxSpeed(config->max_speed);
-			dptState.stepperB.setAcceleration(config->acceleration);
+			dptState.updateConfig(static_cast<cerializer::Config*>(thing.get()));
 			break;
 		}
 	}));
