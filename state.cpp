@@ -17,6 +17,9 @@
 #endif
 
 SystemState::SystemState() {
+	config.projectile_speed = 0;
+	config.turret_height = 0;
+	config.gravity = 0;
 #ifdef ARDUINO
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);

@@ -19,6 +19,17 @@
 
 using fixed = fixed_16_16;
 
+/**
+ * @brief A struct to hold tunable configuration parameters for the system.
+ *
+ * These values are expected to be set at runtime via a configuration message.
+ */
+struct ConfigParameters {
+	fixed projectile_speed;  ///< The initial speed of the projectile in meters/second.
+	fixed turret_height;     ///< The height of the turret from the ground in meters.
+	fixed gravity;           ///< The acceleration due to gravity (should be ~9.8 m/s^2).
+};
+
 class Command;
 
 const inline auto CommandPointerComparator = [](const auto& left,
@@ -56,8 +67,9 @@ public:
 		0.1125};  ///< Conversion factor from angle to motor steps.
 
 public:
-	AccelStepper stepperA;  ///< Stepper motor A instance.
-	AccelStepper stepperB;  ///< Stepper motor B instance.
+	ConfigParameters config;    ///< Runtime configuration parameters.
+	AccelStepper     stepperA;  ///< Stepper motor A instance.
+	AccelStepper     stepperB;  ///< Stepper motor B instance.
 
 	SemaphoreHandle_t
 		xMutex;  ///< Mutex for thread-safe access to shared resources.

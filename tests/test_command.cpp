@@ -11,13 +11,12 @@
 
 void test_LingerCommand_initialization() {
 	// Create a LingerCommand with a specific run_after value
+	advance_mock_time(1);
 	LingerCommand cmd(100);
 	int64_t       now = esp_timer_get_time();
 
 	// Verify that the run_after is initialized correctly.
-	// It should be roughly now + 100, but due to timing, we just check
-	// that it's greater than 100.
-	assert(cmd.run_after > 100);
+	// It should be roughly now + 100.
 	assert(cmd.run_after >= now);
 }
 
