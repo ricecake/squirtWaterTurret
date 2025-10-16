@@ -347,6 +347,33 @@ namespace cerializer {
 		}
 	};
 
+  /**
+	 * @brief A message for setting runtime configuration parameters.
+	 *
+	 * This message is used to send updated configuration values to the firmware,
+	 * allowing for on-the-fly tuning of the system's behavior. The float values
+	 * are intended to be converted to fixed-point format on the device.
+	 */
+	class Config: public Message<Config, 2, float, float, uint16_t, uint16_t> {
+	public:
+		const float    projectile_speed;
+		const float    turret_height;
+		const uint16_t max_speed;
+		const uint16_t acceleration;
+
+	public:
+		constexpr inline Config(float projectile_speed, float turret_height, uint16_t max_speed, uint16_t acceleration) noexcept :
+			projectile_speed(projectile_speed),
+			turret_height(turret_height),
+			max_speed(max_speed),
+			acceleration(acceleration) {
+			assert(registered);
+		}
+		constexpr std::array<char, Size()> encode() const {
+			return pack(projectile_speed, turret_height, max_speed, acceleration);
+		}
+	};
+
 	/**
 	 * @brief Concept to identify types that support I/O operations.
 	 */
