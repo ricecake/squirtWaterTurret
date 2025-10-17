@@ -46,7 +46,7 @@ These are the messages currently implemented in the system.
 ### 1. `Target`
 -   **Type Code:** `0`
 -   **Direction:** CV System -> Firmware
--   **Purpose:** Transmits the primary target information from the vision system to the fire control system. This is the most frequently sent message during operation.
+-   **Purpose:** Transmits dynamic target coordinates from the CV system for real-time tracking. This is the primary message used when `TargetSource` is set to `CV`.
 -   **Payload:**
     | Field   | Type          | Description                                       |
     |---------|---------------|---------------------------------------------------|
@@ -88,12 +88,10 @@ These are the messages currently implemented in the system.
 ### 4. `StaticTargetMessage`
 -   **Type Code:** `3`
 -   **Direction:** CV System -> Firmware
--   **Purpose:** Provides explicit coordinates for the turret to aim at. This is used to set the `STATIC` target position.
+-   **Purpose:** Sets the fixed coordinates for the turret to aim at when in `STATIC` mode. This message is exclusively for configuring the static aimpoint and is not used for real-time tracking.
 -   **Payload:**
     | Field | Type       | Description                        |
     |-------|------------|------------------------------------|
     | `x`   | `uint16_t` | The x-coordinate in mm.            |
     | `y`   | `uint16_t` | The y-coordinate in mm (forward).  |
     | `z`   | `uint16_t` | The z-coordinate in mm (height).   |
-
-This is also used by the CV system to send target coordinates when it is in control. While the name is `StaticTargetMessage`, it is sent repeatedly to update the aimpoint for a moving target. The name reflects that it's setting the single target coordinate that the firmware's `STATIC` mode tracks. The `TargetSource` determines how this message is interpreted.

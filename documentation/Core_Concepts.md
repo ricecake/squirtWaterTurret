@@ -52,7 +52,7 @@ The firmware can acquire targets from three different sources, defined by the `T
 -   **`TargetSource::CV` (Computer Vision):**
     -   The turret receives target coordinates from the host Python script.
     -   This is the primary operating mode.
-    -   The host sends `StaticTargetMessage` updates over serial, which the firmware uses to update its list of `cvTarget` objects. The system then aims at the currently selected target from this list.
+    -   The host sends `Target` messages over serial, which the firmware uses to update its list of `cvTarget` objects. The system then aims at the currently selected target from this list.
 
 -   **`TargetSource::RADAR`:**
     -   The turret uses the LD2450 radar sensor for autonomous target acquisition.
