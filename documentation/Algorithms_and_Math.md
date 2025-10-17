@@ -12,6 +12,9 @@ The trajectory of a projectile under gravity can be described by a set of parame
 
 The direct analytical solution is computationally expensive and involves trigonometric functions and square roots, which are slow on microcontrollers without a dedicated Floating-Point Unit (FPU).
 
+### Lateral Motion Tracking
+The system also tracks the lateral motion of the target. This is done by calculating the target's velocity vector based on the change in its position between updates. This velocity vector is then used in the ballistic calculation to predict the target's future position, ensuring that the projectile is aimed where the target *will be*, not where it *was*.
+
 ### The Solution: Numerical Approximation
 
 Instead of solving the equation directly, the firmware uses a numerical approximation method to find the answer. This approach iteratively refines a guess until it is "good enough."
