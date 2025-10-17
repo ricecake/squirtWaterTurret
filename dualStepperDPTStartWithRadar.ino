@@ -124,23 +124,31 @@ void refreshRadarTargets() {
 
 void readSerialCommands() {
 	deserializer.ParseStream(std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
-		auto thingCode = thing->Code();
+		if (!thing) {
+			return;
+		}
+
 		switch (thing->Code()) {
 		case cerializer::Target::Type(): {
-			if (dptState.cv_system_active) {
-				auto target = static_cast<cerializer::Target*>(thing.get());
-				auto newPositionObservation = PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
-				dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
-			}
+			auto target = static_cast<cerializer::Target*>(thing.get());
+			auto newPositionObservation = PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
+			dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
 			break;
 		}
 		case cerializer::Config::Type(): {
 			dptState.updateConfig(static_cast<cerializer::Config*>(thing.get()));
 			break;
 		}
-		case cerializer::TargetSourceMessage::Type(): {
-			auto source_msg = static_cast<cerializer::TargetSourceMessage*>(thing.get());
-			dptState.cv_system_active = source_msg->cv_active;
+		case cerializer::SetTargetSourceMessage::Type(): {
+			auto source_msg = static_cast<cerializer::SetTargetSourceMessage*>(thing.get());
+			dptState.target_source = source_msg->source;
+			break;
+		}
+		case cerializer::StaticTargetMessage::Type(): {
+			auto static_target_msg = static_cast<cerializer::StaticTargetMessage*>(thing.get());
+			dptState.staticTarget.position.X_coord = fixed(static_target_msg->x) / 1000;
+			dptState.staticTarget.position.Y_coord = fixed(static_target_msg->y) / 1000;
+			dptState.staticTarget.position.Z_coord = fixed(static_target_msg->z) / 1000;
 			break;
 		}
 		}

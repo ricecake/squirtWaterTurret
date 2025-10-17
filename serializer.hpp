@@ -358,19 +358,56 @@ namespace cerializer {
 	 *
 	 * This message is sent by the CV system to the microcontroller to indicate
 	 * whether it is online and providing target data. This allows the microcontroller
-	 * to switch between using CV data and its own radar sensor.
+	/**
+	 * @brief An enum to specify the source of targeting data.
 	 */
-	class TargetSourceMessage: public Message<TargetSourceMessage, 2, bool> {
+	enum class TargetSource: uint8_t {
+		STATIC,  ///< Target is a fixed, statically defined point.
+		RADAR,   ///< Target is provided by the onboard radar sensor.
+		CV,      ///< Target is provided by the external computer vision system.
+	};
+
+	/**
+	 * @brief A message to set the active target source.
+	 *
+	 * This message is sent to the microcontroller to command it to switch
+	 * between different targeting systems like static, radar, or CV.
+	 */
+	class SetTargetSourceMessage: public Message<SetTargetSourceMessage, 2, TargetSource> {
 	public:
-		const bool cv_active;
+		const TargetSource source;
 
 	public:
-		constexpr inline TargetSourceMessage(bool cv_active) noexcept :
-			cv_active(cv_active) {
+		constexpr inline SetTargetSourceMessage(TargetSource source) noexcept :
+			source(source) {
 			assert(registered);
 		}
 		constexpr std::array<char, Size()> encode() const {
-			return pack(cv_active);
+			return pack(source);
+		}
+	};
+
+	/**
+	 * @brief A message for setting a static target position.
+	 *
+	 * This message provides explicit coordinates for the turret to aim at when
+	 * in STATIC target mode.
+	 */
+	class StaticTargetMessage: public Message<StaticTargetMessage, 3, uint16_t, uint16_t, uint16_t> {
+	public:
+		const uint16_t x;
+		const uint16_t y;
+		const uint16_t z;
+
+	public:
+		constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept :
+			x(x),
+			y(y),
+			z(z) {
+			assert(registered);
+		}
+		constexpr std::array<char, Size()> encode() const {
+			return pack(x, y, z);
 		}
 	};
 

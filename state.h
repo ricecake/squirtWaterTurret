@@ -86,7 +86,7 @@ public:
 		xMutex;  ///< Mutex for thread-safe access to shared resources.
 
 public:
-	bool cv_system_active = false;
+	cerializer::TargetSource target_source;
 
 private:
 	bool moveState = true;   ///< Flag indicating if movement is enabled.
@@ -106,6 +106,7 @@ private:
 public:
 	std::array<Target, 32> cvTarget;
 	std::array<Target, 3>  radarTarget;
+	Target                 staticTarget;
 
 public:
 	SystemState();
@@ -113,14 +114,7 @@ public:
 
 	/// @brief Return the current target array, based on which target system is active.
 	/// @return a span of targets, referencing the correct target buffer.
-	std::span<Target> currentTargetArray() {
-		if (cv_system_active) {
-			return std::span(cvTarget.begin(), cvTarget.end());
-		}
-		else {
-			return std::span(radarTarget.begin(), radarTarget.end());
-		}
-	}
+	std::span<Target> currentTargetArray();
 
 	constexpr size_t size() { return currentTargetArray().size(); }
 	void             updateTarget(auto& targetArray, const uint8_t idx, const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0) {
