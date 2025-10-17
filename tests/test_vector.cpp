@@ -1,10 +1,10 @@
 #include "tests/test_vector.h"
 
-#include "fpm_adapter.hpp"
-#include "vector.hpp"
-
 #include <cassert>
 #include <cmath>
+
+#include "fpm_adapter.hpp"
+#include "vector.hpp"
 
 using fixed = fixed_16_16;
 
@@ -50,14 +50,14 @@ void test_vector_scalar_division() {
 void test_vector_dot_product() {
 	Vector3D<fixed> v1{1, 2, 3};
 	Vector3D<fixed> v2{4, 5, 6};
-	fixed           result = v1.dot(v2);  // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
+	fixed           result = v1.dot(v2); // 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32
 	assert(result == fixed(32));
 }
 
 void test_vector_cross_product() {
-	Vector3D<fixed> v1{1, 0, 0};            // i
-	Vector3D<fixed> v2{0, 1, 0};            // j
-	auto            result = v1.cross(v2);  // should be k (0, 0, 1)
+	Vector3D<fixed> v1{1, 0, 0};           // i
+	Vector3D<fixed> v2{0, 1, 0};           // j
+	auto            result = v1.cross(v2); // should be k (0, 0, 1)
 	assert(result.X_coord == fixed(0));
 	assert(result.Y_coord == fixed(0));
 	assert(result.Z_coord == fixed(1));
@@ -65,7 +65,7 @@ void test_vector_cross_product() {
 
 void test_vector_magnitude() {
 	Vector3D<fixed> v{3, 4, 0};
-	fixed           result = v.magnitude();  // sqrt(9 + 16) = 5
+	fixed           result = v.magnitude(); // sqrt(9 + 16) = 5
 	assert(is_close(result, fixed(5)));
 }
 
