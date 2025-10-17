@@ -72,7 +72,7 @@ The `Approximate::small_root` function is used to find the smallest, positive, r
 
 ### Differential Wrist Mechanism
 
-The physical turret mechanism is a pan-and-tilt system driven by two stationary stepper motors. The motion is mechanically coupled through a set of gears in a configuration analogous to a [differential wrist](https://en.wikipedia.org/wiki/Robotic_wrist#Differential_wrist). This design allows two motors, which are fixed to the base, to control two separate axes of rotation (pan and tilt) at the end of the mechanism.
+The physical turret mechanism is a pan-and-tilt system driven by two stationary stepper motors. The motion is mechanically coupled through a set of gears in a configuration analogous to a [differential wrist](https://ewhiteowls.com/2023/01/very-effective-wrist-design-with-in-built-planetary-gearboxes-for-an-light-weight-and-compact-wrist-for-6dof-robotic-arm/). This design allows two motors, which are fixed to the base, to control two separate axes of rotation (pan and tilt) at the end of the mechanism.
 
 The key advantage is that the motors do not have to carry each other's weight, leading to a lighter and potentially faster assembly.
 
