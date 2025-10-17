@@ -39,7 +39,69 @@ This hybrid approach combines the speed of the secant method with the guaranteed
 ### `Target::interceptPosition`
 This method in the `Target` class formulates the ballistic problem for a *moving* target as a quartic equation (an equation with `t^4` as the highest power) and uses the `Approximate::small_root` solver to find the time-to-intercept (`t`). Once `t` is known, it's straightforward to calculate where the target *will be* at that time and aim there.
 
-## 2. Target Selection and Management
+#### Moving Target Intercept Equations
+The implementation is based on the work of Forrest Smith, as detailed in his blog post "[Solving Ballistic Trajectories](https://www.forrestthewoods.com/blog/solving_ballistic_trajectories/)." The core of the problem is to solve for `t` (time) in the following system of equations, which results in a quartic polynomial.
+
+**Variable Definitions:**
+- `proj_pos`: Projectile initial position vector `(x, y, z)`
+- `target_pos`: Target initial position vector `(x, y, z)`
+- `target_velocity`: Target velocity vector `(vx, vy, vz)`
+- `proj_speed`: Projectile's initial speed (a scalar)
+- `Gv`: Gravity vector `(gx, gy, gz)`
+- `G`: Magnitude of gravity (a scalar)
+
+**Derived Variables (for simplicity):**
+- `diff = target_pos - proj_pos`
+- `H = diff.x`, `J = diff.z`, `K = diff.y`
+- `P = target_velocity.x`, `Q = target_velocity.z`, `R = target_velocity.y`
+- `L = -0.5 * G`
+- `S = proj_speed`
+
+**The Quartic Equation:**
+The problem is reduced to solving `c0*t^4 + c1*t^3 + c2*t^2 + c3*t + c4 = 0`, where the coefficients are:
+
+-   `c0 = L^2`
+-   `c1 = -2 * Q * L`
+-   `c2 = (target_velocity . target_velocity) - 2 * J * L - S^2`
+-   `c3 = 2 * (diff . target_velocity)`
+-   `c4 = diff . diff`
+
+The `Approximate::small_root` function is used to find the smallest, positive, real root of this quartic equation, which represents the time to intercept.
+
+## 2. Mechanical Control and Motor Calculation
+
+### Differential Wrist Mechanism
+
+The physical turret mechanism is a pan-and-tilt system driven by two stationary stepper motors. The motion is mechanically coupled through a set of gears in a configuration analogous to a [differential wrist](https://en.wikipedia.org/wiki/Robotic_wrist#Differential_wrist). This design allows two motors, which are fixed to the base, to control two separate axes of rotation (pan and tilt) at the end of the mechanism.
+
+The key advantage is that the motors do not have to carry each other's weight, leading to a lighter and potentially faster assembly.
+
+### From Pan/Tilt to Motor Rotations
+
+The relationship between the desired pan (`α`) and tilt (`β`) angles and the required rotation of the two motors (`θ₁` and `θ₂`) is the core of the differential mechanism.
+
+-   **Panning (`α`):** The pan (horizontal) angle of the turret is controlled by the *average* rotation of the two motors. If both motors turn in the same direction by the same amount, the turret will pan left or right.
+    `α = k * (θ₁ + θ₂) / 2`
+
+-   **Tilting (`β`):** The tilt (vertical) angle of the turret is controlled by the *difference* in rotation between the two motors. If the motors turn in opposite directions by the same amount, the turret will tilt up or down.
+    `β = k * (θ₁ - θ₂) / 2`
+
+Where `k` is a scaling constant determined by the gearing of the system.
+
+### From Angles to Motor Steps
+
+To aim at a specific target, the firmware must perform the inverse calculation: convert the desired pan and tilt angles into target step counts for each motor.
+
+1.  **Angle Calculation:** The `PositionVector::Pitch()` (tilt) and `PositionVector::Yaw()` (pan) methods first calculate the required angles from the target's 3D coordinates.
+2.  **Inverse Kinematics:** The firmware then solves the system of equations for `θ₁` and `θ₂`:
+    -   `θ₁ = (α + β) / k`
+    -   `θ₂ = (α - β) / k`
+3.  **Angle to Steps:** The resulting motor angles (`θ₁` and `θ₂`) are then converted into motor steps using a calibrated `angleToStep` constant. This constant accounts for the motor's properties (e.g., 1.8° per step), microstepping settings, and overall gear ratio.
+    -   `Motor1_Steps = θ₁ * angleToStep`
+    -   `Motor2_Steps = θ₂ * angleToStep`
+4.  **Execution:** These final step counts are passed to the `AccelStepper` library, which handles the smooth movement of each motor to its target position.
+
+## 3. Target Selection and Management
 
 The firmware needs to manage lists of potential targets from different sources (`CV`, `RADAR`).
 
