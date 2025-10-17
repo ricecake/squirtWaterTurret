@@ -125,18 +125,17 @@ namespace cerializer {
 	constexpr inline Dest unpack(const Cont& binaryData) {
 		if constexpr (sizeof...(Ts) < 1) {
 			return *reinterpret_cast<Dest*>(binaryData.data());
-		}
-		else {
+		} else {
 			auto            offset = 0;
 			std::span<char> dataView(binaryData);
-			return Dest{*reinterpret_cast<Ts*>(
-				dataView
-					.subspan(
-						postfixAdd(
-							offset,
-							sizeof(Ts)),
-						sizeof(Ts))
-					.data())...};
+			return Dest{
+				*reinterpret_cast<Ts*>(
+					dataView.subspan(
+								postfixAdd(
+									offset,
+									sizeof(Ts)),
+								sizeof(Ts))
+						.data())...};
 		}
 	};
 

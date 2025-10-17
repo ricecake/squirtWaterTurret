@@ -1,12 +1,11 @@
 #include "state.h"
 
+#ifdef ARDUINO
+	#include "HardwareSerial.h"
+#endif
 #include <algorithm>
 #include <chrono>
 #include <ratio>
-
-#ifdef ARDUINO
-#include "HardwareSerial.h"
-#endif
 
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
@@ -199,8 +198,7 @@ fixed SystemState::targetTravelDistance() {
 
 	auto delta_yaw = aimpoint.Yaw() - yaw;
 
-	auto cos_alpha =
-		sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
+	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
 
 	return acos(cos_alpha);
 }

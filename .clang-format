@@ -1,7 +1,7 @@
 ---
 # General Style
 Language: Cpp
-Standard: Cpp17
+Standard: Cpp11
 ColumnLimit: 120
 UseTab: ForIndentation
 IndentWidth: 4
