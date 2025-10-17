@@ -10,6 +10,7 @@
 void test_TargetSelection_execute() {
 	// Create a SystemState and a TargetSelection command
 	SystemState     state;
+	state.target_source = cerializer::TargetSource::CV;
 	TargetSelection cmd(5, 0xFF, 0);
 
 	// Execute the command
