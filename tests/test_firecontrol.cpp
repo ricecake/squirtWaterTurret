@@ -1,18 +1,18 @@
 #include "tests/test_firecontrol.h"
 
+#include <cassert>
+#include <chrono>
+#include <thread>
+
 #include "firecontrol.h"
 #include "state.h"
 #include "tests/mocks.h"
 #include "utilities.h"
 
-#include <cassert>
-#include <chrono>
-#include <thread>
-
 // Test case for activating the firing mechanism
 void test_FireControl_activate() {
 	SystemState state;
-	state.setFire(false);  // Ensure initial state is off
+	state.setFire(false); // Ensure initial state is off
 	// Target& target = state.currentTarget(); // Unused but kept for clarity
 
 	// To make actionIdleExceeds true, we can just not set last_action
@@ -29,7 +29,7 @@ void test_FireControl_activate() {
 // Test case for deactivating the firing mechanism
 void test_FireControl_deactivate() {
 	SystemState state;
-	state.setFire(true);  // Ensure initial state is on
+	state.setFire(true); // Ensure initial state is on
 	// Target& target = state.currentTarget(); // Unused.
 	// By not calling IncrementAction(), the target's last_action remains in the
 	// distant past, allowing the deactivation check to pass.
@@ -70,14 +70,13 @@ void test_FireControl_activation_too_soon() {
 	SystemState state;
 	state.setFire(false);
 	Target& target = state.currentTarget();
-	target.IncrementAction();  // Set last action time to now
+	target.IncrementAction(); // Set last action time to now
 
 	FireControl cmd(true, 10, 0);
 	cmd.Execute(&state);
 
 	assert(state.getFireState() == false);
 }
-
 
 // Test runner for the firecontrol module
 void run_firecontrol_tests() {

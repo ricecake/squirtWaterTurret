@@ -1,21 +1,20 @@
 #include "state.h"
 
 #ifdef ARDUINO
-#include "HardwareSerial.h"
+	#include "HardwareSerial.h"
 #endif
-#include "aproximate_math.hpp"
-#include "firecontrol.h"
-#include "target.h"
-#include "target_selection.h"
-#include "utilities.h"
-
-#include "fpm_adapter.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <ratio>
 
-SystemState::SystemState() {
+#include "aproximate_math.hpp"
+#include "firecontrol.h"
+#include "fpm_adapter.hpp"
+#include "target.h"
+#include "target_selection.h"
+#include "utilities.h"
+
+SystemState::SystemState() : staticTarget(0, true, PositionVector(0, 0.01, 0), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -25,15 +24,37 @@ SystemState::SystemState() {
 	pinMode(firePin, OUTPUT);
 
 	xMutex = xSemaphoreCreateMutex();
+
+	target_source = cerializer::TargetSource::STATIC;
+	auto p = staticTarget.Position();
+	p.Z_coord = config.turret_height;
+	staticTarget.Update(p);
+}
+
+/// @brief Return the current target array, based on which target system is active.
+/// @return a span of targets, referencing the correct target buffer.
+std::span<Target> SystemState::currentTargetArray() {
+	switch (target_source) {
+	case cerializer::TargetSource::CV:
+		return std::span(cvTarget.begin(), cvTarget.end());
+	case cerializer::TargetSource::RADAR:
+		return std::span(radarTarget.begin(), radarTarget.end());
+	case cerializer::TargetSource::STATIC:
+	default:
+		return std::span(&staticTarget, 1);
+	}
 }
 
 Target& SystemState::currentTarget() {
-		if (cv_system_active) {
-			return cvTarget[selectedTarget];
-		}
-		else {
-			return radarTarget[selectedTarget];
-		}
+	switch (target_source) {
+	case cerializer::TargetSource::CV:
+		return cvTarget[selectedTarget];
+	case cerializer::TargetSource::RADAR:
+		return radarTarget[selectedTarget];
+	case cerializer::TargetSource::STATIC:
+	default:
+		return staticTarget;
+	}
 }
 
 void SystemState::setTarget(uint8_t index, uint8_t speed) {
@@ -77,10 +98,7 @@ void SystemState::queueLinger(uint8_t milliseconds) {
 }
 
 void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
-	commandQueue.push(new TargetSelection(
-		index,
-		0xFF,
-		milliseconds * 1000));
+	commandQueue.push(new TargetSelection(index, 0xFF, milliseconds * 1000));
 }
 
 void SystemState::updateConfig(cerializer::Config* config) {
@@ -180,8 +198,7 @@ fixed SystemState::targetTravelDistance() {
 
 	auto delta_yaw = aimpoint.Yaw() - yaw;
 
-	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) +
-					 cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
+	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
 
 	return acos(cos_alpha);
 }
