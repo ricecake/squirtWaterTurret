@@ -4,7 +4,7 @@ This document explains some of the key algorithms and mathematical principles em
 
 ## 1. Ballistic Targeting
 
-A core feature of the fire control system is its ability to account for gravity. Simply aiming directly at a distant target will result in the water stream falling short. To hit the target, the turret must aim slightly higher. Calculating the correct angle is a classic physics problem.
+A core feature of the fire control system is its ability to account for gravity. It also accounts for target motion, assuming the target's movement is roughly constant. Simply aiming directly at a distant target will result in the water stream falling short. To hit the target, the turret must aim slightly higher. Calculating the correct angle is a classic physics problem.
 
 ### The Physics
 
