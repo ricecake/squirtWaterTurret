@@ -168,6 +168,10 @@ public:
 
 		const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
 
+		if (intercept == 0) {
+			return PositionVector(H, K, J);
+		}
+
 		auto pos = diff + target_velocity * intercept;
 		pos.Z_coord = fixed_24_8(pos.Z_coord) - L * pow(intercept, 2);
 

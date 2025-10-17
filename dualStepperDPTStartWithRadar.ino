@@ -111,7 +111,7 @@ void refreshRadarTargets() {
 
 			if (result_target.valid) {
 				auto newPositionObservation = PositionVector(fixed(result_target.x) / 1000, fixed(result_target.y) / 1000, 1.1);
-				dptState.updateTargetById(dptState.radarTarget, result_target.id, result_target.valid, newPositionObservation, 8);
+				dptState.updateTarget(dptState.radarTarget, result_target.id, result_target.valid, newPositionObservation, 8);
 				// Have this update a list of radar targets, and the other update a list of external targets.
 				// Radar targets get a pre-defined guess at average height of target point.
 				// This should reduce the amount of calculation in refresh cycle.
