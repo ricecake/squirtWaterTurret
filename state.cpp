@@ -1,22 +1,20 @@
 #include "state.h"
 
 #ifdef ARDUINO
-#include "HardwareSerial.h"
+	#include "HardwareSerial.h"
 #endif
-#include "aproximate_math.hpp"
-#include "firecontrol.h"
-#include "target.h"
-#include "target_selection.h"
-#include "utilities.h"
-
-#include "fpm_adapter.hpp"
-
 #include <algorithm>
 #include <chrono>
 #include <ratio>
 
-SystemState::SystemState() :
-	staticTarget(0, true, PositionVector(0, 0.01, 0), VelocityVector(0, 0, 0)) {
+#include "aproximate_math.hpp"
+#include "firecontrol.h"
+#include "fpm_adapter.hpp"
+#include "target.h"
+#include "target_selection.h"
+#include "utilities.h"
+
+SystemState::SystemState() : staticTarget(0, true, PositionVector(0, 0.01, 0), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -100,10 +98,7 @@ void SystemState::queueLinger(uint8_t milliseconds) {
 }
 
 void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
-	commandQueue.push(new TargetSelection(
-		index,
-		0xFF,
-		milliseconds * 1000));
+	commandQueue.push(new TargetSelection(index, 0xFF, milliseconds * 1000));
 }
 
 void SystemState::updateConfig(cerializer::Config* config) {
@@ -203,8 +198,7 @@ fixed SystemState::targetTravelDistance() {
 
 	auto delta_yaw = aimpoint.Yaw() - yaw;
 
-	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) +
-					 cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
+	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
 
 	return acos(cos_alpha);
 }

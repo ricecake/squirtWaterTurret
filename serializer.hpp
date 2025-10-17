@@ -123,19 +123,20 @@ namespace cerializer {
 	template <typename Dest, typename... Ts, typename Cont>
 		requires(std::is_trivially_copyable_v<Ts> && ...) && Container<Cont, char>
 	constexpr inline Dest unpack(const Cont& binaryData) {
-		if (sizeof...(Ts) < 1) {
+		if constexpr (sizeof...(Ts) < 1) {
 			return *reinterpret_cast<Dest*>(binaryData.data());
+		} else {
+			auto            offset = 0;
+			std::span<char> dataView(binaryData);
+			return Dest{
+				*reinterpret_cast<Ts*>(
+					dataView.subspan(
+								postfixAdd(
+									offset,
+									sizeof(Ts)),
+								sizeof(Ts))
+						.data())...};
 		}
-		auto            count = 0;
-		std::span<char> dataView(binaryData);
-		return Dest{
-			*reinterpret_cast<Ts*>(
-				dataView.subspan(
-							postfixAdd(
-								count,
-								sizeof(Ts)),
-							sizeof(Ts))
-					.data())...};
 	};
 
 	using TypeCharSpec = std::tuple<uint8_t, uint8_t, char>;

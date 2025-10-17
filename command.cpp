@@ -1,9 +1,9 @@
 #include "command.h"
 
 #ifdef ARDUINO
-#include <esp_timer.h>
+	#include <esp_timer.h>
 #else
-#include "tests/mocks.h"
+	#include "tests/mocks.h"
 #endif
 
 #include <chrono>
@@ -27,8 +27,7 @@ Command::Command(int64_t run_after) {
  * @brief Constructs a new LingerCommand object.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-LingerCommand::LingerCommand(int64_t run_after) :
-	Command(run_after) {}
+LingerCommand::LingerCommand(int64_t run_after) : Command(run_after) {}
 
 /**
  * @brief Executes the linger command. This method does nothing.

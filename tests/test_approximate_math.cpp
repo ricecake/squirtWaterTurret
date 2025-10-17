@@ -1,17 +1,15 @@
 #include "tests/test_approximate_math.h"
 
-#include "aproximate_math.hpp"
-#include "fpm_adapter.hpp"
-
 #include <cassert>
 #include <cmath>
+
+#include "aproximate_math.hpp"
+#include "fpm_adapter.hpp"
 
 // Test for the small_root function
 void test_small_root() {
 	// Test with a simple linear function f(x) = x - 5
-	std::function<const fixed(const fixed)> linear_func = [](const fixed x) -> const fixed {
-		return x - fixed(5);
-	};
+	std::function<const fixed(const fixed)> linear_func = [](const fixed x) -> const fixed { return x - fixed(5); };
 
 	auto result = Approximate::small_root(linear_func);
 
@@ -41,7 +39,6 @@ void test_atan() {
 void test_sqrt() {
 	// assert(Approximate::sqrt(fixed(4)) == fixed(2));
 }
-
 
 void run_approximate_math_tests() {
 	test_small_root();

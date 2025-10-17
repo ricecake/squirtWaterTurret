@@ -1,10 +1,9 @@
 #include "target.h"
 
-#include "aproximate_math.hpp"
-
-#include "fpm_adapter.hpp"
-
 #include <climits>
+
+#include "aproximate_math.hpp"
+#include "fpm_adapter.hpp"
 #include <math.h>
 #include <stdint.h>
 
@@ -87,10 +86,7 @@ VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval) {
  * @param P The position vector.
  * @param V The velocity vector.
  */
-Target::Target(PositionVector P, VelocityVector V) :
-	position(P),
-	velocity(V) {
-}
+Target::Target(PositionVector P, VelocityVector V) : position(P), velocity(V) {}
 
 /**
  * @brief Constructs a Target with an index, validity, position, and velocity.
@@ -100,11 +96,7 @@ Target::Target(PositionVector P, VelocityVector V) :
  * @param V The velocity vector.
  */
 Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V) :
-	valid(valid),
-	index(index),
-	position(P),
-	velocity(V) {
-}
+    valid(valid), index(index), position(P), velocity(V) {}
 
 /**
  * @brief Updates the target's state with a new position measurement.
