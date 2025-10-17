@@ -354,11 +354,6 @@ namespace cerializer {
 	};
 
 	/**
-	 * @brief A message to indicate the source of targeting data.
-	 *
-	 * This message is sent by the CV system to the microcontroller to indicate
-	 * whether it is online and providing target data. This allows the microcontroller
-	/**
 	 * @brief An enum to specify the source of targeting data.
 	 */
 	enum class TargetSource: uint8_t {
