@@ -5,9 +5,9 @@
 #include <queue>
 
 #ifdef ARDUINO
-#include <AccelStepper.h>
+	#include <AccelStepper.h>
 #else
-#include "tests/mocks.h"
+	#include "tests/mocks.h"
 #endif
 
 #include "command.h"
@@ -29,6 +29,6 @@ public:
 
 private:
 	// -- Private Attributes --
-	bool active;    ///< The desired state of the firing pin (true for active, false for inactive).
-	uint16_t duration;  ///< The duration for which the firing state should be maintained.
+	bool     active;   ///< The desired state of the firing pin (true for active, false for inactive).
+	uint16_t duration; ///< The duration for which the firing state should be maintained.
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef ARDUINO
-#include <Arduino.h>
+	#include <Arduino.h>
 #endif
 
 #include <chrono>
@@ -13,7 +13,6 @@
 #include "vector.hpp"
 
 using fixed = fixed_16_16;
-
 
 class Target;
 class PositionVector;
@@ -36,7 +35,6 @@ public:
 	constexpr DistanceVector(fixed x, fixed y, fixed z);
 	DistanceVector(VelocityVector, ChronoDuration auto interval);
 };
-
 
 /**
  * @brief Represents a 3D position vector.
@@ -63,11 +61,10 @@ public:
 
 private:
 	// -- Private Attributes --
-	fixed _distance = 0;  ///< Cached distance value.
-	fixed _pitch = 0;     ///< Cached pitch value.
-	fixed _yaw = 0;       ///< Cached yaw value.
+	fixed _distance = 0; ///< Cached distance value.
+	fixed _pitch = 0;    ///< Cached pitch value.
+	fixed _yaw = 0;      ///< Cached yaw value.
 };
-
 
 /**
  * @brief Represents a 3D velocity vector.
@@ -86,7 +83,6 @@ public:
 	VelocityVector(DistanceVector, TimeInterval interval);
 };
 
-
 /**
  * @brief Represents a target in the system.
  *
@@ -100,39 +96,42 @@ public:
 	Target() = default;
 	Target(const Target& other) = default;
 	Target(PositionVector P, VelocityVector V = VelocityVector(0, 0, 0));
-	Target(uint8_t index, bool valid = false, PositionVector P = PositionVector(0, 0, 0),
-	       VelocityVector V = VelocityVector(0, 0, 0));
+	Target(
+	    uint8_t        index,
+	    bool           valid = false,
+	    PositionVector P = PositionVector(0, 0, 0),
+	    VelocityVector V = VelocityVector(0, 0, 0)
+	);
 
 	// -- Public Methods --
-	void Update(PositionVector P);
-	fixed Pitch();
-	fixed Yaw();
-	fixed Distance();
+	void                 Update(PositionVector P);
+	fixed                Pitch();
+	fixed                Yaw();
+	fixed                Distance();
 	const VelocityVector Velocity() const;
 	const PositionVector Position() const;
-	TimeInterval timeSinceLastAction() const;
-	TimeInterval timeSinceLastSeen() const;
-	bool actionIdleExceeds(const ChronoDuration auto limit) const;
-	bool idleExceeds(const ChronoDuration auto limit) const;
-	void IncrementAction();
-	PositionVector PredictedPositionAtTime(ChronoDuration auto interval);
+	TimeInterval         timeSinceLastAction() const;
+	TimeInterval         timeSinceLastSeen() const;
+	bool                 actionIdleExceeds(const ChronoDuration auto limit) const;
+	bool                 idleExceeds(const ChronoDuration auto limit) const;
+	void                 IncrementAction();
+	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval);
 	const PositionVector interceptPosition() const;
 
 	// -- Public Attributes --
-	bool valid = false;
-	uint8_t index;
-	uint8_t id;
+	bool      valid = false;
+	uint8_t   index;
+	uint8_t   id;
 	TimePoint seen;
 	TimePoint last_action;
 
 private:
 	// -- Private Attributes --
-	TimePoint last_seen;
+	TimePoint      last_seen;
 	PositionVector position;
 	PositionVector last_position;
 	VelocityVector velocity;
 };
-
 
 // ======================================================================================
 // --- Inline-Defined Methods ---
@@ -157,18 +156,18 @@ inline bool Target::idleExceeds(const ChronoDuration auto limit) const {
 }
 
 inline const PositionVector Target::interceptPosition() const {
-	const PositionVector proj_pos = PositionVector(0, 0, 1.5);
-	const PositionVector target_pos = position;
-	const VelocityVector target_velocity = velocity;
-	const fixed_24_8 proj_speed = 20;
+	const PositionVector       proj_pos = PositionVector(0, 0, 1.5);
+	const PositionVector       target_pos = position;
+	const VelocityVector       target_velocity = velocity;
+	const fixed_24_8           proj_speed = 20;
 	const Vector3D<fixed_24_8> Gv(0, 0, 9.814);
-	const fixed_24_8 G = Gv.magnitude();
+	const fixed_24_8           G = Gv.magnitude();
 
 	const fixed_24_8 P = target_velocity.X_coord;
 	const fixed_24_8 Q = target_velocity.Z_coord;
 	const fixed_24_8 R = target_velocity.Y_coord;
 
-	const auto diff = target_pos - proj_pos;
+	const auto       diff = target_pos - proj_pos;
 	const fixed_24_8 H = diff.X_coord;
 	const fixed_24_8 J = diff.Z_coord;
 	const fixed_24_8 K = diff.Y_coord;
@@ -183,8 +182,8 @@ inline const PositionVector Target::interceptPosition() const {
 	const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
 	const fixed_24_8 c4 = diff.dot(diff);
 
-	const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic =
-		[=](const fixed_24_8 t) -> const fixed_24_8 {
+	const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic = [=](const fixed_24_8 t
+	                                                                                       ) -> const fixed_24_8 {
 		return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
 	};
 
@@ -197,10 +196,11 @@ inline const PositionVector Target::interceptPosition() const {
 	auto pos = diff + target_velocity * intercept;
 	pos.Z_coord = fixed_24_8(pos.Z_coord) - L * pow(intercept, 2);
 
-	return PositionVector((H + P * intercept) / intercept, (K + R * intercept) / intercept,
-	                      (J + Q * intercept - L * pow(intercept, 2)) / intercept);
+	return PositionVector(
+	    (H + P * intercept) / intercept, (K + R * intercept) / intercept,
+	    (J + Q * intercept - L * pow(intercept, 2)) / intercept
+	);
 };
-
 
 // ======================================================================================
 // --- Operator Overloads ---

@@ -27,7 +27,6 @@ public:
 	int64_t run_after = 0; ///< The time at which the command should be executed.
 };
 
-
 /**
  * @brief A command that does nothing, effectively creating a delay.
  *
@@ -41,7 +40,6 @@ public:
 	// -- Public Methods --
 	void Execute(SystemState* state) override;
 };
-
 
 // ======================================================================================
 // --- Operator Overloads ---
