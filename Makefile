@@ -54,4 +54,7 @@ run: all
 clean:
 	rm -f $(OBJS) $(TEST_OBJS) $(TARGET)
 
-.PHONY: all run clean
+format:
+	@find ./ \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.ino' \) ! -name 'LD2450.*' ! -path './fpm/*' ! -path './.*/*' -exec clang-format -i '{}' \;
+
+.PHONY: all run clean format
