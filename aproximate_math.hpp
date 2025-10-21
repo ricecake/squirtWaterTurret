@@ -1,8 +1,9 @@
 #pragma once
 
-#include "fpm_adapter.hpp"
-#include <cmath>  // For std::signbit
+#include <cmath> // For std::signbit
 #include <functional>
+
+#include "fpm_adapter.hpp"
 #include <stdint.h>
 
 using fixed = fixed_16_16;
@@ -20,8 +21,8 @@ namespace Approximate {
 	 */
 	template <typename T>
 	struct ApproximateResult {
-		bool converged = false;  ///< Indicates whether the approximation converged to a solution.
-		T    result;             ///< The result of the approximation.
+		bool converged = false; ///< Indicates whether the approximation converged to a solution.
+		T    result;            ///< The result of the approximation.
 	};
 
 	fixed sin(fixed);
@@ -44,7 +45,8 @@ namespace Approximate {
 	 * @return An ApproximateResult containing the outcome of the root-finding process.
 	 */
 	template <typename T>
-	constexpr ApproximateResult<T> small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
+	constexpr ApproximateResult<T>
+	small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
 		T leftInput = 0;
 		T rightInput = 0.01;
 		T midInput;
@@ -72,7 +74,7 @@ namespace Approximate {
 			// round++; -- TODO: evaluate the impact of this check.
 		}
 
-		round = 0;  // Reset round counter for the refinement loop
+		round = 0; // Reset round counter for the refinement loop
 		do {
 			// Secant method - zero of secant of function at best guess
 			midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
@@ -100,4 +102,4 @@ namespace Approximate {
 		} while (round++ < rounds);
 		return ApproximateResult<T>(false, midInput);
 	}
-}  // namespace Approximate
+} // namespace Approximate

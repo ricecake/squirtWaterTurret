@@ -9,7 +9,7 @@
  * currently selected target. The radar identifies potential targets, and this
  * command is used to specify which one to track and engage.
  */
-class TargetSelection : public Command {
+class TargetSelection: public Command {
 public:
 	// -- Constructors --
 	TargetSelection(uint8_t, int, int64_t);
@@ -19,6 +19,6 @@ public:
 
 private:
 	// -- Private Attributes --
-	uint8_t target_id;     ///< The ID of the target to be selected.
-	int speed = 0xFF;  ///< The tracking speed to use for the selected target.
+	uint8_t target_id;    ///< The ID of the target to be selected.
+	int     speed = 0xFF; ///< The tracking speed to use for the selected target.
 };

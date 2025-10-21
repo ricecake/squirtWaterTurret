@@ -1,3 +1,6 @@
+#include <climits>
+#include <vector>
+
 #include "HardwareSerial.h"
 #include "LD2450.h"
 #include "esp32-hal-gpio.h"
@@ -5,13 +8,10 @@
 #include "serializer.hpp"
 #include "state.h"
 #include "utilities.h"
-
 #include <AccelStepper.h>
 #include <Arduino.h>
 #include <HardwareSerial.h>
-#include <climits>
 #include <stdint.h>
-#include <vector>
 
 HardwareSerial RadarSerial(1);
 HardwareSerial testSerial(2);
@@ -19,17 +19,14 @@ HardwareSerial testSerial(2);
 struct IOWrapper {
 	HardwareSerial& io;
 	size_t          readsome(char* buf, size_t count) {
-		size_t available = io.available();
-		if (available > 0) {
-			return io.readBytes(buf, min(count, available));
-		}
-		return 0;
+				 size_t available = io.available();
+				 if (available > 0) {
+					 return io.readBytes(buf, min(count, available));
+        }
+				 return 0;
 	};
-	bool good() {
-		return bool(io);
-	};
-	IOWrapper(HardwareSerial& io) :
-		io(io) {};
+	bool good() { return bool(io); };
+	IOWrapper(HardwareSerial& io) : io(io){};
 };
 
 IOWrapper wrapped(testSerial);
@@ -46,7 +43,7 @@ void setup() {
 	Serial.begin(9600);
 
 	while (!Serial) {
-		;  // wait for serial port to connect. Needed for native USB
+		; // wait for serial port to connect. Needed for native USB
 	}
 
 	RadarSerial.begin(256000, SERIAL_8N1, 16, 17);
@@ -71,23 +68,9 @@ void setup() {
 
 	Serial.println("Starting!");
 
-	xTaskCreatePinnedToCore(
-		targetingLoop,
-		"Targeting",
-		10000,
-		NULL,
-		1,
-		&targeting,
-		0);
+	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
 
-	xTaskCreatePinnedToCore(
-		systemControlLoop,
-		"Control",
-		10000,
-		NULL,
-		1,
-		&systemControl,
-		1);
+	xTaskCreatePinnedToCore(systemControlLoop, "Control", 10000, NULL, 1, &systemControl, 1);
 }
 
 void loop() {
@@ -110,13 +93,17 @@ void refreshRadarTargets() {
 			LD2450::RadarTarget result_target = ld2450.getTarget(i);
 
 			if (result_target.valid) {
-				auto newPositionObservation = PositionVector(fixed(result_target.x) / 1000, fixed(result_target.y) / 1000, 1.1);
-				dptState.updateTarget(dptState.radarTarget, result_target.id, result_target.valid, newPositionObservation, 8);
+				auto newPositionObservation =
+					PositionVector(fixed(result_target.x) / 1000, fixed(result_target.y) / 1000, 1.1);
+				dptState.updateTarget(
+					dptState.radarTarget, result_target.id, result_target.valid, newPositionObservation, 8
+				);
 				// Have this update a list of radar targets, and the other update a list of external targets.
 				// Radar targets get a pre-defined guess at average height of target point.
 				// This should reduce the amount of calculation in refresh cycle.
-				// When selecting a target, can instead pick the best from each list, falling back to radar if no external targets.
-				// Separate the two -- by default populate the radar target and prefer the target list if possible
+				// When selecting a target, can instead pick the best from each list, falling back to radar if no
+				// external targets. Separate the two -- by default populate the radar target and prefer the target list
+				// if possible
 			}
 		}
 	}
@@ -131,7 +118,8 @@ void readSerialCommands() {
 		switch (thing->Code()) {
 		case cerializer::Target::Type(): {
 			auto target = static_cast<cerializer::Target*>(thing.get());
-			auto newPositionObservation = PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
+			auto newPositionObservation =
+				PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
 			dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
 			break;
 		}
@@ -165,13 +153,13 @@ void generateFireActions() {
 
 void selectTarget() {
 	/*
-		// Should find the nearest target not acted upon recently
-		Then the distance should be calculated in the fire action
-		the fire action should be told about the target, not the duration.
-		Queue fire should take the number of shots, and then calculate the times to start and stop.
-		select target will also pay attention to if the position has been overridden, so that it can make smart choices
-		refresh targets will need to be reworked into "check radar" and "check external comms"
-		since external comms may include things like position changes, and fire commands.
+	    // Should find the nearest target not acted upon recently
+	    Then the distance should be calculated in the fire action
+	    the fire action should be told about the target, not the duration.
+	    Queue fire should take the number of shots, and then calculate the times to start and stop.
+	    select target will also pay attention to if the position has been overridden, so that it can make smart choices
+	    refresh targets will need to be reworked into "check radar" and "check external comms"
+	    since external comms may include things like position changes, and fire commands.
 	*/
 }
 

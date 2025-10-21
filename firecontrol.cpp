@@ -10,7 +10,7 @@
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
 FireControl::FireControl(bool active, uint16_t duration, int64_t run_after) :
-    Command(run_after), active(active), duration(duration) {}
+	Command(run_after), active(active), duration(duration) {}
 
 /**
  * @brief Executes the fire control command, setting the firing state.

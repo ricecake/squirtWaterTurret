@@ -36,4 +36,4 @@ void TargetSelection::Execute(SystemState* state) {
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
 TargetSelection::TargetSelection(uint8_t target_id, int speed, int64_t run_after) :
-    Command(run_after), target_id(target_id), speed(speed) {}
+	Command(run_after), target_id(target_id), speed(speed) {}

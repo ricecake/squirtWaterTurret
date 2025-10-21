@@ -3,33 +3,43 @@
 Language: Cpp
 Standard: Latest
 ColumnLimit: 120
-UseTab: ForIndentation
+UseTab: AlignWithSpaces
 IndentWidth: 4
 TabWidth: 4
 AccessModifierOffset: -4
 
 # Formatting Options
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: BlockIndent
 AlignConsecutiveDeclarations: true
-AlignOperands: Align
+AlignOperands: DontAlign
 AlignTrailingComments: true
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: true
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
 BinPackParameters: false
 BreakBeforeBraces: Attach
+BreakBeforeConceptDeclarations: Yes
 BreakConstructorInitializers: AfterColon
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 IndentCaseLabels: false
 IndentPPDirectives: BeforeHash
+IndentRequires: true
 KeepEmptyLinesAtTheStartOfBlocks: false
+LambdaBodyIndentation: OuterScope
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PointerAlignment: Left
 ReflowComments: true
-SpaceBeforeParens: ControlStatements
+SpaceAfterTemplateKeyword: true
+SpaceBeforeInheritanceColon: false
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterFunctionDefinitionName: false
 SpacesInAngles: false
 SpacesInParentheses: false
 
