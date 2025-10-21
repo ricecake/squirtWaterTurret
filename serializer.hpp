@@ -133,9 +133,9 @@ namespace cerializer {
 		}
 	};
 
-	template <typename... Ts>
-		requires(std::is_trivially_copyable_v<Ts>&&...)
-	using TypeCharArray = std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>;
+	// template <typename... Ts>
+	// 	requires(std::is_trivially_copyable_v<Ts>&&...)
+	// using TypeCharArray = std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>;
 
 	using TypeCharSpec = std::tuple<uint8_t, uint8_t, char>;
 	/**
@@ -408,16 +408,31 @@ namespace cerializer {
 		template <typename T>
 		concept IOAble = requires(T io, char* buf, size_t count) {
 			{ io.readsome(buf, count) } -> std::convertible_to<size_t>;
+			{ io.write(buf, count) } -> std::convertible_to<size_t>;
 			{ io.good() } -> std::convertible_to<bool>;
 		};
 
 		/**
-		 * DEPRECATE
-		 * This class is not implemented and is not used anywhere in the codebase.
+		 * @brief A class for serializing messages to an output stream.
+		 *
+		 * This class writes messages to an output stream, converting them to binary format.
+		 *
+		 * @tparam T The type of the output stream.
 		 */
+		template <typename T>
+			requires IOAble<T>
 		class Serializer {
+		protected:
+			T& output;
+
 		public:
-			void Write();
+			Serializer(T& writeStream) : output(writeStream){};
+
+			template <typename M, uint8_t U, typename... Fs>
+			void Write(const Message<M, U, Fs...>& message) {
+				auto binary = message.ToBinary();
+				output.write(binary.data(), binary.size());
+			}
 		};
 
 		/**
@@ -473,8 +488,7 @@ namespace cerializer {
 		public:
 			Deserializer(T& readStream) : input(readStream){};
 
-			template <std::derived_from<BasePacket> Type>
-			void ParseStream(std::function<void(std::unique_ptr<Type>&)> callback) {
+			void ParseStream(std::function<void(BasePointer&)> callback) {
 				auto read = 0;
 
 				read = input.readsome(end_offset, read_size);
@@ -538,11 +552,34 @@ namespace cerializer {
 			}
 		};
 
+		using MessageUnion = std
+			::variant<Target, Config, SetTargetSourceMessage, StaticTargetMessage>;
+
 		/**
-		 * DEPRECATE
-		 * This class is not implemented and is not used anywhere in the codebase.
+		 * @brief A class for handling bidirectional communication over a stream.
+		 *
+		 * This class combines a Serializer and a Deserializer to provide a single
+		 * interface for reading and writing messages.
+		 *
+		 * @tparam T The type of the stream.
 		 */
+		template <typename T>
+			requires IOAble<T>
 		class StreamHandler {
+		protected:
+			Serializer<T>   serializer;
+			Deserializer<T> deserializer;
+
 		public:
+			StreamHandler(T& stream) : serializer(stream), deserializer(stream){};
+
+			template <typename M, uint8_t U, typename... Fs>
+			void Write(const Message<M, U, Fs...>& message) {
+				serializer.Write(message);
+			}
+
+			void ParseStream(std::function<void(BasePointer&)> callback) {
+				deserializer.ParseStream(callback);
+			}
 		};
 } // namespace cerializer

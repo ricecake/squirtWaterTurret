@@ -250,29 +250,16 @@ class SerialMessage:
     def parse(cls, buffer: bytes) -> "SerialMessage":
         """
         Parses a byte buffer into a message object.
-
-        Args:
-            buffer: The raw byte buffer to parse.
-
-        Returns:
-            An instance of the message class.
-
-        Raises:
-            ValueError: If the buffer is malformed (e.g., incorrect markers or code).
-            NotImplementedError: If the subclass does not define a 'format'.
         """
         if cls.format is not None:
             try:
                 fields = struct.unpack(cls.format, buffer)
-                # Check for start marker, message code, and end marker
                 if fields[0] != 0xCAFE or fields[-1] != 0xFACE or fields[1] != cls.code:
                     raise ValueError('Bad buffer: Invalid markers or message code.')
-                # Return a new instance with the payload fields
                 return cls(*fields[2:-1])
             except struct.error as e:
                 raise ValueError(f'Bad buffer: Struct unpacking failed. {e}')
         raise NotImplementedError("Message format is not defined.")
-
 
     def serialize(self) -> bytes:
         """
@@ -358,6 +345,22 @@ class StaticTargetMessage(SerialMessage):
         """Returns the payload data for the StaticTargetMessage."""
         return (self.x, self.y, self.z)
 
+class ConfigMessage(SerialMessage):
+    """
+    Message to transmit configuration information.
+    """
+    format = '<HBffHHH'  # <H=start, B=code, f=projectile_speed, f=turret_height, H=max_speed, H=acceleration, H=end>
+    code = 1
+
+    def __init__(self, projectile_speed: float, turret_height: float, max_speed: int, acceleration: int):
+        self.projectile_speed = projectile_speed
+        self.turret_height = turret_height
+        self.max_speed = max_speed
+        self.acceleration = acceleration
+
+    def _get_payload_data(self) -> tuple:
+        """Returns the payload data for the ConfigMessage."""
+        return (self.projectile_speed, self.turret_height, self.max_speed, self.acceleration)
 
 # ======================================================================================
 # --- Custom DepthAI Pipeline Nodes ---
@@ -844,6 +847,17 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
                     cv_active_packet = SetTargetSourceMessage(TargetSource.CV).serialize()
                     self.serial_port.write(cv_active_packet)
                     print(f"Sent TargetSource.CV: {cv_active_packet.hex()}")
+
+                    # Send a default config message
+                    config_packet = ConfigMessage(
+                        projectile_speed=100.0,
+                        turret_height=1.0,
+                        max_speed=1000,
+                        acceleration=500
+                    ).serialize()
+                    self.serial_port.write(config_packet)
+                    print(f"Sent ConfigMessage: {config_packet.hex()}")
+
                     return super().onStart()
                 except serial.SerialException as e:
                     print(f"Warning: Could not open serial port: {e}.")
@@ -872,6 +886,11 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
         Main loop for the threaded node. It continuously tries to get synchronized
         messages from its input queues.
         """
+        # Start a separate thread for listening to serial input
+        import threading
+        listen_thread = threading.Thread(target=self.listen, daemon=True)
+        listen_thread.start()
+
         while self.isRunning():
             try:
                 # Blocking get() to ensure we have both messages before processing
@@ -881,6 +900,79 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
             except dai.MessageQueue.QueueException:
                 # This exception is thrown when the queue is closed (e.g., pipeline stopping)
                 break
+
+    def listen(self):
+        """
+        Continuously listens for incoming serial messages and processes them.
+        """
+        if not ScriptSettings.SERIAL_OUTPUT or not self.serial_port.is_open:
+            return
+
+        buffer = bytearray()
+        while self.isRunning():
+            try:
+                if self.serial_port.in_waiting > 0:
+                    buffer.extend(self.serial_port.read(self.serial_port.in_waiting))
+
+                    # Search for a message start marker
+                    start_index = buffer.find(b'\xfe\xca')
+                    if start_index != -1:
+                        # Potentially found a message, try to determine its full size
+                        if len(buffer) > start_index + 3:
+                            header_format = '<H B'
+                            _, code = struct.unpack_from(header_format, buffer, start_index)
+
+                            message_class = next((sub for sub in SerialMessage.__subclasses__() if sub.code == code), None)
+
+                            if message_class and message_class.format:
+                                message_size = struct.calcsize(message_class.format)
+
+                                if len(buffer) >= start_index + message_size:
+                                    # We have a full message
+                                    message_bytes = buffer[start_index:start_index + message_size]
+
+                                    # Verify end marker
+                                    end_marker_format = '<H'
+                                    end_marker = struct.unpack_from(end_marker_format, message_bytes, message_size - 2)[0]
+
+                                    if end_marker == 0xFACE:
+                                        try:
+                                            # Unpack the header to get the message code
+                                            header_format = '<H B'
+                                            _, code = struct.unpack_from(header_format, message_bytes)
+
+                                            # Find the appropriate message class based on the code
+                                            message_class = next((sub for sub in SerialMessage.__subclasses__() if sub.code == code), None)
+
+                                            if message_class:
+                                                message = message_class.parse(message_bytes)
+                                                print(f"Received message: {message!r}")
+                                            else:
+                                                print(f"Unknown message code: {code}")
+                                        except ValueError as e:
+                                            print(f"Error parsing message: {e}")
+
+                                        # Remove the processed message from the buffer
+                                        buffer = buffer[start_index + message_size:]
+                                    else:
+                                        # Invalid end marker, discard the start and search again
+                                        buffer = buffer[start_index + 2:]
+                                else:
+                                    # Not enough data for a full message yet, wait for more
+                                    time.sleep(0.01)
+                            else:
+                                # Unknown message code, discard the start and search again
+                                buffer = buffer[start_index + 2:]
+                        else:
+                            # Not enough data for header, wait for more
+                            time.sleep(0.01)
+                    else:
+                        # No start marker found, keep the last few bytes in case it's split
+                        buffer = buffer[-3:] if len(buffer) > 3 else buffer
+                        time.sleep(0.01)
+            except Exception as e:
+                print(f"Error in serial listener: {e}")
+                time.sleep(0.1)
 
     def process(self, detections_msg, spatial_data_msg) -> None:
         """

@@ -19,19 +19,21 @@ HardwareSerial testSerial(2);
 struct IOWrapper {
 	HardwareSerial& io;
 	size_t          readsome(char* buf, size_t count) {
-				 size_t available = io.available();
-				 if (available > 0) {
-					 return io.readBytes(buf, min(count, available));
+        size_t available = io.available();
+        if (available > 0) {
+            return io.readBytes(buf, min(count, available));
         }
-				 return 0;
+        return 0;
+	};
+	size_t write(const char* buf, size_t count) {
+		return io.write(reinterpret_cast<const uint8_t*>(buf), count);
 	};
 	bool good() { return bool(io); };
 	IOWrapper(HardwareSerial& io) : io(io){};
 };
 
-IOWrapper wrapped(testSerial);
-
-cerializer::Deserializer deserializer(wrapped);
+IOWrapper                                     wrapped(testSerial);
+cerializer::StreamHandler<IOWrapper> stream_handler(wrapped);
 LD2450                   ld2450;
 
 SystemState dptState;
@@ -110,7 +112,7 @@ void refreshRadarTargets() {
 }
 
 void readSerialCommands() {
-	deserializer.ParseStream(std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
+	stream_handler.ParseStream(std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
 		if (!thing) {
 			return;
 		}
@@ -124,7 +126,7 @@ void readSerialCommands() {
 			break;
 		}
 		case cerializer::Config::Type(): {
-			dptState.updateConfig(static_cast<cerializer::Config*>(thing.get()));
+			dptState.updateConfig(*static_cast<cerializer::Config*>(thing.get()));
 			break;
 		}
 		case cerializer::SetTargetSourceMessage::Type(): {
