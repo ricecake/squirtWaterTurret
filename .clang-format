@@ -9,10 +9,13 @@ TabWidth: 4
 AccessModifierOffset: -4
 
 # Formatting Options
+# RequiresClausePosition: OwnLineWithBrace
 AlignAfterOpenBracket: BlockIndent
 AlignConsecutiveDeclarations: true
 AlignOperands: DontAlign
 AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLambdasOnASingleLine: true
@@ -25,6 +28,7 @@ BreakBeforeConceptDeclarations: Yes
 BreakConstructorInitializers: AfterColon
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
+EmptyLineBeforeAccessModifier: LogicalBlock
 IndentCaseLabels: false
 IndentPPDirectives: BeforeHash
 IndentRequires: true
@@ -34,7 +38,9 @@ MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PointerAlignment: Left
 ReflowComments: true
+SeparateDefinitionBlocks: Always
 SpaceAfterTemplateKeyword: true
+SpaceBeforeCtorInitializerColon: false
 SpaceBeforeInheritanceColon: false
 SpaceBeforeParens: Custom
 SpaceBeforeParensOptions:
@@ -42,6 +48,7 @@ SpaceBeforeParensOptions:
   AfterFunctionDefinitionName: false
 SpacesInAngles: false
 SpacesInParentheses: false
+SortUsingDeclarations: true
 
 # Include Management
 IncludeBlocks: Regroup

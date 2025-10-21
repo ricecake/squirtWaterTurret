@@ -30,7 +30,7 @@ public:
 	inline FixedAdapter() noexcept = default;
 
 	template <typename NonFixedType>
-	constexpr inline FixedAdapter(NonFixedType val) noexcept : fpm::fixed<B, I, F, E>(val) {}
+	constexpr inline FixedAdapter(NonFixedType val) noexcept: fpm::fixed<B, I, F, E>(val) {}
 };
 
 /**
@@ -66,6 +66,7 @@ namespace std {
 	 */
 	template <typename T, typename O>
 		requires same_as<T, FixedAdapter<typename T::params, typename T::i, T::f, T::e>>
+
 	constexpr FixedAdapter<typename T::params, typename T::i, T::f, T::e> pow(const T& A, const O& B) {
 		return FixedAdapter<typename T::params, typename T::i, T::f, T::e>(fpm::pow(A, B));
 	}
@@ -125,6 +126,7 @@ namespace fpm {
 	constexpr inline FixedType operator+(const FixedType& x, const NonFixedType& y) noexcept {
 		return x + FixedType(y);
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -142,6 +144,7 @@ namespace fpm {
 	constexpr inline FixedType operator-(const FixedType& x, const NonFixedType& y) noexcept {
 		return x - FixedType(y);
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -159,6 +162,7 @@ namespace fpm {
 	constexpr inline FixedType operator*(const FixedType& x, const NonFixedType& y) noexcept {
 		return x * FixedType(y);
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -176,6 +180,7 @@ namespace fpm {
 	constexpr inline FixedType operator/(const FixedType& x, const NonFixedType& y) noexcept {
 		return x / FixedType(y);
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -193,6 +198,7 @@ namespace fpm {
 	constexpr inline bool operator==(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() == FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -210,6 +216,7 @@ namespace fpm {
 	constexpr inline bool operator!=(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() != FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -227,6 +234,7 @@ namespace fpm {
 	constexpr inline bool operator<(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() < FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -235,6 +243,7 @@ namespace fpm {
 	constexpr inline bool operator<(const NonFixedType& y, const FixedType& x) noexcept {
 		return x.raw_value() < FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -243,6 +252,7 @@ namespace fpm {
 	constexpr inline bool operator<=(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() <= FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -260,6 +270,7 @@ namespace fpm {
 	constexpr inline bool operator>(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() > FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -268,6 +279,7 @@ namespace fpm {
 	constexpr inline bool operator>(const NonFixedType& y, const FixedType& x) noexcept {
 		return x.raw_value() > FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -276,6 +288,7 @@ namespace fpm {
 	constexpr inline bool operator>=(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() >= FixedType(y).raw_value();
 	}
+
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,

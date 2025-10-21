@@ -2,6 +2,7 @@
 
 #include "utilities.h"
 #include <stdint.h>
+
 /**
  * @brief Constructs a new FireControl object.
  *
@@ -9,7 +10,7 @@
  * @param duration The duration for the firing state.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-FireControl::FireControl(bool active, uint16_t duration, int64_t run_after) :
+FireControl::FireControl(bool active, uint16_t duration, int64_t run_after):
 	Command(run_after), active(active), duration(duration) {}
 
 /**

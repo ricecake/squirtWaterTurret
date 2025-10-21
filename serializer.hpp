@@ -63,8 +63,10 @@ namespace cerializer {
 	 */
 	template <typename T>
 	struct is_std_array: std::false_type {};
+
 	template <typename T, std::size_t N>
 	struct is_std_array<std::array<T, N>>: std::true_type {};
+
 	template <typename T>
 	constexpr bool is_std_array_v = is_std_array<T>::value;
 
@@ -101,6 +103,7 @@ namespace cerializer {
 	 */
 	template <typename... Ts>
 		requires(std::is_trivially_copyable_v<Ts>&&...)
+
 	constexpr inline std::array<char, (sizeof(Ts) + ...)> pack(const Ts&... args) {
 		std::array<char, (sizeof(Ts) + ...)> dest;
 		auto                                 offset = 0;
@@ -123,6 +126,7 @@ namespace cerializer {
 	 */
 	template <typename Dest, typename... Ts, typename Cont>
 		requires(std::is_trivially_copyable_v<Ts>&&...)
+
 	&&Container<Cont, char> constexpr inline Dest unpack(const Cont& binaryData) {
 		if constexpr (sizeof...(Ts) < 1) {
 			return *reinterpret_cast<Dest*>(binaryData.data());
@@ -142,12 +146,14 @@ namespace cerializer {
 	 * @brief Gets the format size and type character for a given type.
 	 */
 	template <typename T>
+
 		requires std::is_trivially_copyable_v<T> &&(!std::is_bounded_array_v<T>)constexpr TypeCharSpec formatSize() {
 			return {ceil(log10(sizeof(T))), sizeof(T), 'P'};
 		}
 
 		template <typename T>
 			requires std::is_bounded_array_v<T> && std::same_as<char, std::remove_all_extents_t<T>>
+
 		constexpr TypeCharSpec formatSize() {
 			return {ceil(log10(sizeof(T))), sizeof(T), 's'};
 		}
@@ -156,54 +162,67 @@ namespace cerializer {
 		constexpr TypeCharSpec formatSize<char>() {
 			return {1, 1, 'c'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<signed char>() {
 			return {1, 1, 'b'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned char>() {
 			return {1, 1, 'B'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<bool>() {
 			return {1, 1, '?'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<short>() {
 			return {1, 2, 'h'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned short>() {
 			return {1, 2, 'H'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<int>() {
 			return {1, 4, 'i'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned int>() {
 			return {1, 4, 'I'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<long>() {
 			return {1, 4, 'l'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned long>() {
 			return {1, 4, 'L'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<long long>() {
 			return {1, 8, 'q'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned long long>() {
 			return {1, 8, 'Q'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<float>() {
 			return {1, 4, 'f'};
 		}
+
 		template <>
 		constexpr TypeCharSpec formatSize<double>() {
 			return {1, 8, 'd'};
@@ -220,6 +239,7 @@ namespace cerializer {
 		 */
 		template <typename... Ts>
 			requires(std::is_trivially_copyable_v<Ts>&&...)
+
 		constexpr inline RenderedFormatString<Ts...> renderFormat() {
 			return RenderedFormatString<Ts...>{char('<'), char(std::get<2>(formatSize<Ts>()))...};
 		}
@@ -241,10 +261,12 @@ namespace cerializer {
 		class MessageMaker {
 		public:
 			using TCreateMethod = std::function<BasePointer(const std::span<char>& binaryData)>;
+
 			static bool Register(const uint8_t typeVal, TCreateMethod builder) {
 				MessageMaker::makerMap[typeVal] = builder;
 				return true;
 			}
+
 			static BasePointer Create(const uint8_t typeVal, const std::span<char>& binaryData) {
 				if (auto it = MessageMaker::makerMap.find(typeVal); it != makerMap.end()) {
 					return it->second(binaryData);
@@ -273,15 +295,19 @@ namespace cerializer {
 			static bool registered;
 
 		public:
-			constexpr uint8_t             Code() override { return TypeVal; };
-			constexpr static uint8_t      Type() { return TypeVal; };
+			constexpr uint8_t Code() override { return TypeVal; };
+
+			constexpr static uint8_t Type() { return TypeVal; };
+
 			constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
+
 			using MessageFormat = std::array<char, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)>;
 			using BinaryMessage = std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)>;
 
 			constexpr static MessageFormat Format() {
 				return renderFormat<uint16_t, uint8_t, FieldTypes..., uint16_t>();
 			};
+
 			constexpr BinaryMessage ToBinary() const {
 				auto encodedData = static_cast<const Derived*>(this)->encode();
 				return pack(magicHead, Type(), encodedData, magicFoot);
@@ -290,6 +316,7 @@ namespace cerializer {
 			constexpr static Derived LoadBinary(BinaryMessage& binaryData) {
 				return LoadBinary(std::span(binaryData.begin(), binaryData.end()));
 			}
+
 			constexpr static Derived LoadBinary(const std::span<char>& binaryData) {
 				std::span<char> dataView(binaryData);
 				uint16_t        headCheck = unpack<uint16_t>(dataView.first(sizeof(magicHead)));
@@ -321,10 +348,11 @@ namespace cerializer {
 			const uint16_t z;
 
 		public:
-			constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept :
+			constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept:
 				id(id), valid(valid), x(x), y(y), z(z) {
 				assert(registered);
 			}
+
 			constexpr std::array<char, Size()> encode() const { return pack(id, valid, x, y, z); }
 		};
 
@@ -344,14 +372,18 @@ namespace cerializer {
 
 		public:
 			constexpr inline Config(
-				float projectile_speed, float turret_height, uint16_t max_speed, uint16_t acceleration
-			) noexcept :
+				float    projectile_speed,
+				float    turret_height,
+				uint16_t max_speed,
+				uint16_t acceleration
+			) noexcept:
 				projectile_speed(projectile_speed),
 				turret_height(turret_height),
 				max_speed(max_speed),
 				acceleration(acceleration) {
 				assert(registered);
 			}
+
 			constexpr std::array<char, Size()> encode() const {
 				return pack(projectile_speed, turret_height, max_speed, acceleration);
 			}
@@ -377,9 +409,10 @@ namespace cerializer {
 			const TargetSource source;
 
 		public:
-			constexpr inline SetTargetSourceMessage(TargetSource source) noexcept : source(source) {
+			constexpr inline SetTargetSourceMessage(TargetSource source) noexcept: source(source) {
 				assert(registered);
 			}
+
 			constexpr std::array<char, Size()> encode() const { return pack(source); }
 		};
 
@@ -396,9 +429,10 @@ namespace cerializer {
 			const uint16_t z;
 
 		public:
-			constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept : x(x), y(y), z(z) {
+			constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept: x(x), y(y), z(z) {
 				assert(registered);
 			}
+
 			constexpr std::array<char, Size()> encode() const { return pack(x, y, z); }
 		};
 
@@ -430,6 +464,7 @@ namespace cerializer {
 		 */
 		template <typename T>
 			requires IOAble<T>
+
 		class Deserializer {
 		protected:
 			T&                    input;
@@ -471,7 +506,7 @@ namespace cerializer {
 			}
 
 		public:
-			Deserializer(T& readStream) : input(readStream){};
+			Deserializer(T& readStream): input(readStream){};
 
 			template <std::derived_from<BasePacket> Type>
 			void ParseStream(std::function<void(std::unique_ptr<Type>&)> callback) {

@@ -58,15 +58,15 @@ public:
 	/**
 	 * @brief Constructs a DynamicTimeInterval from a std::chrono::duration.
 	 */
-	constexpr DynamicTimeInterval(DurationType d) : m_duration(d) {}
+	constexpr DynamicTimeInterval(DurationType d): m_duration(d) {}
 
 	/**
 	 * @brief Constructs a DynamicTimeInterval from a raw count of ticks.
 	 */
-	constexpr DynamicTimeInterval(Rep count) : m_duration(count) {}
+	constexpr DynamicTimeInterval(Rep count): m_duration(count) {}
 
 	template <typename Orep, typename Operiod>
-	constexpr DynamicTimeInterval(std::chrono::duration<Orep, Operiod> d) :
+	constexpr DynamicTimeInterval(std::chrono::duration<Orep, Operiod> d):
 		m_duration(std::chrono::duration_cast<DurationType>(d)) {}
 
 	/**

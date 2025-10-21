@@ -8,11 +8,17 @@
 // From state.h
 struct AccelStepper {
 	AccelStepper(int = 0, int = 0, int = 0) {}
+
 	void setAcceleration(int) {}
+
 	void setMaxSpeed(double) {}
+
 	void moveTo(long) {}
+
 	long distanceToGo() { return 0; }
+
 	void run() {}
+
 	long currentPosition() { return 0; }
 };
 
@@ -28,11 +34,15 @@ using SemaphoreHandle_t = int;
 static inline SemaphoreHandle_t xSemaphoreCreateMutex() {
 	return 0;
 }
+
 static inline int xSemaphoreTake(SemaphoreHandle_t, uint32_t) {
 	return pdTRUE;
 }
+
 static inline void xSemaphoreGive(SemaphoreHandle_t) {}
+
 static inline void pinMode(int, int) {}
+
 static inline void digitalWrite(int, int) {}
 
 // From command.cpp

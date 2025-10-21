@@ -18,15 +18,18 @@ HardwareSerial testSerial(2);
 
 struct IOWrapper {
 	HardwareSerial& io;
-	size_t          readsome(char* buf, size_t count) {
-				 size_t available = io.available();
-				 if (available > 0) {
-					 return io.readBytes(buf, min(count, available));
-        }
-				 return 0;
+
+	size_t readsome(char* buf, size_t count) {
+		size_t available = io.available();
+		if (available > 0) {
+			return io.readBytes(buf, min(count, available));
+		}
+		return 0;
 	};
+
 	bool good() { return bool(io); };
-	IOWrapper(HardwareSerial& io) : io(io){};
+
+	IOWrapper(HardwareSerial& io): io(io){};
 };
 
 IOWrapper wrapped(testSerial);
@@ -77,7 +80,8 @@ void loop() {
 	vTaskDelay(1000);
 }
 
-int  last_time = 0;
+int last_time = 0;
+
 void systemControlLoop(void* pvParameters) {
 	for (;;) {
 		dptState.processCommandQueue();
@@ -96,7 +100,11 @@ void refreshRadarTargets() {
 				auto newPositionObservation =
 					PositionVector(fixed(result_target.x) / 1000, fixed(result_target.y) / 1000, 1.1);
 				dptState.updateTarget(
-					dptState.radarTarget, result_target.id, result_target.valid, newPositionObservation, 8
+					dptState.radarTarget,
+					result_target.id,
+					result_target.valid,
+					newPositionObservation,
+					8
 				);
 				// Have this update a list of radar targets, and the other update a list of external targets.
 				// Radar targets get a pre-defined guess at average height of target point.
@@ -120,6 +128,7 @@ void readSerialCommands() {
 			auto target = static_cast<cerializer::Target*>(thing.get());
 			auto newPositionObservation =
 				PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
+
 			dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
 			break;
 		}
@@ -134,9 +143,13 @@ void readSerialCommands() {
 		}
 		case cerializer::StaticTargetMessage::Type(): {
 			auto static_target_msg = static_cast<cerializer::StaticTargetMessage*>(thing.get());
-			dptState.staticTarget.position.X_coord = fixed(static_target_msg->x) / 1000;
-			dptState.staticTarget.position.Y_coord = fixed(static_target_msg->y) / 1000;
-			dptState.staticTarget.position.Z_coord = fixed(static_target_msg->z) / 1000;
+			auto newPosition = PositionVector(
+				fixed(static_target_msg->x) / 1000,
+				fixed(static_target_msg->y) / 1000,
+				fixed(static_target_msg->z) / 1000
+			);
+
+			dptState.staticTarget.Update(newPosition);
 			break;
 		}
 		}

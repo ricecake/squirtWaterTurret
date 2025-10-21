@@ -138,13 +138,13 @@ private:
 // ======================================================================================
 
 // -- DistanceVector --
-constexpr DistanceVector::DistanceVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+constexpr DistanceVector::DistanceVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
 
 // -- PositionVector --
-constexpr PositionVector::PositionVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+constexpr PositionVector::PositionVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
 
 // -- VelocityVector --
-constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z) : Vec(x, y, z) {}
+constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
 
 // -- Target --
 inline bool Target::actionIdleExceeds(const ChronoDuration auto limit) const {
