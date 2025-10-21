@@ -16,8 +16,7 @@ concept Number = requires(T obj, U thi) {
 	};
 };
 
-template <typename Numeric, typename Derived>
-class Vector3D;
+template <typename Numeric, typename Derived> class Vector3D;
 
 /**
  * @brief Concept to check if a type is compatible with Vector3D for operations.
@@ -45,8 +44,7 @@ using Either = std::conditional_t<std::is_same_v<ExplicitType, void>, Default, E
  * @tparam Numeric The numeric type for the vector's components (e.g., float, fixed-point).
  * @tparam Derived The derived class type for CRTP.
  */
-template <typename Numeric, typename Derived = void>
-class Vector3D {
+template <typename Numeric, typename Derived = void> class Vector3D {
 public:
 	using NumericType = Numeric;
 	using ClassType = Either<Derived, Vector3D<NumericType>>;
@@ -60,25 +58,18 @@ public:
 	constexpr static Vector3D<Numeric> Forward = Vector3D<Numeric>(0, 1, 0);
 	constexpr static Vector3D<Numeric> Backward = Vector3D<Numeric>(0, -1, 0);
 
-	NumericType X_coord;  ///< The X-coordinate of the vector.
-	NumericType Y_coord;  ///< The Y-coordinate of the vector.
-	NumericType Z_coord;  ///< The Z-coordinate of the vector.
+	NumericType X_coord; ///< The X-coordinate of the vector.
+	NumericType Y_coord; ///< The Y-coordinate of the vector.
+	NumericType Z_coord; ///< The Z-coordinate of the vector.
 
-	constexpr explicit Vector3D() :
-		X_coord(0),
-		Y_coord(0),
-		Z_coord(0) {}
+	constexpr explicit Vector3D() : X_coord(0), Y_coord(0), Z_coord(0) {}
 	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord) :
-		X_coord(X_coord),
-		Y_coord(Y_coord),
-		Z_coord(Z_coord) {}
+	    X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
 
 	/**
 	 * @brief Checks if the vector is non-zero.
 	 */
-	operator bool() const {
-		return X_coord || Y_coord || Z_coord;
-	}
+	operator bool() const { return X_coord || Y_coord || Z_coord; }
 
 	/**
 	 * @brief Adds two vectors.
@@ -120,38 +111,30 @@ public:
 	 */
 	ClassType cross(const VectorCompatible<NumericType> auto& other) const {
 		return ClassType(
-			Y_coord * other.Z_coord - Z_coord * other.Y_coord,
-			Z_coord * other.X_coord - X_coord * other.Z_coord,
-			X_coord * other.Y_coord - Y_coord * other.X_coord);
+		    Y_coord * other.Z_coord - Z_coord * other.Y_coord, Z_coord * other.X_coord - X_coord * other.Z_coord,
+		    X_coord * other.Y_coord - Y_coord * other.X_coord
+		);
 	}
 
 	/**
 	 * @brief Computes the magnitude (length) of the vector.
 	 */
-	NumericType magnitude() const {
-		return sqrt((X_coord * X_coord) + (Y_coord * Y_coord) + (Z_coord * Z_coord));
-	}
+	NumericType magnitude() const { return sqrt((X_coord * X_coord) + (Y_coord * Y_coord) + (Z_coord * Z_coord)); }
 
 	/**
 	 * @brief Computes the magnitude in the XY plane.
 	 */
-	NumericType magnitudeXY() const {
-		return sqrt(X_coord * X_coord + Y_coord * Y_coord);
-	}
+	NumericType magnitudeXY() const { return sqrt(X_coord * X_coord + Y_coord * Y_coord); }
 
 	/**
 	 * @brief Computes the magnitude in the XZ plane.
 	 */
-	NumericType magnitudeXZ() const {
-		return sqrt(X_coord * X_coord + Z_coord * Z_coord);
-	}
+	NumericType magnitudeXZ() const { return sqrt(X_coord * X_coord + Z_coord * Z_coord); }
 
 	/**
 	 * @brief Computes the magnitude in the YZ plane.
 	 */
-	NumericType magnitudeYZ() const {
-		return sqrt(Y_coord * Y_coord + Z_coord * Z_coord);
-	}
+	NumericType magnitudeYZ() const { return sqrt(Y_coord * Y_coord + Z_coord * Z_coord); }
 
 	/**
 	 * @brief Computes the normalized vector (unit vector).
@@ -167,16 +150,12 @@ public:
 	/**
 	 * @brief Computes the pitch angle of the vector.
 	 */
-	NumericType pitch() const {
-		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor;
-	}
+	NumericType pitch() const { return atan2(Z_coord, magnitudeXY()) * rad2DegFactor; }
 
 	/**
 	 * @brief Computes the yaw angle of the vector.
 	 */
-	NumericType yaw() const {
-		return atan2(X_coord, Y_coord) * rad2DegFactor;
-	}
+	NumericType yaw() const { return atan2(X_coord, Y_coord) * rad2DegFactor; }
 
 	/**
 	 * @brief Computes the angle to another vector.

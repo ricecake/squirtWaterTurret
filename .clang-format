@@ -9,14 +9,14 @@ TabWidth: 4
 AccessModifierOffset: -4
 
 # Formatting Options
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: BlockIndent
 AlignConsecutiveDeclarations: true
-AlignOperands: Align
+AlignOperands: DontAlign
 AlignTrailingComments: true
 AllowShortFunctionsOnASingleLine: Inline
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
-AlwaysBreakTemplateDeclarations: Yes
+AlwaysBreakTemplateDeclarations: MultiLine
 BinPackParameters: false
 BreakBeforeBraces: Attach
 BreakConstructorInitializers: AfterColon
