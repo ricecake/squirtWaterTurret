@@ -128,11 +128,7 @@ private:
 	uint8_t selectedTarget = 0;         ///< The index of the currently selected target.
 
 	std::priority_queue<Command*, std::vector<Command*>, decltype(CommandPointerComparator)>
-		commandQueue; ///< Priority
-	                  ///< queue
-	                  ///< for
-	                  ///< pending
-	                  ///< commands.
+		commandQueue; ///< Priority queue for pending commands.
 };
 
 // ======================================================================================

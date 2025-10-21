@@ -210,13 +210,18 @@ namespace cerializer {
 		}
 
 		/**
+		 * @brief A type alias for the character array that holds a rendered format string.
+		 */
+		template <typename... Ts>
+		using RenderedFormatString = std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>;
+
+		/**
 		 * @brief Renders the format string for a series of types.
 		 */
 		template <typename... Ts>
 			requires(std::is_trivially_copyable_v<Ts>&&...)
-		constexpr std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)> renderFormat() {
-			return std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>{
-				char('<'), char(std::get<2>(formatSize<Ts>()))...};
+		constexpr inline RenderedFormatString<Ts...> renderFormat() {
+			return RenderedFormatString<Ts...>{char('<'), char(std::get<2>(formatSize<Ts>()))...};
 		}
 
 		/**
@@ -271,18 +276,18 @@ namespace cerializer {
 			constexpr uint8_t             Code() override { return TypeVal; };
 			constexpr static uint8_t      Type() { return TypeVal; };
 			constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
-			constexpr static std::array<char, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)> Format() {
+			using MessageFormat = std::array<char, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)>;
+			using BinaryMessage = std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)>;
+
+			constexpr static MessageFormat Format() {
 				return renderFormat<uint16_t, uint8_t, FieldTypes..., uint16_t>();
 			};
-			constexpr std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)>
-			ToBinary() const {
+			constexpr BinaryMessage ToBinary() const {
 				auto encodedData = static_cast<const Derived*>(this)->encode();
 				return pack(magicHead, Type(), encodedData, magicFoot);
 			};
 
-			constexpr static Derived
-			LoadBinary(std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)>& binaryData
-			) {
+			constexpr static Derived LoadBinary(BinaryMessage& binaryData) {
 				return LoadBinary(std::span(binaryData.begin(), binaryData.end()));
 			}
 			constexpr static Derived LoadBinary(const std::span<char>& binaryData) {
