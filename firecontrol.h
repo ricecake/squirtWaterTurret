@@ -22,6 +22,13 @@
 class FireControl: public Command {
 public:
 	// -- Constructors --
+	/**
+	 * @brief Constructs a FireControl command.
+	 *
+	 * @param active The desired state of the firing pin (true to fire, false to stop).
+	 * @param duration The duration (in microseconds) to maintain the firing state.
+	 * @param run_after The time delay (in microseconds) after which the command should be executed.
+	 */
 	FireControl(bool, uint16_t, int64_t);
 
 	// -- Public Methods --

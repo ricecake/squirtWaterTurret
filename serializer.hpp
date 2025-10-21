@@ -31,6 +31,8 @@ namespace cerializer {
 
 	/**
 	 * @brief Converts a block of data into a hexadecimal string representation.
+	 * @param data The data to be converted, expected to be a container of characters.
+	 * @return A string containing the hexadecimal representation of the input data.
 	 */
 	std::string hexify(auto data) {
 		std::stringstream out;
@@ -41,7 +43,10 @@ namespace cerializer {
 	}
 
 	/**
-	 * @brief Converts an object into a character array.
+	 * @brief Casts an object to its raw byte representation in a std::array.
+	 * @tparam T The type of the object to convert.
+	 * @param thing The object to be converted.
+	 * @return A std::array<char, sizeof(T)> containing the byte representation of the object.
 	 */
 	template <typename T>
 	constexpr auto toCharArray(const T& thing) {
@@ -87,7 +92,14 @@ namespace cerializer {
 	};
 
 	/**
-	 * @brief A utility function to perform a postfix addition.
+	 * @brief A utility function to perform a postfix addition, returning the original value.
+	 *
+	 * This is useful for advancing an offset or pointer while using its previous value in an expression.
+	 * @tparam T The type of the value to be incremented.
+	 * @tparam Y The type of the value to add.
+	 * @param initial The value to be incremented, passed by reference.
+	 * @param add The value to add.
+	 * @return The value of `initial` before the addition.
 	 */
 	template <std::integral T, std::integral Y>
 	constexpr inline std::common_type<T, Y>::type postfixAdd(T& initial, const Y& add) {
@@ -97,7 +109,15 @@ namespace cerializer {
 	}
 
 	/**
-	 * @brief Packs a series of arguments into a single character array.
+	 * @brief Packs a series of trivially copyable arguments into a single character array.
+	 *
+	 * This function performs serialization by copying the binary representation of each argument
+	 * into a contiguous byte array. It handles endianness conversion for multi-byte types
+	 * if the native endianness is big-endian.
+	 *
+	 * @tparam Ts The types of the arguments to pack.
+	 * @param args The arguments to be packed.
+	 * @return A std::array<char, ...> containing the serialized data.
 	 */
 	template <typename... Ts>
 		requires(std::is_trivially_copyable_v<Ts>&&...)
@@ -119,7 +139,18 @@ namespace cerializer {
 	};
 
 	/**
-	 * @brief Unpacks a character array into a specified destination type.
+	 * @brief Unpacks a character array into a specified destination type or a struct.
+	 *
+	 * This function can operate in two modes:
+	 * 1. If only `Dest` is provided, it unpacks the binary data directly into an object of type `Dest`.
+	 * 2. If `Dest` and `Ts...` are provided, it unpacks the binary data into individual values of types `Ts...`
+	 *    and uses them to construct an object of type `Dest`.
+	 *
+	 * @tparam Dest The destination type to create.
+	 * @tparam Ts The types of the fields to unpack for constructing `Dest`.
+	 * @tparam Cont A container type for the binary data, like std::span or std::array.
+	 * @param binaryData The container holding the binary data.
+	 * @return An object of type `Dest` constructed from the unpacked data.
 	 */
 	template <typename Dest, typename... Ts, typename Cont>
 		requires(std::is_trivially_copyable_v<Ts>&&...)
@@ -133,77 +164,129 @@ namespace cerializer {
 		}
 	};
 
-	template <typename... Ts>
-		requires(std::is_trivially_copyable_v<Ts>&&...)
-	using TypeCharArray = std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>;
-
+	/**
+	 * @brief A type alias for a tuple describing a type's format: {size_digits, size_in_bytes, type_char}.
+	 */
 	using TypeCharSpec = std::tuple<uint8_t, uint8_t, char>;
+
 	/**
 	 * @brief Gets the format size and type character for a given type.
+	 *
+	 * This function provides the necessary information for building a format string
+	 * similar to Python's `struct` module. Specializations are provided for common types.
+	 * The generic fallback treats the type as a packed binary structure.
+	 *
+	 * @tparam T The type to inspect.
+	 * @return A `TypeCharSpec` tuple containing {size_digits, size_in_bytes, type_char}.
 	 */
 	template <typename T>
 		requires std::is_trivially_copyable_v<T> &&(!std::is_bounded_array_v<T>)constexpr TypeCharSpec formatSize() {
 			return {ceil(log10(sizeof(T))), sizeof(T), 'P'};
 		}
 
+		/**
+		 * @brief Specialization for character arrays, representing them as a string.
+		 */
 		template <typename T>
 			requires std::is_bounded_array_v<T> && std::same_as<char, std::remove_all_extents_t<T>>
 		constexpr TypeCharSpec formatSize() {
 			return {ceil(log10(sizeof(T))), sizeof(T), 's'};
 		}
 
+		/**
+		 * @brief Specialization for char.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<char>() {
 			return {1, 1, 'c'};
 		}
+		/**
+		 * @brief Specialization for signed char.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<signed char>() {
 			return {1, 1, 'b'};
 		}
+		/**
+		 * @brief Specialization for unsigned char.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned char>() {
 			return {1, 1, 'B'};
 		}
+		/**
+		 * @brief Specialization for bool.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<bool>() {
 			return {1, 1, '?'};
 		}
+		/**
+		 * @brief Specialization for short.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<short>() {
 			return {1, 2, 'h'};
 		}
+		/**
+		 * @brief Specialization for unsigned short.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned short>() {
 			return {1, 2, 'H'};
 		}
+		/**
+		 * @brief Specialization for int.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<int>() {
 			return {1, 4, 'i'};
 		}
+		/**
+		 * @brief Specialization for unsigned int.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned int>() {
 			return {1, 4, 'I'};
 		}
+		/**
+		 * @brief Specialization for long.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<long>() {
 			return {1, 4, 'l'};
 		}
+		/**
+		 * @brief Specialization for unsigned long.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned long>() {
 			return {1, 4, 'L'};
 		}
+		/**
+		 * @brief Specialization for long long.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<long long>() {
 			return {1, 8, 'q'};
 		}
+		/**
+		 * @brief Specialization for unsigned long long.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<unsigned long long>() {
 			return {1, 8, 'Q'};
 		}
+		/**
+		 * @brief Specialization for float.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<float>() {
 			return {1, 4, 'f'};
 		}
+		/**
+		 * @brief Specialization for double.
+		 */
 		template <>
 		constexpr TypeCharSpec formatSize<double>() {
 			return {1, 8, 'd'};
@@ -225,26 +308,55 @@ namespace cerializer {
 		}
 
 		/**
-		 * @brief Base class for all serializable packets.
+		 * @brief An abstract base class for all serializable message packets.
+		 *
+		 * This class defines the fundamental interface for all messages, requiring
+		 * them to provide a unique type code. It ensures that different message
+		 * types can be handled polymorphically.
 		 */
 		class BasePacket {
 		public:
 			virtual ~BasePacket() = default;
+			/**
+			 * @brief Gets the unique 8-bit code that identifies the message type.
+			 * @return The type code.
+			 */
 			virtual constexpr uint8_t Code() = 0;
 		};
 
+		/**
+		 * @brief Type alias for a unique pointer to a BasePacket, used for polymorphism.
+		 */
 		using BasePointer = std::unique_ptr<BasePacket>;
 
 		/**
 		 * @brief A factory class for creating message objects from binary data.
+		 *
+		 * This class uses the factory pattern to decouple the message parsing logic
+		 * from the concrete message classes. It maintains a map of message type codes
+		 * to constructor functions, allowing for dynamic creation of message objects
+		 * based on a type code read from a stream.
 		 */
 		class MessageMaker {
 		public:
+			/// A function pointer type for a method that creates a message object.
 			using TCreateMethod = std::function<BasePointer(const std::span<char>& binaryData)>;
+			/**
+			 * @brief Registers a message type with the factory.
+			 * @param typeVal The unique identifier for the message type.
+			 * @param builder The function that constructs the message object.
+			 * @return True if registration was successful.
+			 */
 			static bool Register(const uint8_t typeVal, TCreateMethod builder) {
 				MessageMaker::makerMap[typeVal] = builder;
 				return true;
 			}
+			/**
+			 * @brief Creates a message object of the specified type.
+			 * @param typeVal The unique identifier for the message type.
+			 * @param binaryData The binary data to deserialize.
+			 * @return A unique pointer to the created message object, or nullptr if the type is not registered.
+			 */
 			static BasePointer Create(const uint8_t typeVal, const std::span<char>& binaryData) {
 				if (auto it = MessageMaker::makerMap.find(typeVal); it != makerMap.end()) {
 					return it->second(binaryData);
@@ -257,39 +369,81 @@ namespace cerializer {
 		};
 
 		/**
-		 * @brief A template class for defining serializable messages.
+		 * @brief A template base class for defining serializable messages.
 		 *
 		 * This class uses the Curiously Recurring Template Pattern (CRTP) to provide a
-		 * common interface for all messages. It handles automatic registration with the
-		 * MessageMaker factory.
+		 * common interface and implementation for all message types. It automatically
+		 * handles registration with the `MessageMaker` factory, serialization to a
+		 * binary format (including headers and footers), and deserialization.
 		 *
-		 * @tparam Derived The derived message class.
-		 * @tparam TypeVal A unique identifier for the message type.
-		 * @tparam FieldTypes The types of the fields in the message.
+		 * To define a new message, a class should inherit from this template, providing
+		 * itself as the `Derived` parameter, a unique `TypeVal`, and a list of the
+		 * `FieldTypes` that make up its payload.
+		 *
+		 * @tparam Derived The derived message class that is being defined.
+		 * @tparam TypeVal A unique 8-bit identifier for this message type.
+		 * @tparam FieldTypes A parameter pack of the types of the fields in the message payload.
 		 */
 		template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
 		class Message: public BasePacket {
 		public:
+			/// @brief A static flag that triggers registration with the MessageMaker factory upon program start.
 			static bool registered;
 
 		public:
-			constexpr uint8_t             Code() override { return TypeVal; };
-			constexpr static uint8_t      Type() { return TypeVal; };
+			/**
+			 * @brief Gets the unique code for this message type.
+			 * @return The 8-bit type code.
+			 */
+			constexpr uint8_t Code() override { return TypeVal; };
+			/**
+			 * @brief Gets the unique code for this message type (static version).
+			 * @return The 8-bit type code.
+			 */
+			constexpr static uint8_t Type() { return TypeVal; };
+			/**
+			 * @brief Gets the total size of the message payload in bytes.
+			 * @return The size of the message payload.
+			 */
 			constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
+
+			/// @brief A type alias for the array holding the message's format string.
 			using MessageFormat = std::array<char, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)>;
+			/// @brief A type alias for the array holding the full binary message, including headers and footers.
 			using BinaryMessage = std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)>;
 
+			/**
+			 * @brief Generates the format string for the message.
+			 * @return An array of characters representing the format.
+			 */
 			constexpr static MessageFormat Format() {
 				return renderFormat<uint16_t, uint8_t, FieldTypes..., uint16_t>();
 			};
+
+			/**
+			 * @brief Generates the binary representation of the message.
+			 * This method serializes the message fields, adds the magic head/foot and type code.
+			 * @return An array of characters containing the full binary message.
+			 */
 			constexpr BinaryMessage ToBinary() const {
 				auto encodedData = static_cast<const Derived*>(this)->encode();
 				return pack(magicHead, Type(), encodedData, magicFoot);
 			};
 
+			/**
+			 * @brief Deserializes a message from a character array.
+			 * @param binaryData The array containing the binary message.
+			 * @return An instance of the derived message class.
+			 */
 			constexpr static Derived LoadBinary(BinaryMessage& binaryData) {
 				return LoadBinary(std::span(binaryData.begin(), binaryData.end()));
 			}
+
+			/**
+			 * @brief Deserializes a message from a span of characters.
+			 * @param binaryData The span containing the binary message.
+			 * @return An instance of the derived message class.
+			 */
 			constexpr static Derived LoadBinary(const std::span<char>& binaryData) {
 				std::span<char> dataView(binaryData);
 				uint16_t        headCheck = unpack<uint16_t>(dataView.first(sizeof(magicHead)));
@@ -314,17 +468,29 @@ namespace cerializer {
 		 */
 		class Target: public Message<Target, 0, uint32_t, bool, uint16_t, uint16_t, uint16_t> {
 		public:
-			const uint32_t id;
-			const bool     valid;
-			const uint16_t x;
-			const uint16_t y;
-			const uint16_t z;
+			const uint32_t id;    ///< A unique identifier for the target.
+			const bool     valid; ///< Flag indicating if the target data is valid.
+			const uint16_t x;     ///< The x-coordinate of the target.
+			const uint16_t y;     ///< The y-coordinate of the target.
+			const uint16_t z;     ///< The z-coordinate of the target.
 
 		public:
+			/**
+			 * @brief Constructs a new Target message.
+			 * @param id A unique identifier for the target.
+			 * @param valid Flag indicating if the target data is valid.
+			 * @param x The x-coordinate of the target.
+			 * @param y The y-coordinate of the target.
+			 * @param z The z-coordinate of the target.
+			 */
 			constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept :
 				id(id), valid(valid), x(x), y(y), z(z) {
 				assert(registered);
 			}
+			/**
+			 * @brief Encodes the message fields into a character array.
+			 * @return A std::array<char, Size()> containing the serialized payload.
+			 */
 			constexpr std::array<char, Size()> encode() const { return pack(id, valid, x, y, z); }
 		};
 
@@ -337,12 +503,19 @@ namespace cerializer {
 		 */
 		class Config: public Message<Config, 1, float, float, uint16_t, uint16_t> {
 		public:
-			const float    projectile_speed;
-			const float    turret_height;
-			const uint16_t max_speed;
-			const uint16_t acceleration;
+			const float    projectile_speed; ///< The initial speed of the projectile.
+			const float    turret_height;    ///< The height of the turret from the ground.
+			const uint16_t max_speed;        ///< The maximum rotational speed of the motors.
+			const uint16_t acceleration;     ///< The acceleration of the motors.
 
 		public:
+			/**
+			 * @brief Constructs a new Config message.
+			 * @param projectile_speed The initial speed of the projectile.
+			 * @param turret_height The height of the turret from the ground.
+			 * @param max_speed The maximum rotational speed of the motors.
+			 * @param acceleration The acceleration of the motors.
+			 */
 			constexpr inline Config(
 				float projectile_speed, float turret_height, uint16_t max_speed, uint16_t acceleration
 			) noexcept :
@@ -352,6 +525,10 @@ namespace cerializer {
 				acceleration(acceleration) {
 				assert(registered);
 			}
+			/**
+			 * @brief Encodes the message fields into a character array.
+			 * @return A std::array<char, Size()> containing the serialized payload.
+			 */
 			constexpr std::array<char, Size()> encode() const {
 				return pack(projectile_speed, turret_height, max_speed, acceleration);
 			}
@@ -374,12 +551,20 @@ namespace cerializer {
 		 */
 		class SetTargetSourceMessage: public Message<SetTargetSourceMessage, 2, TargetSource> {
 		public:
-			const TargetSource source;
+			const TargetSource source; ///< The selected target source.
 
 		public:
+			/**
+			 * @brief Constructs a new SetTargetSourceMessage.
+			 * @param source The target source to be set.
+			 */
 			constexpr inline SetTargetSourceMessage(TargetSource source) noexcept : source(source) {
 				assert(registered);
 			}
+			/**
+			 * @brief Encodes the message fields into a character array.
+			 * @return A std::array<char, Size()> containing the serialized payload.
+			 */
 			constexpr std::array<char, Size()> encode() const { return pack(source); }
 		};
 
@@ -391,14 +576,24 @@ namespace cerializer {
 		 */
 		class StaticTargetMessage: public Message<StaticTargetMessage, 3, uint16_t, uint16_t, uint16_t> {
 		public:
-			const uint16_t x;
-			const uint16_t y;
-			const uint16_t z;
+			const uint16_t x; ///< The x-coordinate of the static target.
+			const uint16_t y; ///< The y-coordinate of the static target.
+			const uint16_t z; ///< The z-coordinate of the static target.
 
 		public:
+			/**
+			 * @brief Constructs a new StaticTargetMessage.
+			 * @param x The x-coordinate of the static target.
+			_           * @param y The y-coordinate of the static target.
+			_           * @param z The z-coordinate of the static target.
+			 */
 			constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept : x(x), y(y), z(z) {
 				assert(registered);
 			}
+			/**
+			 * @brief Encodes the message fields into a character array.
+			 * @return A std::array<char, Size()> containing the serialized payload.
+			 */
 			constexpr std::array<char, Size()> encode() const { return pack(x, y, z); }
 		};
 
@@ -421,12 +616,14 @@ namespace cerializer {
 		};
 
 		/**
-		 * @brief A class for deserializing messages from an input stream.
+		 * @brief A class for deserializing messages from a generic input stream.
 		 *
-		 * This class reads from an input stream, identifies message boundaries using
-		 * magic numbers, and uses the MessageMaker factory to construct message objects.
+		 * This class implements a state machine to parse a stream of characters,
+		 * identify message frames (delimited by `magicHead` and `magicFoot`), and
+		 * deserialize the enclosed payload into a message object using the `MessageMaker`
+		 * factory. It is designed to handle continuous, asynchronous data streams.
 		 *
-		 * @tparam T The type of the input stream.
+		 * @tparam T The type of the input stream, which must satisfy the `IOAble` concept.
 		 */
 		template <typename T>
 			requires IOAble<T>
@@ -471,8 +668,21 @@ namespace cerializer {
 			}
 
 		public:
+			/**
+			 * @brief Constructs a Deserializer.
+			 * @param readStream The input stream to read from.
+			 */
 			Deserializer(T& readStream) : input(readStream){};
 
+			/**
+			 * @brief Parses the input stream and invokes a callback for each complete message found.
+			 *
+			 * This method continuously reads from the stream, searches for message frames
+			 * (delimited by magic numbers), and deserializes them.
+			 *
+			 * @tparam Type The base type of the messages to expect (e.g., BasePacket).
+			 * @param callback A function to be called with each successfully parsed message.
+			 */
 			template <std::derived_from<BasePacket> Type>
 			void ParseStream(std::function<void(std::unique_ptr<Type>&)> callback) {
 				auto read = 0;

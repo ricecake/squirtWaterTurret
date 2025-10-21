@@ -1,3 +1,7 @@
+/**
+ * @file state.h
+ * @brief Defines the SystemState class, which manages the overall state of the turret system.
+ */
 #pragma once
 
 #include <algorithm>
@@ -27,36 +31,77 @@ using fixed = fixed_16_16;
 class Command;
 
 /**
- * @brief A struct to hold tunable configuration parameters for the system.
+ * @brief Holds tunable configuration parameters for the system.
  *
- * These values are expected to be set at runtime via a configuration message.
+ * These values are expected to be set at runtime via a configuration message,
+ * allowing for dynamic adjustment of the turret's performance characteristics.
  */
 struct ConfigParameters {
 	fixed projectile_speed = projectileSpeed; ///< The initial speed of the projectile in meters/second.
 	fixed turret_height = altitude;           ///< The height of the turret from the ground in meters.
 };
 
+/**
+ * @brief A comparator for ordering Command pointers in a priority queue.
+ *
+ * This lambda function is used by `std::priority_queue` to sort commands based on their
+ * `run_after` timestamp. Commands scheduled to run earlier (with a smaller timestamp)
+ * will have a higher priority.
+ */
 const inline auto CommandPointerComparator = [](const auto& left, const auto& right) {
 	return left->run_after >= right->run_after;
 };
 
 /**
- * @brief Manages the overall state of the system.
+ * @brief Manages the overall state of the turret system.
  *
  * This class encapsulates all system components, including motors, targets,
- * and the command queue. It provides an interface for updating and controlling
- * the system's behavior.
+ * and the command queue. It provides a centralized interface for updating and
+ * controlling the system's behavior, processing commands, and managing targets
+ * from various sources (CV, Radar, Static).
  */
 class SystemState {
 public:
 	// -- Constructors --
+	/**
+	 * @brief Constructs a new SystemState object.
+	 *
+	 * Initializes the stepper motors, sets up pin modes, creates the mutex for
+	 * thread safety, and sets the default target source to STATIC.
+	 */
 	SystemState();
 
 	// -- Public Methods --
-	Target&           currentTarget();
-	std::span<Target> currentTargetArray();
-	constexpr size_t  size();
+	/**
+	 * @brief Gets the currently active target.
+	 * @return A reference to the active Target object.
+	 */
+	Target& currentTarget();
 
+	/**
+	 * @brief Gets the array of targets for the current target source.
+	 * @return A std::span over the array of Target objects.
+	 */
+	std::span<Target> currentTargetArray();
+
+	/**
+	 * @brief Gets the number of targets for the current target source.
+	 * @return The size of the current target array.
+	 */
+	constexpr size_t size();
+
+	/**
+	 * @brief Updates a target at a specific index in a given target array.
+	 *
+	 * This method updates the position and validity of a target. An indifference margin
+	 * can be used to prevent small, insignificant updates.
+	 *
+	 * @param targetArray The array of targets to modify.
+	 * @param idx The index of the target to update.
+	 * @param valid The new validity status of the target.
+	 * @param newPosition The new position of the target.
+	 * @param indifferenceMargin An optional margin (in motor steps) to prevent minor updates.
+	 */
 	void updateTarget(
 		auto&           targetArray,
 		const uint8_t   idx,
@@ -64,6 +109,19 @@ public:
 		PositionVector& newPosition,
 		const uint16_t  indifferenceMargin = 0
 	);
+
+	/**
+	 * @brief Updates a target in a given array by its ID.
+	 *
+	 * Searches for a target with the given ID. If not found, it tries to use an invalid
+	 * target slot or, as a last resort, overwrites the least recently seen target.
+	 *
+	 * @param targetArray The array of targets to modify.
+	 * @param id The ID of the target to update.
+	 * @param valid The new validity status of the target.
+	 * @param newPosition The new position of the target.
+	 * @param indifferenceMargin An optional margin to prevent minor updates.
+	 */
 	void updateTargetById(
 		auto&           targetArray,
 		const uint8_t   id,
@@ -71,23 +129,120 @@ public:
 		PositionVector& newPosition,
 		const uint16_t  indifferenceMargin = 0
 	);
-	void    updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
-	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
-	void    setTarget(uint8_t index, uint8_t speed = 0xFF);
-	void    setFire(bool active);
-	void    setMove(bool active);
-	bool    getFireState();
-	bool    getMoveState();
-	void    queueSelectTarget(uint8_t index, uint16_t milliseconds);
-	void    queueFire(uint16_t milliseconds);
-	void    queueLinger(uint8_t milliseconds);
-	void    updateConfig(cerializer::Config* config);
-	void    processCommandQueue();
-	void    actualizeState();
+
+	/**
+	 * @brief Updates the nearest target in the current array to a new position.
+	 * @param valid The new validity status.
+	 * @param newPosition The new position.
+	 * @param indifferenceMargin An optional margin to prevent minor updates.
+	 */
+	void updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+
+	/**
+	 * @brief Updates the nearest target in the current array based on 2D distance.
+	 * @param valid The new validity status.
+	 * @param newPosition The new position.
+	 * @param indifferenceMargin An optional margin to prevent minor updates.
+	 */
+	void updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+
+	/**
+	 * @brief Sets the currently active target by its index.
+	 * @param index The index of the target to make active.
+	 * @param speed The tracking speed for the motors.
+	 */
+	void setTarget(uint8_t index, uint8_t speed = 0xFF);
+
+	/**
+	 * @brief Sets the firing state of the turret.
+	 * @param active True to fire, false to stop firing.
+	 */
+	void setFire(bool active);
+
+	/**
+	 * @brief Enables or disables motor movement.
+	 * @param active True to enable movement, false to disable.
+	 */
+	void setMove(bool active);
+
+	/**
+	 * @brief Gets the current firing state.
+	 * @return True if the turret is currently firing.
+	 */
+	bool getFireState();
+
+	/**
+	 * @brief Gets the current movement state.
+	 * @return True if motor movement is enabled.
+	 */
+	bool getMoveState();
+
+	/**
+	 * @brief Queues a command to select a target after a delay.
+	 * @param index The index of the target to select.
+	 * @param milliseconds The delay in milliseconds before the command executes.
+	 */
+	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
+
+	/**
+	 * @brief Queues a command to fire the turret after a delay.
+	 * @param milliseconds The delay in milliseconds before the command executes.
+	 */
+	void queueFire(uint16_t milliseconds);
+
+	/**
+	 * @brief Queues a command to do nothing for a specified duration.
+	 *
+	 * This can be used to introduce a delay in the command sequence.
+	 * @param milliseconds The duration of the linger in milliseconds.
+	 */
+	void queueLinger(uint8_t milliseconds);
+
+	/**
+	 * @brief Updates the system's configuration from a message.
+	 * @param config A pointer to the Config message containing the new parameters.
+	 */
+	void updateConfig(cerializer::Config* config);
+
+	/**
+	 * @brief Processes the command queue, executing any commands that are due.
+	 */
+	void processCommandQueue();
+
+	/**
+	 * @brief Updates the physical state of the system based on the current logical state.
+	 *
+	 * This method should be called repeatedly in the main loop. It handles motor
+	 * movement and firing.
+	 */
+	void actualizeState();
+
+	/**
+	 * @brief Fetches a target from the current target array by its index.
+	 * @param idx The index of the target to fetch.
+	 * @return A reference to the requested Target object.
+	 */
 	Target& fetchTarget(const uint8_t idx);
+
+	/**
+	 * @brief Finds the index of the nearest target to a given 3D point.
+	 * @param point The point to compare against.
+	 * @return The index of the nearest target.
+	 */
 	uint8_t fetchNearestTargetIdx(const PositionVector& point);
+
+	/**
+	 * @brief Finds the index of the nearest target to a given point, using only 2D distance.
+	 * @param point The point to compare against.
+	 * @return The index of the nearest target.
+	 */
 	uint8_t fetchNearestTarget2dIdx(const PositionVector& point);
-	fixed   targetTravelDistance();
+
+	/**
+	 * @brief Calculates the distance the turret needs to travel to aim at the current target.
+	 * @return The travel distance as a fixed-point number.
+	 */
+	fixed targetTravelDistance();
 
 	// -- Public Attributes --
 	const int   stepFraction = 16;   ///< Microstep fraction for the stepper motors.
@@ -102,15 +257,35 @@ public:
 	AccelStepper      stepperB; ///< Stepper motor B instance.
 	SemaphoreHandle_t xMutex;   ///< Mutex for thread-safe access to shared resources.
 
-	cerializer::TargetSource target_source;
-	std::array<Target, 32>   cvTarget;
-	std::array<Target, 3>    radarTarget;
-	Target                   staticTarget;
+	cerializer::TargetSource target_source; ///< The active source for targeting data (CV, Radar, etc.).
+	std::array<Target, 32>   cvTarget;      ///< Array to store targets from the computer vision system.
+	std::array<Target, 3>    radarTarget;   ///< Array to store targets from the radar sensor.
+	Target                   staticTarget;  ///< A single target for static aiming mode.
 
 private:
 	// -- Private Methods --
-	void           actualizePosition();
-	void           actualizeFiring();
+	/**
+	 * @brief Updates the physical position of the motors.
+	 *
+	 * This method is called by `actualizeState` to move the steppers towards their
+	 * target positions.
+	 */
+	void actualizePosition();
+
+	/**
+	 * @brief Activates or deactivates the firing mechanism.
+	 *
+	 * This method is called by `actualizeState` to control the firing pin.
+	 */
+	void actualizeFiring();
+
+	/**
+	 * @brief Calculates the required aimpoint to hit the current target.
+	 *
+	 * This method accounts for projectile drop and target movement to determine
+	 * where the turret should aim.
+	 * @return The calculated aimpoint as a PositionVector.
+	 */
 	PositionVector targetAimpoint();
 
 	// -- Private Attributes --
@@ -127,18 +302,35 @@ private:
 	uint8_t trackingSpeed = 255;        ///< The speed for tracking movements.
 	uint8_t selectedTarget = 0;         ///< The index of the currently selected target.
 
+	/// @brief Priority queue for pending commands, ordered by execution time.
 	std::priority_queue<Command*, std::vector<Command*>, decltype(CommandPointerComparator)>
-		commandQueue; ///< Priority queue for pending commands.
+		commandQueue;
 };
 
 // ======================================================================================
 // --- Inline-Defined Methods ---
 // ======================================================================================
 
+/**
+ * @brief Gets the number of targets for the current target source.
+ * @return The size of the current target array.
+ */
 constexpr size_t SystemState::size() {
 	return currentTargetArray().size();
 }
 
+/**
+ * @brief Updates a target at a specific index in a given target array.
+ *
+ * This method updates the position and validity of a target. An indifference margin
+ * can be used to prevent small, insignificant updates.
+ *
+ * @param targetArray The array of targets to modify.
+ * @param idx The index of the target to update.
+ * @param valid The new validity status of the target.
+ * @param newPosition The new position of the target.
+ * @param indifferenceMargin An optional margin (in motor steps) to prevent minor updates.
+ */
 inline void SystemState::updateTarget(
 	auto&           targetArray,
 	const uint8_t   idx,
@@ -165,6 +357,18 @@ inline void SystemState::updateTarget(
 	}
 }
 
+/**
+ * @brief Updates a target in a given array by its ID.
+ *
+ * Searches for a target with the given ID. If not found, it tries to use an invalid
+ * target slot or, as a last resort, overwrites the least recently seen target.
+ *
+ * @param targetArray The array of targets to modify.
+ * @param id The ID of the target to update.
+ * @param valid The new validity status of the target.
+ * @param newPosition The new position of the target.
+ * @param indifferenceMargin An optional margin to prevent minor updates.
+ */
 inline void SystemState::updateTargetById(
 	auto&           targetArray,
 	const uint8_t   id,
@@ -189,10 +393,20 @@ inline void SystemState::updateTargetById(
 	targetArray[found->index].id = id;
 };
 
+/**
+ * @brief Fetches a target from the current target array by its index.
+ * @param idx The index of the target to fetch.
+ * @return A reference to the requested Target object.
+ */
 inline Target& SystemState::fetchTarget(const uint8_t idx) {
 	return currentTargetArray()[idx];
 }
 
+/**
+ * @brief Finds the index of the nearest target to a given 3D point.
+ * @param point The point to compare against.
+ * @return The index of the nearest target.
+ */
 inline uint8_t SystemState::fetchNearestTargetIdx(const PositionVector& point) {
 	auto distance = [&](Target& item) {
 		auto pos = item.Position();
@@ -203,6 +417,11 @@ inline uint8_t SystemState::fetchNearestTargetIdx(const PositionVector& point) {
 	return std::ranges::distance(currentTargetArray().begin(), res);
 }
 
+/**
+ * @brief Finds the index of the nearest target to a given point, using only 2D distance.
+ * @param point The point to compare against.
+ * @return The index of the nearest target.
+ */
 inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point) {
 	auto distance = [&](Target& item) {
 		auto pos = item.Position();

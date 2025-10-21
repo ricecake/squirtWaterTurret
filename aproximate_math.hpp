@@ -25,10 +25,42 @@ namespace Approximate {
 		T    result;            ///< The result of the approximation.
 	};
 
+	/**
+	 * @brief Calculates the sine of a fixed-point number using a Taylor series approximation.
+	 * @param x The input angle in radians, represented as a fixed-point number.
+	 * @return The sine of the input angle.
+	 */
 	fixed sin(fixed);
+
+	/**
+	 * @brief Calculates the cosine of a fixed-point number using a Taylor series approximation.
+	 * @param x The input angle in radians, represented as a fixed-point number.
+	 * @return The cosine of the input angle.
+	 */
 	fixed cos(fixed);
+
+	/**
+	 * @brief Calculates the tangent of a fixed-point number.
+	 *
+	 * This is computed as sin(x) / cos(x).
+	 *
+	 * @param x The input angle in radians, represented as a fixed-point number.
+	 * @return The tangent of the input angle.
+	 */
 	fixed tan(fixed);
+
+	/**
+	 * @brief Calculates the arctangent of a fixed-point number.
+	 * @param x A fixed-point number.
+	 * @return The principal value of the arctangent of x, in the interval [-pi/2, pi/2].
+	 */
 	fixed atan(fixed);
+
+	/**
+	 * @brief Calculates the square root of a fixed-point number using the Newton-Raphson method.
+	 * @param x A non-negative fixed-point number.
+	 * @return The square root of x.
+	 */
 	fixed sqrt(fixed);
 
 	/**

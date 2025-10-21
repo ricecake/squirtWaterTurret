@@ -2,24 +2,21 @@
 
 #include "utilities.h"
 #include <stdint.h>
-/**
- * @brief Constructs a new FireControl object.
- *
- * @param active The desired state of the firing pin.
- * @param duration The duration for the firing state.
- * @param run_after The time delay (in microseconds) after which the command should run.
- */
 FireControl::FireControl(bool active, uint16_t duration, int64_t run_after) :
 	Command(run_after), active(active), duration(duration) {}
 
 /**
  * @brief Executes the fire control command, setting the firing state.
  *
- * This method checks conditions before changing the firing state, such as whether
- * the requested state is already active and if enough time has passed since the
- * last action.
+ * This method activates or deactivates the firing pin based on the `active` flag.
+ * Before changing the state, it performs several checks:
+ * - It ensures the requested firing state is not already the current state.
+ * - It enforces a cooldown period (`fireActionInterval`) between firing actions to prevent
+ *   rapid toggling.
+ * - When deactivating, it waits for the specified `duration` before stopping the firing
+ *   and records that a firing action has been completed for the current target.
  *
- * @param state A pointer to the system state.
+ * @param state A pointer to the system state, which is modified by this command.
  */
 void FireControl::Execute(SystemState* state) {
 	Target& target = state->currentTarget();
