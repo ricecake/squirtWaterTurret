@@ -3,8 +3,6 @@
 #include <compare>
 #include <cstdint>
 
-#include "state.h"
-
 class SystemState;
 
 /**
