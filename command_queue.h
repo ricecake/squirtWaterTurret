@@ -32,6 +32,31 @@ public:
 		}
 	}
 
+	template<typename T, typename... Args>
+	void addCommandAfter(Args&&... args) {
+		if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+			int64_t last_run_after = esp_timer_get_time();
+			if (!commandQueue.empty()) {
+				auto tempQueue = commandQueue;
+				Command* cmd = nullptr;
+				while (!tempQueue.empty()) {
+					cmd = tempQueue.top();
+					tempQueue.pop();
+				}
+				last_run_after = cmd->run_after;
+			}
+
+			commandQueue.push(new T(std::forward<Args>(args)..., last_run_after));
+			xSemaphoreGive(xMutex);
+		}
+	}
+
+	template<typename T, typename... Args>
+	void runCommandIn(int64_t duration, Args&&... args) {
+		int64_t run_after = esp_timer_get_time() + duration;
+		addCommand<T>(std::forward<Args>(args)..., run_after);
+	}
+
 	std::string serialize() const;
 
 private:
