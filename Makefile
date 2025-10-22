@@ -4,7 +4,7 @@
 CXX = g++
 # Use C++20 for concepts and other modern features.
 # -I. adds the root directory to the include path.
-CXXFLAGS = -std=gnu++23 -I. -Wall -Wextra -g -fpermissive
+CXXFLAGS = -std=gnu++23 -I. -Wall -Wextra -g
 
 # Source files
 # List all .cpp files from the project root that contain core logic.

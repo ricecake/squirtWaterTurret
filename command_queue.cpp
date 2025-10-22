@@ -1,6 +1,8 @@
 #include "command_queue.h"
-#include "state.h"
+
 #include <sstream>
+
+#include "state.h"
 
 CommandQueue::CommandQueue() {
 	xMutex = xSemaphoreCreateMutex();
