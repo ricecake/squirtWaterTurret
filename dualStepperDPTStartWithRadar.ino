@@ -97,8 +97,11 @@ void refreshRadarTargets() {
 			LD2450::RadarTarget result_target = ld2450.getTarget(i);
 
 			if (result_target.valid) {
-				auto newPositionObservation =
-					PositionVector(fixed(result_target.x) / 1000, fixed(result_target.y) / 1000, 1.1);
+				auto newPositionObservation = PositionVector(
+					fixed(result_target.x) / 1000,
+					fixed(result_target.y) / 1000,
+					1.1
+				);
 				dptState.updateTarget(
 					dptState.radarTarget,
 					result_target.id,
@@ -126,8 +129,11 @@ void readSerialCommands() {
 		switch (thing->Code()) {
 		case cerializer::Target::Type(): {
 			auto target = static_cast<cerializer::Target*>(thing.get());
-			auto newPositionObservation =
-				PositionVector(fixed(target->x) / 1000, fixed(target->y) / 1000, fixed(target->z) / 1000);
+			auto newPositionObservation = PositionVector(
+				fixed(target->x) / 1000,
+				fixed(target->y) / 1000,
+				fixed(target->z) / 1000
+			);
 
 			dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
 			break;

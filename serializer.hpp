@@ -137,10 +137,6 @@ namespace cerializer {
 		}
 	};
 
-	template <typename... Ts>
-		requires(std::is_trivially_copyable_v<Ts>&&...)
-	using TypeCharArray = std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>;
-
 	using TypeCharSpec = std::tuple<uint8_t, uint8_t, char>;
 	/**
 	 * @brief Gets the format size and type character for a given type.
@@ -551,8 +547,10 @@ namespace cerializer {
 						break;
 					case EMIT:
 						uint8_t typeCode = buf.begin()[2];
-						auto    found =
-							MessageMaker::Create(typeCode, std::span(buf.begin(), offset + sizeof(footer_bytes)));
+						auto    found = MessageMaker::Create(
+                            typeCode,
+                            std::span(buf.begin(), offset + sizeof(footer_bytes))
+                        );
 
 						callback(found);
 
