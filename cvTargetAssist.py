@@ -247,6 +247,38 @@ class SerialMessage:
         return tuple()
 
     @classmethod
+    def from_buffer(cls, buffer: bytearray) -> "SerialMessage":
+        """
+        Parses a message from a byte buffer using a state machine.
+        """
+        start_marker = b'\xfe\xca'
+        end_marker = b'\xce\xfa'
+
+        start_index = buffer.find(start_marker)
+        if start_index == -1:
+            raise ValueError("Start marker not found")
+
+        end_index = buffer.find(end_marker, start_index)
+        if end_index == -1:
+            raise ValueError("End marker not found")
+
+        message_bytes = buffer[start_index : end_index + len(end_marker)]
+
+        # Unpack the header to get the message code
+        header_format = '<H B'
+        _, code = struct.unpack_from(header_format, message_bytes)
+
+        # Find the appropriate message class based on the code
+        message_class = next((sub for sub in cls.__subclasses__() if sub.code == code), None)
+
+        if message_class and message_class.format:
+            if len(message_bytes) != struct.calcsize(message_class.format):
+                raise ValueError("Buffer length does not match message format")
+            return message_class.parse(message_bytes)
+        else:
+            raise ValueError(f"Unknown message code: {code}")
+
+    @classmethod
     def parse(cls, buffer: bytes) -> "SerialMessage":
         """
         Parses a byte buffer into a message object.
@@ -914,62 +946,18 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
                 if self.serial_port.in_waiting > 0:
                     buffer.extend(self.serial_port.read(self.serial_port.in_waiting))
 
-                    # Search for a message start marker
-                    start_index = buffer.find(b'\xfe\xca')
-                    if start_index != -1:
-                        # Potentially found a message, try to determine its full size
-                        if len(buffer) > start_index + 3:
-                            header_format = '<H B'
-                            _, code = struct.unpack_from(header_format, buffer, start_index)
-
-                            message_class = next((sub for sub in SerialMessage.__subclasses__() if sub.code == code), None)
-
-                            if message_class and message_class.format:
-                                message_size = struct.calcsize(message_class.format)
-
-                                if len(buffer) >= start_index + message_size:
-                                    # We have a full message
-                                    message_bytes = buffer[start_index:start_index + message_size]
-
-                                    # Verify end marker
-                                    end_marker_format = '<H'
-                                    end_marker = struct.unpack_from(end_marker_format, message_bytes, message_size - 2)[0]
-
-                                    if end_marker == 0xFACE:
-                                        try:
-                                            # Unpack the header to get the message code
-                                            header_format = '<H B'
-                                            _, code = struct.unpack_from(header_format, message_bytes)
-
-                                            # Find the appropriate message class based on the code
-                                            message_class = next((sub for sub in SerialMessage.__subclasses__() if sub.code == code), None)
-
-                                            if message_class:
-                                                message = message_class.parse(message_bytes)
-                                                print(f"Received message: {message!r}")
-                                            else:
-                                                print(f"Unknown message code: {code}")
-                                        except ValueError as e:
-                                            print(f"Error parsing message: {e}")
-
-                                        # Remove the processed message from the buffer
-                                        buffer = buffer[start_index + message_size:]
-                                    else:
-                                        # Invalid end marker, discard the start and search again
-                                        buffer = buffer[start_index + 2:]
-                                else:
-                                    # Not enough data for a full message yet, wait for more
-                                    time.sleep(0.01)
-                            else:
-                                # Unknown message code, discard the start and search again
-                                buffer = buffer[start_index + 2:]
-                        else:
-                            # Not enough data for header, wait for more
-                            time.sleep(0.01)
-                    else:
-                        # No start marker found, keep the last few bytes in case it's split
-                        buffer = buffer[-3:] if len(buffer) > 3 else buffer
-                        time.sleep(0.01)
+                    try:
+                        message = SerialMessage.from_buffer(buffer)
+                        print(f"Received message: {message!r}")
+                        # Clear buffer up to the end of the processed message
+                        end_marker = b'\xce\xfa'
+                        end_index = buffer.find(end_marker)
+                        buffer = buffer[end_index + len(end_marker):]
+                    except ValueError:
+                        # Incomplete or invalid message, keep buffering
+                        pass
+                else:
+                    time.sleep(0.01)
             except Exception as e:
                 print(f"Error in serial listener: {e}")
                 time.sleep(0.1)
