@@ -3,6 +3,7 @@
 #include "tests/test_firecontrol.h"
 #include "tests/test_target_selection.h"
 #include "tests/test_vector.h"
+#include "tests/test_serializer.h"
 
 int main() {
 	run_command_tests();
@@ -10,5 +11,6 @@ int main() {
 	run_target_selection_tests();
 	run_approximate_math_tests();
 	run_vector_tests();
+	run_serializer_tests();
 	return 0;
 }

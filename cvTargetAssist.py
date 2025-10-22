@@ -941,9 +941,16 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
             return
 
         buffer = bytearray()
+
+        # Add a fileno method to the serial port object for select
+        self.serial_port.fileno = self.serial_port.fd
+
         while self.isRunning():
             try:
-                if self.serial_port.in_waiting > 0:
+                # Wait for data to be available on the serial port
+                r, _, _ = select.select([self.serial_port], [], [], 0.1)
+
+                if r:
                     buffer.extend(self.serial_port.read(self.serial_port.in_waiting))
 
                     try:
@@ -956,8 +963,6 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
                     except ValueError:
                         # Incomplete or invalid message, keep buffering
                         pass
-                else:
-                    time.sleep(0.01)
             except Exception as e:
                 print(f"Error in serial listener: {e}")
                 time.sleep(0.1)

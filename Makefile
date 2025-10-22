@@ -22,7 +22,8 @@ TEST_SRCS = \
     tests/test_firecontrol.cpp \
     tests/test_target_selection.cpp \
     tests/test_approximate_math.cpp \
-    tests/test_vector.cpp
+    tests/test_vector.cpp \
+    tests/test_serializer.cpp
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)

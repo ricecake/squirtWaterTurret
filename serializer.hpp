@@ -18,6 +18,7 @@
 #include <map>
 #include <memory>
 #include <span>
+#include <variant>
 #include <tuple>
 
 #include <stdint.h>
