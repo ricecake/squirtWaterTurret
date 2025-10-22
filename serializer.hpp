@@ -135,7 +135,7 @@ namespace cerializer {
 
 	template <typename... Ts>
 		requires(std::is_trivially_copyable_v<Ts>&&...)
-	using TypeCharArray = std::array<char, 1 + (std::get<0>(formatSize<Ts>()) + ...)>;
+	using TypeCharArray = std::array<char, 1 + (sizeof(Ts) + ...)>;
 
 	using TypeCharSpec = std::tuple<uint8_t, uint8_t, char>;
 	/**

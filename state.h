@@ -17,6 +17,7 @@
 #endif
 
 #include "command.h"
+#include "command_queue.h"
 #include "fpm_adapter.hpp"
 #include "serializer.hpp"
 #include "target.h"
@@ -34,10 +35,6 @@ class Command;
 struct ConfigParameters {
 	fixed projectile_speed = projectileSpeed; ///< The initial speed of the projectile in meters/second.
 	fixed turret_height = altitude;           ///< The height of the turret from the ground in meters.
-};
-
-const inline auto CommandPointerComparator = [](const auto& left, const auto& right) {
-	return left->run_after >= right->run_after;
 };
 
 /**
@@ -127,8 +124,7 @@ private:
 	uint8_t trackingSpeed = 255;        ///< The speed for tracking movements.
 	uint8_t selectedTarget = 0;         ///< The index of the currently selected target.
 
-	std::priority_queue<Command*, std::vector<Command*>, decltype(CommandPointerComparator)>
-		commandQueue; ///< Priority queue for pending commands.
+	CommandQueue commandQueue; ///< Priority queue for pending commands.
 };
 
 // ======================================================================================
