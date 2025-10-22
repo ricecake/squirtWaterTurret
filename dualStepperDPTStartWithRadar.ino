@@ -19,11 +19,11 @@ HardwareSerial testSerial(2);
 struct IOWrapper {
 	HardwareSerial& io;
 	size_t          readsome(char* buf, size_t count) {
-				 size_t available = io.available();
-				 if (available > 0) {
-					 return io.readBytes(buf, min(count, available));
+        size_t available = io.available();
+        if (available > 0) {
+            return io.readBytes(buf, min(count, available));
         }
-				 return 0;
+        return 0;
 	};
 	bool good() { return bool(io); };
 	IOWrapper(HardwareSerial& io) : io(io){};

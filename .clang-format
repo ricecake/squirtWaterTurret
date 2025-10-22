@@ -21,7 +21,7 @@ AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
 BinPackParameters: false
 BreakBeforeBraces: Attach
-BreakBeforeConceptDeclarations: Yes
+# BreakBeforeConceptDeclarations: Yes
 BreakConstructorInitializers: AfterColon
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true

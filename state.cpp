@@ -79,26 +79,21 @@ bool SystemState::getMoveState() {
 	return moveState;
 }
 
+#include "firecontrol.h"
 void SystemState::queueFire(uint16_t fireDuration) {
 	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
 	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
-
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		commandQueue.push(new FireControl(true, fireDuration, start.microseconds()));
-		commandQueue.push(new FireControl(false, fireDuration, end.microseconds()));
-		xSemaphoreGive(xMutex);
-	}
+	commandQueue.addCommand<FireControl>(true, fireDuration, start.microseconds());
+	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 
 void SystemState::queueLinger(uint8_t milliseconds) {
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		commandQueue.push(new LingerCommand(milliseconds * 1000));
-		xSemaphoreGive(xMutex);
-	}
+	commandQueue.addCommand<LingerCommand>(milliseconds * 1000);
 }
 
+#include "target_selection.h"
 void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
-	commandQueue.push(new TargetSelection(index, 0xFF, milliseconds * 1000));
+	commandQueue.addCommand<TargetSelection>(index, 0xFF, milliseconds * 1000);
 }
 
 void SystemState::updateConfig(cerializer::Config* config) {
@@ -114,22 +109,7 @@ void SystemState::updateConfig(cerializer::Config* config) {
  * @brief Processes the command queue, executing any commands that are due.
  */
 void SystemState::processCommandQueue() {
-	auto now = esp_timer_get_time();
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		while (!commandQueue.empty()) {
-			auto comm = commandQueue.top();
-
-			// Since the queue is sorted by execution time, we can stop when we find a command that is not yet due.
-			if (now < comm->run_after) {
-				break;
-			}
-
-			commandQueue.pop();
-			comm->Execute(this);
-			delete comm;
-		}
-		xSemaphoreGive(xMutex);
-	}
+	commandQueue.process(this);
 }
 
 /**
