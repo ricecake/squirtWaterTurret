@@ -1,0 +1,39 @@
+# Project configuration
+site_name: Squirt Water Turret Documentation
+site_url: https://ricecake.github.io/squirtWaterTurret/
+repo_url: https://github.com/ricecake/squirtWaterTurret
+docs_dir: documentation
+
+# Theme
+theme:
+  name: material
+  palette:
+    # Palette toggle for light vs dark mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+
+# Navigation
+nav:
+  - 'Core Concepts': 'Core_Concepts.md'
+  - 'Architecture': 'Architecture.md'
+  - 'Firmware':
+    - 'Firmware Classes': 'Firmware_Classes.md'
+    - 'Communication Protocol': 'Communication_Protocol.md'
+  - 'Computer Vision': 'CV_System.md'
+  - 'Algorithms and Math': 'Algorithms_and_Math.md'
