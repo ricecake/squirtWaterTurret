@@ -3,7 +3,6 @@
 *.s
 *.xpp
 a.out
-test*.cpp
 example*
 buildNotes.txt
 output.wat
@@ -13,3 +12,9 @@ serialParseTest.py
 serialReader.xcpp
 simpleNNTest.py
 test.xcpp
+test_runner
+*.sqlite*
+.depthai_cached_models
+TestFrames
+documentation/public
+.hugo_build.lock
