@@ -247,33 +247,23 @@ class SerialMessage:
         return tuple()
 
     @classmethod
-    def from_buffer(cls, buffer: bytearray) -> "SerialMessage":
+    def _parse_message_from_bytes(cls, message_bytes: bytes) -> "SerialMessage":
         """
-        Parses a message from a byte buffer using a state machine.
+        Parses a complete message from a byte buffer.
+        This is a factory method that determines the message type and delegates to the
+        appropriate subclass's parse method.
         """
-        start_marker = b'\xfe\xca'
-        end_marker = b'\xce\xfa'
-
-        start_index = buffer.find(start_marker)
-        if start_index == -1:
-            raise ValueError("Start marker not found")
-
-        end_index = buffer.find(end_marker, start_index)
-        if end_index == -1:
-            raise ValueError("End marker not found")
-
-        message_bytes = buffer[start_index : end_index + len(end_marker)]
-
         # Unpack the header to get the message code
         header_format = '<H B'
-        _, code = struct.unpack_from(header_format, message_bytes)
+        try:
+            _, code = struct.unpack_from(header_format, message_bytes)
+        except struct.error as e:
+            raise ValueError(f"Could not unpack header from message bytes: {e}")
 
         # Find the appropriate message class based on the code
         message_class = next((sub for sub in cls.__subclasses__() if sub.code == code), None)
 
-        if message_class and message_class.format:
-            if len(message_bytes) != struct.calcsize(message_class.format):
-                raise ValueError("Buffer length does not match message format")
+        if message_class:
             return message_class.parse(message_bytes)
         else:
             raise ValueError(f"Unknown message code: {code}")
@@ -935,36 +925,60 @@ class SerialSyncNode(dai.node.ThreadedHostNode):
 
     def listen(self):
         """
-        Continuously listens for incoming serial messages and processes them.
+        Continuously listens for incoming serial messages and processes them using a state machine.
         """
         if not ScriptSettings.SERIAL_OUTPUT or not self.serial_port.is_open:
             return
 
+        state = 'SCANNING'
         buffer = bytearray()
 
         # Add a fileno method to the serial port object for select
         self.serial_port.fileno = self.serial_port.fd
 
+        start_marker = b'\xfe\xca'
+        end_marker = b'\xce\xfa'
+
         while self.isRunning():
             try:
-                # Wait for data to be available on the serial port
                 r, _, _ = select.select([self.serial_port], [], [], 0.1)
+                if not r:
+                    continue
 
-                if r:
-                    buffer.extend(self.serial_port.read(self.serial_port.in_waiting))
+                new_data = self.serial_port.read(self.serial_port.in_waiting)
+                if not new_data:
+                    continue
 
-                    try:
-                        message = SerialMessage.from_buffer(buffer)
-                        print(f"Received message: {message!r}")
-                        # Clear buffer up to the end of the processed message
-                        end_marker = b'\xce\xfa'
-                        end_index = buffer.find(end_marker)
+                buffer.extend(new_data)
+
+                if state == 'SCANNING':
+                    start_index = buffer.find(start_marker)
+                    if start_index != -1:
+                        # Found start marker, discard everything before it
+                        buffer = buffer[start_index:]
+                        state = 'ACCUMULATING'
+
+                if state == 'ACCUMULATING':
+                    end_index = buffer.find(end_marker)
+                    if end_index != -1:
+                        # Found end marker, we have a complete message
+                        message_bytes = buffer[:end_index + len(end_marker)]
+
+                        try:
+                            message = SerialMessage._parse_message_from_bytes(message_bytes)
+                            print(f"Received message: {message!r}")
+                        except ValueError as e:
+                            print(f"Error parsing message: {e}")
+
+                        # Reset for the next message
                         buffer = buffer[end_index + len(end_marker):]
-                    except ValueError:
-                        # Incomplete or invalid message, keep buffering
-                        pass
+                        state = 'SCANNING'
+
             except Exception as e:
                 print(f"Error in serial listener: {e}")
+                # In case of an error, reset the state
+                state = 'SCANNING'
+                buffer = bytearray()
                 time.sleep(0.1)
 
     def process(self, detections_msg, spatial_data_msg) -> None:
