@@ -1,6 +1,10 @@
 /**
  * @file state.cpp
  * @brief Implements the SystemState class for managing the turret's state.
+ *
+ * This file contains the definitions for the methods of the SystemState class,
+ * which is responsible for initializing and controlling the turret's hardware,
+ * managing targets, and processing commands.
  */
 #include "state.h"
 
@@ -21,10 +25,9 @@
 /**
  * @brief Constructs a new SystemState object.
  *
- * Initializes the stepper motors with their corresponding pins and interface type.
- * Sets the default acceleration for the motors. Configures the firing pin as an output.
- * Creates a mutex for thread-safe access to shared state.
- * Sets the initial target source to STATIC and initializes the static target's position.
+ * Initializes the stepper motors with their pins and acceleration, sets up the
+ * firing pin, creates a mutex for thread safety, and sets the default target
+ * source to STATIC. It also initializes the static target's position.
  */
 SystemState::SystemState() : staticTarget(0, true, PositionVector(0, 0.01, 0), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
@@ -44,13 +47,12 @@ SystemState::SystemState() : staticTarget(0, true, PositionVector(0, 0.01, 0), V
 }
 
 /**
- * @brief Returns the current target array based on the active target source.
+ * @brief Returns the current target array based on the active target system.
  *
- * This function provides a view (as a `std::span`) into the appropriate target
- * buffer (`cvTarget`, `radarTarget`, or `staticTarget`) depending on the value
- * of `target_source`.
+ * This function provides a view into the appropriate target buffer (CV, Radar, or Static)
+ * depending on the `target_source` state.
  *
- * @return A `std::span<Target>` referencing the active target buffer.
+ * @return A `std::span` of `Target` objects, referencing the active target buffer.
  */
 std::span<Target> SystemState::currentTargetArray() {
 	switch (target_source) {
@@ -67,8 +69,8 @@ std::span<Target> SystemState::currentTargetArray() {
 /**
  * @brief Returns a reference to the currently selected target.
  *
- * Based on the active target source and the `selectedTarget` index, this function
- * returns the specific target object that the system should be aiming at.
+ * This function provides direct access to the `Target` object that the system is
+ * currently aiming at, based on the `target_source` and `selectedTarget` index.
  *
  * @return A reference to the current `Target` object.
  */
@@ -86,7 +88,11 @@ Target& SystemState::currentTarget() {
 
 /**
  * @brief Sets the active target and tracking speed.
- * @param index The index of the target to select from the current target array.
+ *
+ * This function updates the `selectedTarget` index and `trackingSpeed`, and
+ * sets a flag to indicate that the motor positions need to be updated.
+ *
+ * @param index The index of the new target in the current target array.
  * @param speed The speed at which the motors should track the target.
  */
 void SystemState::setTarget(uint8_t index, uint8_t speed) {
@@ -96,8 +102,8 @@ void SystemState::setTarget(uint8_t index, uint8_t speed) {
 }
 
 /**
- * @brief Sets the firing state of the turret.
- * @param active `true` to activate the firing mechanism, `false` to deactivate it.
+ * @brief Activates or deactivates the firing mechanism.
+ * @param active The desired state of the firing mechanism (true for active, false for inactive).
  */
 void SystemState::setFire(bool active) {
 	fireState = active;
@@ -105,23 +111,23 @@ void SystemState::setFire(bool active) {
 
 /**
  * @brief Enables or disables motor movement.
- * @param active `true` to enable movement, `false` to disable.
+ * @param active The desired state of motor movement (true for enabled, false for disabled).
  */
 void SystemState::setMove(bool active) {
 	moveState = active;
 }
 
 /**
- * @brief Gets the current firing state.
- * @return `true` if the turret is firing, `false` otherwise.
+ * @brief Gets the current state of the firing mechanism.
+ * @return `true` if firing is active, `false` otherwise.
  */
 bool SystemState::getFireState() {
 	return fireState;
 }
 
 /**
- * @brief Gets the current movement state.
- * @return `true` if motor movement is enabled, `false` otherwise.
+ * @brief Gets the current state of motor movement.
+ * @return `true` if movement is enabled, `false` otherwise.
  */
 bool SystemState::getMoveState() {
 	return moveState;
@@ -130,9 +136,8 @@ bool SystemState::getMoveState() {
 /**
  * @brief Queues commands to start and stop firing.
  *
- * This function adds two `FireControl` commands to the command queue: one to
- * start firing after a short delay, and another to stop firing after the specified
- * duration has elapsed.
+ * This function pushes two `FireControl` commands onto the command queue: one to
+ * start firing after a short delay, and another to stop firing after the specified duration.
  *
  * @param fireDuration The duration in milliseconds for which to fire.
  */
@@ -150,10 +155,9 @@ void SystemState::queueFire(uint16_t fireDuration) {
 /**
  * @brief Queues a command to do nothing for a specified duration.
  *
- * This adds a `LingerCommand` to the queue, which can be used to introduce a
- * delay in a sequence of commands.
+ * This is useful for creating pauses in a sequence of commands.
  *
- * @param milliseconds The duration of the linger in milliseconds.
+ * @param milliseconds The duration of the pause in milliseconds.
  */
 void SystemState::queueLinger(uint8_t milliseconds) {
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
@@ -165,19 +169,20 @@ void SystemState::queueLinger(uint8_t milliseconds) {
 /**
  * @brief Queues a command to select a new target after a delay.
  * @param index The index of the target to select.
- * @param milliseconds The delay in milliseconds before the selection occurs.
+ * @param milliseconds The delay in milliseconds before selecting the target.
  */
 void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
 	commandQueue.push(new TargetSelection(index, 0xFF, milliseconds * 1000));
 }
 
 /**
- * @brief Updates the system's configuration parameters from a `Config` message.
+ * @brief Updates the system's configuration from a `Config` message.
  *
- * This function takes a pointer to a deserialized `Config` message and updates
- * the corresponding `config` members and motor settings.
+ * This function takes a `cerializer::Config` object, typically received over a
+ * serial link, and updates the system's runtime parameters, including projectile speed,
+ * turret height, and motor speed and acceleration.
  *
- * @param config A pointer to the `cerializer::Config` object.
+ * @param config A pointer to the `cerializer::Config` object containing the new settings.
  */
 void SystemState::updateConfig(cerializer::Config* config) {
 	this->config.projectile_speed = fixed(config->projectile_speed);
@@ -191,9 +196,9 @@ void SystemState::updateConfig(cerializer::Config* config) {
 /**
  * @brief Processes the command queue, executing any commands that are due.
  *
- * This method iterates through the `commandQueue` and executes any command
- * whose `run_after` timestamp is in the past. It is thread-safe, using a mutex
- * to protect the queue.
+ * This function checks the command queue for any commands whose execution time
+ * has passed. It executes them in order of priority and removes them from the queue.
+ * This should be called repeatedly in the main loop.
  */
 void SystemState::processCommandQueue() {
 	auto now = esp_timer_get_time();
@@ -217,8 +222,9 @@ void SystemState::processCommandQueue() {
 /**
  * @brief Updates the physical state of the system to match the desired state.
  *
- * This is a high-level update function that should be called repeatedly in the main
- * loop. It orchestrates the updates for both position (motors) and firing.
+ * This function calls the `actualizePosition` and `actualizeFiring` methods to
+ * ensure the hardware's state reflects the system's internal state. This should
+ * be called repeatedly in the main loop.
  */
 void SystemState::actualizeState() {
 	actualizePosition();
@@ -236,8 +242,9 @@ void SystemState::actualizeFiring() {
  * @brief Updates the motor positions to track the current target.
  *
  * If movement is enabled and a tracking update is needed, this function calculates
- * the required pitch and yaw to aim at the target's intercept position. It then
- * converts these angles to motor steps and commands the steppers to move.
+ * the required pitch and yaw to hit the target's intercept position, converts these
+ * angles to motor steps, and commands the motors to move. It also continuously calls
+ * the `run()` method for the steppers to ensure smooth movement.
  */
 void SystemState::actualizePosition() {
 	if (!moveState) {
@@ -276,12 +283,12 @@ void SystemState::actualizePosition() {
 }
 
 /**
- * @brief Calculates the angular distance the turret must travel to aim at the current target.
+ * @brief Calculates the angular distance to the current target's aimpoint.
  *
- * This function determines the angle between the current turret orientation and the
- * calculated aimpoint for the current target.
+ * This function determines the total angle the turret needs to turn to face the
+ * calculated intercept position of the current target.
  *
- * @return The travel distance as a fixed-point number representing the angle in radians.
+ * @return The angular distance as a fixed-point number. Returns `INT_MAX` if the target is invalid.
  */
 fixed SystemState::targetTravelDistance() {
 	auto target = currentTarget();
@@ -301,12 +308,8 @@ fixed SystemState::targetTravelDistance() {
 }
 
 /**
- * @brief Calculates the required aimpoint to hit the current target.
- *
- * This is a convenience function that retrieves the current target and returns its
- * calculated intercept position.
- *
- * @return The calculated aimpoint as a `PositionVector`.
+ * @brief DEPRECATED - This function is not used.
+ * @return The calculated position vector of the aimpoint.
  */
 PositionVector SystemState::targetAimpoint() {
 	const auto target = currentTarget();

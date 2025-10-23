@@ -38,8 +38,7 @@ public:
  */
 namespace std {
 	/**
-	 * @brief Overload of std::max for comparing a fixed-point type with a non-fixed-point type.
-	 * @return The larger of the two values, converted to the fixed-point type.
+	 * @brief Overload of std::max for fixed-point and non-fixed-point types.
 	 */
 	template <
 		typename FixedType,
@@ -51,8 +50,7 @@ namespace std {
 	}
 
 	/**
-	 * @brief Overload of std::min for comparing a fixed-point type with a non-fixed-point type.
-	 * @return The smaller of the two values, converted to the fixed-point type.
+	 * @brief Overload of std::min for fixed-point and non-fixed-point types.
 	 */
 	template <
 		typename FixedType,
@@ -92,9 +90,6 @@ namespace fpm {
 		return x += FixedType(y);
 	}
 
-	/**
-	 * @brief Subtracts a floating-point value from a fixed-point value and assigns the result.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -104,9 +99,6 @@ namespace fpm {
 		return x -= FixedType(y);
 	}
 
-	/**
-	 * @brief Multiplies a fixed-point value by a floating-point value and assigns the result.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -116,9 +108,6 @@ namespace fpm {
 		return x *= FixedType(y);
 	}
 
-	/**
-	 * @brief Divides a fixed-point value by a floating-point value and assigns the result.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -128,9 +117,6 @@ namespace fpm {
 		return x /= FixedType(y);
 	}
 
-	/**
-	 * @brief Adds a fixed-point and a floating-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -139,9 +125,6 @@ namespace fpm {
 	constexpr inline FixedType operator+(const FixedType& x, const NonFixedType& y) noexcept {
 		return x + FixedType(y);
 	}
-	/**
-	 * @brief Adds a floating-point and a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -151,9 +134,6 @@ namespace fpm {
 		return y + FixedType(x);
 	}
 
-	/**
-	 * @brief Subtracts a floating-point value from a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -162,9 +142,6 @@ namespace fpm {
 	constexpr inline FixedType operator-(const FixedType& x, const NonFixedType& y) noexcept {
 		return x - FixedType(y);
 	}
-	/**
-	 * @brief Subtracts a fixed-point value from a floating-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -174,9 +151,6 @@ namespace fpm {
 		return y - FixedType(x);
 	}
 
-	/**
-	 * @brief Multiplies a fixed-point value by a floating-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -185,9 +159,6 @@ namespace fpm {
 	constexpr inline FixedType operator*(const FixedType& x, const NonFixedType& y) noexcept {
 		return x * FixedType(y);
 	}
-	/**
-	 * @brief Multiplies a floating-point value by a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -197,9 +168,6 @@ namespace fpm {
 		return y * FixedType(x);
 	}
 
-	/**
-	 * @brief Divides a fixed-point value by a floating-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -208,9 +176,6 @@ namespace fpm {
 	constexpr inline FixedType operator/(const FixedType& x, const NonFixedType& y) noexcept {
 		return x / FixedType(y);
 	}
-	/**
-	 * @brief Divides a floating-point value by a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -220,9 +185,6 @@ namespace fpm {
 		return y / FixedType(x);
 	}
 
-	/**
-	 * @brief Compares a fixed-point and a non-fixed-point value for equality.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -231,9 +193,6 @@ namespace fpm {
 	constexpr inline bool operator==(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() == FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Compares a non-fixed-point and a fixed-point value for equality.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -243,9 +202,6 @@ namespace fpm {
 		return x.raw_value() == FixedType(y).raw_value();
 	}
 
-	/**
-	 * @brief Compares a fixed-point and a non-fixed-point value for inequality.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -254,9 +210,6 @@ namespace fpm {
 	constexpr inline bool operator!=(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() != FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Compares a non-fixed-point and a fixed-point value for inequality.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -266,9 +219,6 @@ namespace fpm {
 		return x.raw_value() != FixedType(y).raw_value();
 	}
 
-	/**
-	 * @brief Checks if a fixed-point value is less than a non-fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -277,9 +227,6 @@ namespace fpm {
 	constexpr inline bool operator<(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() < FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Checks if a non-fixed-point value is less than a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -288,9 +235,6 @@ namespace fpm {
 	constexpr inline bool operator<(const NonFixedType& y, const FixedType& x) noexcept {
 		return x.raw_value() < FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Checks if a fixed-point value is less than or equal to a non-fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -299,9 +243,6 @@ namespace fpm {
 	constexpr inline bool operator<=(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() <= FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Checks if a non-fixed-point value is less than or equal to a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -311,9 +252,6 @@ namespace fpm {
 		return x.raw_value() <= FixedType(y).raw_value();
 	}
 
-	/**
-	 * @brief Checks if a fixed-point value is greater than a non-fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -322,9 +260,6 @@ namespace fpm {
 	constexpr inline bool operator>(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() > FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Checks if a non-fixed-point value is greater than a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -333,9 +268,6 @@ namespace fpm {
 	constexpr inline bool operator>(const NonFixedType& y, const FixedType& x) noexcept {
 		return x.raw_value() > FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Checks if a fixed-point value is greater than or equal to a non-fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,
@@ -344,9 +276,6 @@ namespace fpm {
 	constexpr inline bool operator>=(const FixedType& x, const NonFixedType& y) noexcept {
 		return x.raw_value() >= FixedType(y).raw_value();
 	}
-	/**
-	 * @brief Checks if a non-fixed-point value is greater than or equal to a fixed-point value.
-	 */
 	template <
 		typename FixedType,
 		typename std::enable_if<fpm::is_fixed<FixedType>::value>::type* = nullptr,

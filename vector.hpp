@@ -1,6 +1,11 @@
 /**
  * @file vector.hpp
- * @brief Provides a generic 3D vector class with basic vector arithmetic.
+ * @brief A generic 3D vector class template.
+ *
+ * This header provides a `Vector3D` class template that serves as a foundation
+ * for 3D vector mathematics. It uses the Curiously Recurring Template Pattern (CRTP)
+ * to allow for the creation of specialized vector types (like Position, Velocity)
+ * while reusing the core arithmetic and geometric operations.
  */
 #pragma once
 
@@ -8,10 +13,10 @@
 #include <type_traits>
 
 /**
- * @brief A concept to identify types that support basic arithmetic operations.
+ * @brief Concept to check if a type supports basic arithmetic operations.
  *
- * This concept is used to constrain template parameters to numeric types
- * or custom types that overload the standard arithmetic operators.
+ * This concept is satisfied if the type is either a standard arithmetic type
+ * or if it overloads the basic arithmetic operators (+, -, *, /).
  */
 template <typename T, typename U>
 concept Number = requires(T obj, U thi) {
@@ -27,11 +32,11 @@ template <typename Numeric, typename Derived>
 class Vector3D;
 
 /**
- * @brief A concept to identify types that are compatible with `Vector3D` for operations.
+ * @brief Concept to check if a type is compatible with Vector3D for operations.
  *
- * A type is considered vector-compatible if it has public members `X_coord`, `Y_coord`,
- * and `Z_coord` of the specified `Numeric` type. This allows operations between
- * different but structurally similar vector types.
+ * A type is vector-compatible if it has public members `X_coord`, `Y_coord`, and `Z_coord`
+ * of the specified `Numeric` type. This allows operations between different, but
+ * structurally similar, vector types.
  */
 template <typename T, typename Numeric>
 concept VectorCompatible = requires(T vec) {
@@ -43,8 +48,9 @@ concept VectorCompatible = requires(T vec) {
 /**
  * @brief A type alias to select either an explicit type or a default type.
  *
- * This is used in `Vector3D` to allow the derived class type to be explicitly
- * provided or to default to the base `Vector3D` itself.
+ * This is used in the `Vector3D` class to allow it to be used either as a
+ * standalone class or as a base class in the CRTP pattern. If `Derived` is `void`,
+ * it defaults to `Vector3D<Numeric>`, otherwise it uses the provided `Derived` type.
  */
 template <typename ExplicitType, typename Default>
 using Either = std::conditional_t<std::is_same_v<ExplicitType, void>, Default, ExplicitType>;
@@ -52,15 +58,14 @@ using Either = std::conditional_t<std::is_same_v<ExplicitType, void>, Default, E
 /**
  * @brief A generic 3D vector class.
  *
- * This class provides a foundation for 3D vector mathematics. It uses the
- * Curiously Recurring Template Pattern (CRTP), where the `Derived` template
- * parameter is the class that inherits from `Vector3D`. This allows derived
- * classes (like `PositionVector`, `VelocityVector`) to return objects of their
- * own type from the base class's methods, ensuring type correctness.
+ * This class provides a foundation for 3D vector operations, including arithmetic
+ * (+, -, *, /), dot product, cross product, magnitude, and normalization. It uses the
+ * Curiously Recurring Template Pattern (CRTP) to allow derived classes to return
+ * their own type from these operations, enabling method chaining with the correct type.
  *
- * @tparam Numeric The numeric type for the vector's components (e.g., `float`, `fixed_16_16`).
- * @tparam Derived The derived class type for CRTP. Defaults to `void`, in which case
- *                 the methods return `Vector3D<Numeric>`.
+ * @tparam Numeric The numeric type for the vector's components (e.g., float, double, fixed-point).
+ * @tparam Derived The derived class's type, used for CRTP. Defaults to `void`, in which
+ *                 case the class methods return `Vector3D<Numeric>`.
  */
 template <typename Numeric, typename Derived = void>
 class Vector3D {
@@ -79,31 +84,29 @@ public:
 	constexpr static Vector3D<Numeric> Backward = Vector3D<Numeric>(0, -1, 0);
 
 	// -- Public Attributes --
-	NumericType X_coord; ///< The X-coordinate (e.g., left/right) of the vector.
-	NumericType Y_coord; ///< The Y-coordinate (e.g., forward/backward) of the vector.
-	NumericType Z_coord; ///< The Z-coordinate (e.g., up/down) of the vector.
+	NumericType X_coord; ///< The X-coordinate of the vector.
+	NumericType Y_coord; ///< The Y-coordinate of the vector.
+	NumericType Z_coord; ///< The Z-coordinate of the vector.
 
-	// -- Constructors --
 	/**
 	 * @brief Default constructor, initializes to a zero vector.
 	 */
 	constexpr explicit Vector3D() : X_coord(0), Y_coord(0), Z_coord(0) {}
 	/**
-	 * @brief Constructs a vector with specified x, y, and z components.
+	 * @brief Constructs a vector from its x, y, and z components.
 	 */
 	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord) :
 		X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
 
-	// -- Operators --
 	/**
 	 * @brief Checks if the vector is non-zero.
-	 * @return `true` if any component is non-zero.
+	 * @return `true` if any component is non-zero, `false` otherwise.
 	 */
 	operator bool() const { return X_coord || Y_coord || Z_coord; }
 
 	/**
 	 * @brief Adds two vectors component-wise.
-	 * @return A new vector of the `ClassType` (the derived type).
+	 * @return A new vector of `ClassType` representing the sum.
 	 */
 	ClassType operator+(const VectorCompatible<NumericType> auto& other) const {
 		return ClassType(X_coord + other.X_coord, Y_coord + other.Y_coord, Z_coord + other.Z_coord);
@@ -111,7 +114,7 @@ public:
 
 	/**
 	 * @brief Subtracts one vector from another component-wise.
-	 * @return A new vector of the `ClassType`.
+	 * @return A new vector of `ClassType` representing the difference.
 	 */
 	ClassType operator-(const VectorCompatible<NumericType> auto& other) const {
 		return ClassType(X_coord - other.X_coord, Y_coord - other.Y_coord, Z_coord - other.Z_coord);
@@ -119,7 +122,7 @@ public:
 
 	/**
 	 * @brief Multiplies the vector by a scalar.
-	 * @return A new vector of the `ClassType`, scaled by the scalar.
+	 * @return A new vector of `ClassType` with each component scaled.
 	 */
 	constexpr ClassType operator*(const NumericType& scalar) const {
 		return ClassType(X_coord * scalar, Y_coord * scalar, Z_coord * scalar);
@@ -127,13 +130,12 @@ public:
 
 	/**
 	 * @brief Divides the vector by a scalar.
-	 * @return A new vector of the `ClassType`, scaled by the inverse of the scalar.
+	 * @return A new vector of `ClassType` with each component scaled.
 	 */
 	ClassType operator/(NumericType scalar) const {
 		return ClassType(X_coord / scalar, Y_coord / scalar, Z_coord / scalar);
 	}
 
-	// -- Vector Operations --
 	/**
 	 * @brief Computes the dot product of this vector with another.
 	 * @return The scalar dot product.
@@ -144,7 +146,7 @@ public:
 
 	/**
 	 * @brief Computes the cross product of this vector with another.
-	 * @return A new vector of the `ClassType` that is orthogonal to both input vectors.
+	 * @return A new vector of `ClassType` that is perpendicular to both input vectors.
 	 */
 	ClassType cross(const VectorCompatible<NumericType> auto& other) const {
 		return ClassType(
@@ -179,8 +181,8 @@ public:
 	NumericType magnitudeYZ() const { return sqrt(Y_coord * Y_coord + Z_coord * Z_coord); }
 
 	/**
-	 * @brief Computes the normalized vector (a unit vector with the same direction).
-	 * @return A new vector of the `ClassType` with a magnitude of 1.
+	 * @brief Computes the normalized vector (unit vector).
+	 * @return A new vector of `ClassType` with a magnitude of 1.
 	 */
 	ClassType normalize() const {
 		NumericType mag = magnitude();
@@ -199,7 +201,7 @@ public:
 
 	/**
 	 * @brief Computes the yaw angle of the vector.
-	 * Yaw is the angle of the vector's projection on the XY plane from the Y-axis.
+	 * Yaw is the angle in the XY plane relative to the Y-axis.
 	 * @return The yaw angle in degrees.
 	 */
 	NumericType yaw() const { return atan2(X_coord, Y_coord) * rad2DegFactor; }

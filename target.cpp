@@ -1,6 +1,9 @@
 /**
  * @file target.cpp
- * @brief Implements the classes for representing targets and 3D vectors.
+ * @brief Implements the Target and vector classes.
+ *
+ * This file contains the method definitions for the Target, PositionVector,
+ * VelocityVector, and DistanceVector classes.
  */
 #include "target.h"
 
@@ -13,7 +16,9 @@
 
 /**
  * @brief Constructs a DistanceVector from a VelocityVector and a time interval.
- * This is calculated as `distance = velocity * time`.
+ *
+ * This constructor calculates the displacement by multiplying velocity by time.
+ *
  * @param v The velocity vector.
  * @param interval The time interval.
  */
@@ -23,7 +28,9 @@ DistanceVector::DistanceVector(VelocityVector v, ChronoDuration auto interval) {
 
 /**
  * @brief Constructs a PositionVector by adding a DistanceVector to another PositionVector.
- * This represents a displacement from a starting point.
+ *
+ * This represents a translation of a point in space.
+ *
  * @param p The initial position vector.
  * @param d The distance vector to add.
  */
@@ -32,8 +39,10 @@ PositionVector::PositionVector(PositionVector p, DistanceVector d) {
 }
 
 /**
- * @brief Constructs a PositionVector by applying a VelocityVector over a time interval to a PositionVector.
- * This projects a future position based on current position and velocity.
+ * @brief Constructs a PositionVector by applying a VelocityVector over a time interval to a starting PositionVector.
+ *
+ * This calculates a future position based on a starting point, constant velocity, and duration.
+ *
  * @param p The initial position vector.
  * @param v The velocity vector.
  * @param interval The time interval.
@@ -44,7 +53,11 @@ PositionVector::PositionVector(PositionVector p, VelocityVector v, ChronoDuratio
 
 /**
  * @brief Calculates the pitch of the vector, caching the result for efficiency.
- * @return The pitch angle in radians.
+ *
+ * If the pitch has not been calculated before, it computes it and stores it.
+ * Subsequent calls will return the cached value.
+ *
+ * @return The pitch in degrees.
  */
 fixed PositionVector::Pitch() {
 	if (!_pitch) {
@@ -55,7 +68,11 @@ fixed PositionVector::Pitch() {
 
 /**
  * @brief Calculates the yaw of the vector, caching the result for efficiency.
- * @return The yaw angle in radians.
+ *
+ * If the yaw has not been calculated before, it computes it and stores it.
+ * Subsequent calls will return the cached value.
+ *
+ * @return The yaw in degrees.
  */
 fixed PositionVector::Yaw() {
 	if (!_yaw) {
@@ -66,6 +83,10 @@ fixed PositionVector::Yaw() {
 
 /**
  * @brief Calculates the 2D magnitude (distance in the XY plane) of the vector, caching the result.
+ *
+ * If the distance has not been calculated before, it computes it and stores it.
+ * Subsequent calls will return the cached value.
+ *
  * @return The distance in the XY plane.
  */
 fixed PositionVector::Distance() {
@@ -77,7 +98,10 @@ fixed PositionVector::Distance() {
 
 /**
  * @brief Constructs a VelocityVector from a DistanceVector and a time interval.
- * This is calculated as `velocity = distance / time`.
+ *
+ * This constructor calculates velocity by dividing distance by time.
+ * It handles the case where the time interval is zero to avoid division by zero.
+ *
  * @param dist The distance vector.
  * @param interval The time interval.
  */
@@ -97,9 +121,9 @@ VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval) {
 Target::Target(PositionVector P, VelocityVector V) : position(P), velocity(V) {}
 
 /**
- * @brief Constructs a Target with a full initial state.
- * @param index The index of the target in its array.
- * @param valid The validity of the target.
+ * @brief Constructs a Target with an index, validity, position, and velocity.
+ * @param index The index of the target (e.g., in an array).
+ * @param valid The initial validity of the target data.
  * @param P The initial position vector.
  * @param V The initial velocity vector.
  */
@@ -110,10 +134,10 @@ Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V) :
  * @brief Updates the target's state with a new position measurement.
  *
  * This method recalculates the target's velocity based on the change in position
- * and time since the last update. It also updates the `seen` timestamp and the
- * `position` history, which are crucial for velocity calculation in subsequent updates.
+ * and the time elapsed since the last update. It also updates the `seen` timestamp
+ * and shifts the position history (`position` becomes `last_position`).
  *
- * @param P The new position vector of the target.
+ * @param P The new position vector measurement.
  */
 void Target::Update(PositionVector P) {
 	TimePoint    new_seen = Clock::now();
@@ -125,7 +149,7 @@ void Target::Update(PositionVector P) {
 	}
 	// If no time has passed, velocity remains unchanged.
 
-	// Update the target's history for the next iteration.
+	// Update the target's history.
 	last_position = position;
 	position = P;
 	last_seen = seen;
@@ -134,8 +158,8 @@ void Target::Update(PositionVector P) {
 
 /**
  * @brief Predicts the target's position at a future time, assuming constant velocity.
- * @param interval The time interval for the prediction.
- * @return The predicted position vector.
+ * @param interval The time interval from now for the prediction.
+ * @return The predicted `PositionVector`.
  */
 PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
 	return PositionVector(position, velocity, interval);
@@ -143,7 +167,7 @@ PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
 
 /**
  * @brief Gets the current velocity of the target.
- * @return The constant velocity vector of the target.
+ * @return A const reference to the target's velocity vector.
  */
 const VelocityVector Target::Velocity() const {
 	return velocity;
@@ -151,7 +175,7 @@ const VelocityVector Target::Velocity() const {
 
 /**
  * @brief Gets the current position of the target.
- * @return The constant position vector of the target.
+ * @return A const reference to the target's position vector.
  */
 const PositionVector Target::Position() const {
 	return position;
@@ -159,24 +183,24 @@ const PositionVector Target::Position() const {
 
 /**
  * @brief Calculates the time elapsed since the last action was performed on this target.
- * "Action" typically refers to the system actively engaging with the target, such as firing.
- * @return The time interval since the last action.
+ * An "action" could be, for example, the system deciding to aim at this target.
+ * @return The `TimeInterval` since the last action.
  */
 TimeInterval Target::timeSinceLastAction() const {
 	return TimeInterval(Clock::now() - last_action);
 }
 
 /**
- * @brief Calculates the time elapsed since the target was last seen (i.e., its position was updated).
- * @return The time interval since the last sighting.
+ * @brief Calculates the time elapsed since the target's position was last updated.
+ * @return The `TimeInterval` since the last sighting.
  */
 TimeInterval Target::timeSinceLastSeen() const {
 	return TimeInterval(Clock::now() - seen);
 }
 
 /**
- * @brief Resets the action timer by updating the last action timestamp to the current time.
- * This should be called whenever the system performs an action on the target.
+ * @brief Updates the `last_action` timestamp to the current time.
+ * This is used to mark that the system has interacted with or processed this target.
  */
 void Target::IncrementAction() {
 	last_action = Clock::now();
