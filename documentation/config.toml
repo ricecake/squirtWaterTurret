@@ -1,14 +1,16 @@
 baseURL = "https://ricecake.github.io/squirtWaterTurret/"
 languageCode = "en-us"
-title = "Project Documentation"
-theme = "learn"
+title = "Squirt Water Turret"
+theme = "geekdoc"
+
 pygmentsCodeFences = true
-pygmentsStyle = "monokai"
+pygmentsUseClasses = true
+
+[markup]
+  [markup.goldmark.renderer]
+    unsafe = true
 
 [params]
-  # Change default color scheme with a variant one. Can be "red", "blue", "green".
-  themeVariant = "blue"
-  # Set this to true to disable copy-to-clipboard button for inline code.
-  disableInlineCopyToClipBoard = true
-  # Set this to true to display a breadcrumb navigation bar at the top of each page
-  showVisitedLinks = true
+  geekdocLogo = "logo.png"
+  geekdocRepo = "https://github.com/ricecake/squirtWaterTurret"
+  geekdocBreadcrumb = true
