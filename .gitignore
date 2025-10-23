@@ -16,3 +16,5 @@ test_runner
 *.sqlite*
 .depthai_cached_models
 TestFrames
+documentation/public
+.hugo_build.lock
