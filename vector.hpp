@@ -11,7 +11,7 @@ concept Number = requires(T obj, U thi) {
 	requires std::is_arithmetic_v<T> || requires {
 		obj + thi;
 		obj - thi;
-		obj* thi;
+		obj * thi;
 		obj / thi;
 	};
 };

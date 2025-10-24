@@ -56,6 +56,6 @@ clean:
 	rm -f $(OBJS) $(TEST_OBJS) $(TARGET)
 
 format:
-	@find ./ \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.ino' \) ! -name 'LD2450.*' ! -path './fpm/*' ! -path './.*/*' -exec clang-format -i '{}' \;
+	@find ./ \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.ino' \) ! -name 'LD2450.*' ! -path './fpm/*' ! -path './.*/*' -exec clang-format --Wno-error=unknown -i '{}' \;
 
 .PHONY: all run clean format

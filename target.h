@@ -182,8 +182,8 @@ inline const PositionVector Target::interceptPosition() const {
 	const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
 	const fixed_24_8 c4 = diff.dot(diff);
 
-	const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic = [=](const fixed_24_8 t
-	                                                                                       ) -> const fixed_24_8 {
+	const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic =
+		[=](const fixed_24_8 t) -> const fixed_24_8 {
 		return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
 	};
 

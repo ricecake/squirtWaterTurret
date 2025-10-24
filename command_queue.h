@@ -26,29 +26,18 @@ public:
 
 	template <typename T, typename... Args>
 	void addCommand(Args&&... args) {
+		auto newCommand = new T(std::forward<Args>(args)...);
+		max_run_after = std::max(max_run_after, newCommand->run_after);
 		if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-			commandQueue.push(new T(std::forward<Args>(args)...));
+			commandQueue.push(newCommand);
 			xSemaphoreGive(xMutex);
 		}
 	}
 
 	template <typename T, typename... Args>
 	void addCommandAfter(Args&&... args) {
-		if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-			int64_t last_run_after = esp_timer_get_time();
-			if (!commandQueue.empty()) {
-				auto     tempQueue = commandQueue;
-				Command* cmd = nullptr;
-				while (!tempQueue.empty()) {
-					cmd = tempQueue.top();
-					tempQueue.pop();
-				}
-				last_run_after = cmd->run_after;
-			}
-
-			commandQueue.push(new T(std::forward<Args>(args)..., last_run_after));
-			xSemaphoreGive(xMutex);
-		}
+		auto last_run_after = max_run_after + 1;
+		commandQueue.push(new T(std::forward<Args>(args)..., last_run_after));
 	}
 
 	template <typename T, typename... Args>
@@ -60,6 +49,7 @@ public:
 	std::string serialize() const;
 
 private:
+	int64_t                                                                                  max_run_after = 0;
 	std::priority_queue<Command*, std::vector<Command*>, decltype(CommandPointerComparator)> commandQueue;
 	SemaphoreHandle_t                                                                        xMutex;
 };

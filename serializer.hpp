@@ -101,18 +101,22 @@ namespace cerializer {
 	 */
 	template <typename... Ts>
 		requires(std::is_trivially_copyable_v<Ts> && ...)
+
 	constexpr inline std::array<char, (sizeof(Ts) + ...)> pack(const Ts&... args) {
 		std::array<char, (sizeof(Ts) + ...)> dest;
 		auto                                 offset = 0;
-		([&]() {
-			if constexpr ((std::endian::native == std::endian::big) && sizeof(Ts) > 1 && !Indexable<Ts>) {
-				auto bits = std::bit_cast<std::array<char, sizeof(Ts)>>(args);
-				std::copy(bits.rbegin(), bits.rend(), dest.data() + offset);
-			} else {
-				std::memcpy(dest.data() + offset, &args, sizeof(Ts));
-			}
-			offset += sizeof(Ts);
-		}(), ...);
+		(
+			[&]() {
+				if constexpr ((std::endian::native == std::endian::big) && sizeof(Ts) > 1 && !Indexable<Ts>) {
+					auto bits = std::bit_cast<std::array<char, sizeof(Ts)>>(args);
+					std::copy(bits.rbegin(), bits.rend(), dest.data() + offset);
+				} else {
+					std::memcpy(dest.data() + offset, &args, sizeof(Ts));
+				}
+				offset += sizeof(Ts);
+			}(),
+			...
+		);
 		return dest;
 	};
 
@@ -132,6 +136,7 @@ namespace cerializer {
 	};
 
 	using TypeCharSpec = std::tuple<uint8_t, uint8_t, char>;
+
 	/**
 	 * @brief Gets the format size and type character for a given type.
 	 */
@@ -151,68 +156,82 @@ namespace cerializer {
 	constexpr TypeCharSpec formatSize<char>() {
 		return {1, 1, 'c'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<signed char>() {
 		return {1, 1, 'b'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<unsigned char>() {
 		return {1, 1, 'B'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<bool>() {
 		return {1, 1, '?'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<short>() {
 		return {1, 2, 'h'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<unsigned short>() {
 		return {1, 2, 'H'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<int>() {
 		return {1, 4, 'i'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<unsigned int>() {
 		return {1, 4, 'I'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<long>() {
 		return {1, 4, 'l'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<unsigned long>() {
 		return {1, 4, 'L'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<long long>() {
 		return {1, 8, 'q'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<unsigned long long>() {
 		return {1, 8, 'Q'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<float>() {
 		return {1, 4, 'f'};
 	}
+
 	template <>
 	constexpr TypeCharSpec formatSize<double>() {
 		return {1, 8, 'd'};
 	}
 
-		template <typename... Ts>
-		constexpr size_t formatStringSize() {
-			return (1 + ... + std::get<0>(formatSize<Ts>()));
-		}
+	template <typename... Ts>
+	constexpr size_t formatStringSize() {
+		return (1 + ... + std::get<0>(formatSize<Ts>()));
+	}
+
 	/**
 	 * @brief A type alias for the character array that holds a rendered format string.
 	 */
 	template <typename... Ts>
-		using RenderedFormatString = std::array<char, formatStringSize<Ts...>()>;
+	using RenderedFormatString = std::array<char, formatStringSize<Ts...>()>;
 
 	/**
 	 * @brief Renders the format string for a series of types.
@@ -240,10 +259,12 @@ namespace cerializer {
 	class MessageMaker {
 	public:
 		using TCreateMethod = std::function<BasePointer(const std::span<char>& binaryData)>;
+
 		static bool Register(const uint8_t typeVal, TCreateMethod builder) {
 			MessageMaker::makerMap[typeVal] = builder;
 			return true;
 		}
+
 		static BasePointer Create(const uint8_t typeVal, const std::span<char>& binaryData) {
 			if (auto it = MessageMaker::makerMap.find(typeVal); it != makerMap.end()) {
 				return it->second(binaryData);
@@ -272,21 +293,26 @@ namespace cerializer {
 		static bool registered;
 
 	public:
-		constexpr uint8_t             Code() override { return TypeVal; };
-		constexpr static uint8_t      Type() { return TypeVal; };
+		constexpr uint8_t Code() override { return TypeVal; };
+
+		constexpr static uint8_t Type() { return TypeVal; };
+
 		constexpr static unsigned int Size() { return (sizeof(FieldTypes) + ...); };
+
 		using MessageFormat = std::array<char, 4 + (std::get<0>(formatSize<FieldTypes>()) + ...)>;
 		using BinaryMessage = std::array<char, (sizeof(FieldTypes) + ...) + 2 * sizeof(uint16_t) + sizeof(uint8_t)>;
 
 		constexpr static MessageFormat Format() { return renderFormat<uint16_t, uint8_t, FieldTypes..., uint16_t>(); };
-		constexpr BinaryMessage        ToBinary() const {
-            auto encodedData = static_cast<const Derived*>(this)->encode();
-            return pack(magicHead, Type(), encodedData, magicFoot);
+
+		constexpr BinaryMessage ToBinary() const {
+			auto encodedData = static_cast<const Derived*>(this)->encode();
+			return pack(magicHead, Type(), encodedData, magicFoot);
 		};
 
 		constexpr static Derived LoadBinary(BinaryMessage& binaryData) {
 			return LoadBinary(std::span(binaryData.begin(), binaryData.end()));
 		}
+
 		constexpr static Derived LoadBinary(const std::span<char>& binaryData) {
 			std::span<char> dataView(binaryData);
 			uint16_t        headCheck = unpack<uint16_t>(dataView.first(sizeof(magicHead)));
@@ -300,11 +326,13 @@ namespace cerializer {
 	};
 
 	template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
-	bool Message<Derived, TypeVal, FieldTypes...>::registered =
-		MessageMaker::Register(TypeVal, [](const std::span<char>& binaryData) -> BasePointer {
-		auto obj = Derived::LoadBinary(binaryData);
-		return std::make_unique<Derived>(obj);
-	});
+	bool Message<Derived, TypeVal, FieldTypes...>::registered = MessageMaker::Register(
+		TypeVal,
+		[](const std::span<char>& binaryData) -> BasePointer {
+			auto obj = Derived::LoadBinary(binaryData);
+			return std::make_unique<Derived>(obj);
+		}
+	);
 
 	/**
 	 * @brief An example message class for representing a target.
@@ -318,10 +346,11 @@ namespace cerializer {
 		const uint16_t z;
 
 	public:
-		constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept :
+		constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept:
 			id(id), valid(valid), x(x), y(y), z(z) {
 			assert(registered);
 		}
+
 		constexpr std::array<char, Size()> encode() const { return pack(id, valid, x, y, z); }
 	};
 
@@ -341,14 +370,18 @@ namespace cerializer {
 
 	public:
 		constexpr inline Config(
-			float projectile_speed, float turret_height, uint16_t max_speed, uint16_t acceleration
-		) noexcept :
+			float    projectile_speed,
+			float    turret_height,
+			uint16_t max_speed,
+			uint16_t acceleration
+		) noexcept:
 			projectile_speed(projectile_speed),
 			turret_height(turret_height),
 			max_speed(max_speed),
 			acceleration(acceleration) {
 			assert(registered);
 		}
+
 		constexpr std::array<char, Size()> encode() const {
 			return pack(projectile_speed, turret_height, max_speed, acceleration);
 		}
@@ -374,7 +407,8 @@ namespace cerializer {
 		const TargetSource source;
 
 	public:
-		constexpr inline SetTargetSourceMessage(TargetSource source) noexcept : source(source) { assert(registered); }
+		constexpr inline SetTargetSourceMessage(TargetSource source) noexcept: source(source) { assert(registered); }
+
 		constexpr std::array<char, Size()> encode() const { return pack(source); }
 	};
 
@@ -391,9 +425,10 @@ namespace cerializer {
 		const uint16_t z;
 
 	public:
-		constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept : x(x), y(y), z(z) {
+		constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept: x(x), y(y), z(z) {
 			assert(registered);
 		}
+
 		constexpr std::array<char, Size()> encode() const { return pack(x, y, z); }
 	};
 
@@ -425,6 +460,7 @@ namespace cerializer {
 	 */
 	template <typename T>
 		requires IOAble<T>
+
 	class Deserializer {
 	protected:
 		T&                    input;
@@ -466,7 +502,7 @@ namespace cerializer {
 		}
 
 	public:
-		Deserializer(T& readStream) : input(readStream){};
+		Deserializer(T& readStream): input(readStream) {};
 
 		template <std::derived_from<BasePacket> Type>
 		void ParseStream(std::function<void(std::unique_ptr<Type>&)> callback) {

@@ -79,7 +79,6 @@ bool SystemState::getMoveState() {
 	return moveState;
 }
 
-#include "firecontrol.h"
 void SystemState::queueFire(uint16_t fireDuration) {
 	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
 	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
@@ -91,7 +90,6 @@ void SystemState::queueLinger(uint8_t milliseconds) {
 	commandQueue.addCommand<LingerCommand>(milliseconds * 1000);
 }
 
-#include "target_selection.h"
 void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
 	commandQueue.addCommand<TargetSelection>(index, 0xFF, milliseconds * 1000);
 }

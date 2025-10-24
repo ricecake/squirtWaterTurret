@@ -29,7 +29,7 @@ struct IOWrapper {
 
 	bool good() { return bool(io); };
 
-	IOWrapper(HardwareSerial& io): io(io){};
+	IOWrapper(HardwareSerial& io): io(io) {};
 };
 
 IOWrapper wrapped(testSerial);

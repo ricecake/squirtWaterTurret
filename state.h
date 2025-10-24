@@ -52,7 +52,7 @@ public:
 	// -- Public Methods --
 	Target&           currentTarget();
 	std::span<Target> currentTargetArray();
-	constexpr size_t  size();
+	inline size_t     size();
 
 	void updateTarget(
 		auto&           targetArray,
@@ -131,7 +131,7 @@ private:
 // --- Inline-Defined Methods ---
 // ======================================================================================
 
-constexpr size_t SystemState::size() {
+inline size_t SystemState::size() {
 	return currentTargetArray().size();
 }
 
