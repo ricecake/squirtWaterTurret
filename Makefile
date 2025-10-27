@@ -4,7 +4,10 @@
 CXX = g++
 # Use C++20 for concepts and other modern features.
 # -I. adds the root directory to the include path.
-CXXFLAGS = -std=gnu++23 -I. -Wall -Wextra -g
+CXXFLAGS = -std=gnu++23 -I. -Iexternal -Iexternal/test -Wall -Wextra -g
+
+# Directories
+BUILD_DIR = build
 
 # Source files
 # List all .cpp files from the project root that contain core logic.
@@ -27,36 +30,38 @@ TEST_SRCS = \
     tests/test_vector.cpp
 
 # Object files
-OBJS = $(SRCS:.cpp=.o)
-TEST_OBJS = $(TEST_SRCS:.cpp=.o)
+OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRCS))
+TEST_OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(TEST_SRCS))
 
 # Target executable
-TARGET = test_runner
+TARGET = $(BUILD_DIR)/test_runner
 
 # Default target
 all: $(TARGET)
 
 # Link the test runner
 $(TARGET): $(OBJS) $(TEST_OBJS)
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(TEST_OBJS)
 
 # Compile source files
-%.o: %.cpp
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compile test files
-tests/%.o: tests/%.cpp
+$(BUILD_DIR)/tests/%.o: tests/%.cpp
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Run the tests
-run: all
+test: all
 	./$(TARGET)
 
 # Clean up build artifacts
 clean:
-	rm -f $(OBJS) $(TEST_OBJS) $(TARGET)
+	rm -rf $(BUILD_DIR)
 
 format:
-	@find ./ \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.ino' \) ! -name 'LD2450.*' ! -path './fpm/*' ! -path './.*/*' -exec clang-format --Wno-error=unknown -i '{}' \;
+	@find ./ \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.ino' \) ! -path './external/*' ! -path './.*/*' -exec clang-format --Wno-error=unknown -i '{}' \;
 
-.PHONY: all run clean format
+.PHONY: all test clean format

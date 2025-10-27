@@ -1,16 +1,12 @@
-#include "tests/test_firecontrol.h"
-
-#include <cassert>
-#include <chrono>
-#include <thread>
-
+#include "doctest.h"
 #include "firecontrol.h"
 #include "state.h"
 #include "tests/mocks.h"
 #include "utilities.h"
+#include <chrono>
+#include <thread>
 
-// Test case for activating the firing mechanism
-void test_FireControl_activate() {
+TEST_CASE("FireControl activate") {
 	SystemState state;
 	state.setFire(false); // Ensure initial state is off
 	// Target& target = state.currentTarget(); // Unused but kept for clarity
@@ -23,11 +19,10 @@ void test_FireControl_activate() {
 	FireControl cmd(true, 10, 0);
 	cmd.Execute(&state);
 
-	assert(state.getFireState() == true);
+	REQUIRE(state.getFireState() == true);
 }
 
-// Test case for deactivating the firing mechanism
-void test_FireControl_deactivate() {
+TEST_CASE("FireControl deactivate") {
 	SystemState state;
 	state.setFire(true); // Ensure initial state is on
 	// Target& target = state.currentTarget(); // Unused.
@@ -40,33 +35,30 @@ void test_FireControl_deactivate() {
 	FireControl cmd(false, 10, 0);
 	cmd.Execute(&state);
 
-	assert(state.getFireState() == false);
+	REQUIRE(state.getFireState() == false);
 }
 
-// Test case to ensure firing doesn't happen if already active
-void test_FireControl_already_active() {
+TEST_CASE("FireControl already active") {
 	SystemState state;
 	state.setFire(true);
 
 	FireControl cmd(true, 10, 0);
 	cmd.Execute(&state);
 
-	assert(state.getFireState() == true);
+	REQUIRE(state.getFireState() == true);
 }
 
-// Test case to ensure no change if already inactive
-void test_FireControl_already_inactive() {
+TEST_CASE("FireControl already inactive") {
 	SystemState state;
 	state.setFire(false);
 
 	FireControl cmd(false, 10, 0);
 	cmd.Execute(&state);
 
-	assert(state.getFireState() == false);
+	REQUIRE(state.getFireState() == false);
 }
 
-// Test case for when action idle time has not been exceeded
-void test_FireControl_activation_too_soon() {
+TEST_CASE("FireControl activation too soon") {
 	SystemState state;
 	state.setFire(false);
 	Target& target = state.currentTarget();
@@ -75,14 +67,5 @@ void test_FireControl_activation_too_soon() {
 	FireControl cmd(true, 10, 0);
 	cmd.Execute(&state);
 
-	assert(state.getFireState() == false);
-}
-
-// Test runner for the firecontrol module
-void run_firecontrol_tests() {
-	test_FireControl_activate();
-	test_FireControl_deactivate();
-	test_FireControl_already_active();
-	test_FireControl_already_inactive();
-	test_FireControl_activation_too_soon();
+	REQUIRE(state.getFireState() == false);
 }

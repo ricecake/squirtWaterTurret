@@ -18,3 +18,4 @@ test_runner
 TestFrames
 documentation/public
 .hugo_build.lock
+build/
