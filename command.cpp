@@ -22,17 +22,3 @@ Command::Command(int64_t run_after) {
 	// Calculate the absolute execution time
 	this->run_after = id + run_after;
 }
-
-/**
- * @brief Constructs a new LingerCommand object.
- * @param run_after The time delay (in microseconds) after which the command should run.
- */
-LingerCommand::LingerCommand(int64_t run_after): Command(run_after) {}
-
-/**
- * @brief Executes the linger command. This method does nothing.
- * @param state A pointer to the system state (unused).
- */
-void LingerCommand::Execute(SystemState* /*state*/) {
-	// This command intentionally does nothing.
-}

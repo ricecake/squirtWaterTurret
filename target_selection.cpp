@@ -12,7 +12,8 @@
  * @param state A pointer to the system state.
  */
 void TargetSelection::Execute(SystemState* state) {
-	state->setTarget(target_id, speed);
+
+	state->setTarget(target_source, target_id, speed);
 	auto currTarget = state->currentTarget();
 
 	uint16_t timeout = 0;
@@ -25,7 +26,7 @@ void TargetSelection::Execute(SystemState* state) {
 	}
 
 	// Queue the next target selection to create a round-robin evaluation
-	state->queueSelectTarget(((target_id + 1) % state->size()), timeout);
+	state->queueSelectTarget(target_source, ((target_id + 1) % state->size()), timeout);
 }
 
 /**
@@ -35,5 +36,5 @@ void TargetSelection::Execute(SystemState* state) {
  * @param speed The tracking speed to use.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-TargetSelection::TargetSelection(uint8_t target_id, int speed, int64_t run_after):
-	Command(run_after), target_id(target_id), speed(speed) {}
+TargetSelection::TargetSelection(cerializer::TargetSource target_source, uint8_t target_id, int speed, int64_t run_after):
+	Command(run_after), target_source(target_source), target_id(target_id), speed(speed) {}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "command.h"
+#include "serializer.hpp"
 
 /**
  * @brief A command to select a target for the system to focus on.
@@ -12,13 +13,14 @@
 class TargetSelection: public Command {
 public:
 	// -- Constructors --
-	TargetSelection(uint8_t, int, int64_t);
+	TargetSelection(cerializer::TargetSource, uint8_t, int, int64_t);
 
 	// -- Public Methods --
 	void Execute(SystemState* state) override;
 
 private:
 	// -- Private Attributes --
+	cerializer::TargetSource target_source;
 	uint8_t target_id;    ///< The ID of the target to be selected.
 	int     speed = 0xFF; ///< The tracking speed to use for the selected target.
 };

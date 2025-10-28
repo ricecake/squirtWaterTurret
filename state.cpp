@@ -46,19 +46,28 @@ std::span<Target> SystemState::currentTargetArray() {
 }
 
 Target& SystemState::currentTarget() {
-	switch (target_source) {
-	case cerializer::TargetSource::CV:
-		return cvTarget[selectedTarget];
-	case cerializer::TargetSource::RADAR:
-		return radarTarget[selectedTarget];
-	case cerializer::TargetSource::STATIC:
-	default:
-		return staticTarget;
-	}
+	return selectedTarget;
 }
 
-void SystemState::setTarget(uint8_t index, uint8_t speed) {
-	selectedTarget = index;
+void SystemState::setTarget(cerializer::TargetSource source, uint8_t index, uint8_t speed) {
+	if (source != target_source) {
+		return; // No-op because we've changed sources
+	}
+
+	switch (target_source) {
+	case cerializer::TargetSource::CV:
+		selectedTarget = cvTarget[index];
+		break;
+	case cerializer::TargetSource::RADAR:
+		selectedTarget =  radarTarget[index];
+		break;
+	case cerializer::TargetSource::STATIC:
+		selectedTarget = staticTarget;
+		break;
+	default:
+		return;
+	}
+
 	trackingSpeed = speed;
 	needTrackingUpdate = true;
 }
@@ -86,12 +95,8 @@ void SystemState::queueFire(uint16_t fireDuration) {
 	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 
-void SystemState::queueLinger(uint8_t milliseconds) {
-	commandQueue.addCommand<LingerCommand>(milliseconds * 1000);
-}
-
-void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
-	commandQueue.addCommand<TargetSelection>(index, 0xFF, milliseconds * 1000);
+void SystemState::queueSelectTarget(cerializer::TargetSource source, uint8_t index, uint16_t milliseconds) {
+	commandQueue.addCommand<TargetSelection>(source, index, 0xFF, milliseconds * 1000);
 }
 
 void SystemState::updateConfig(cerializer::Config* config) {

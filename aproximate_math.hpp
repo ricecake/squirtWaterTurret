@@ -47,7 +47,7 @@ namespace Approximate {
 	 */
 	template <typename T>
 	constexpr ApproximateResult<T>
-	small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
+	small_root(const std::function<T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
 		T leftInput = 0;
 		T rightInput = 0.01;
 		T midInput;
@@ -131,7 +131,7 @@ namespace Approximate {
 	 */
 	template <typename T>
 	ApproximateResult<std::vector<T>> n_roots(
-		const std::function<const T(const T)> func,
+		const std::function<T(const T)> func,
 		const uint8_t                         n_roots,
 		const T                               error = T(0.001),
 		const uint8_t                         rounds = 16
@@ -143,7 +143,7 @@ namespace Approximate {
 			// Start searching slightly after the last root to avoid finding it again.
 			const T search_start = last_root + error;
 
-			std::function<const T(const T)> shifted_func = [&](const T x) { return func(x + search_start); };
+			std::function<T(const T)> shifted_func = [&](const T x) { return func(x + search_start); };
 			auto                            result = small_root(shifted_func, error, rounds);
 			if (result.converged) {
 				// The new root is relative to the search start.

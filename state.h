@@ -70,14 +70,13 @@ public:
 	);
 	void    updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
-	void    setTarget(uint8_t index, uint8_t speed = 0xFF);
+	void    setTarget(cerializer::TargetSource source, uint8_t index, uint8_t speed = 0xFF);
 	void    setFire(bool active);
 	void    setMove(bool active);
 	bool    getFireState();
 	bool    getMoveState();
-	void    queueSelectTarget(uint8_t index, uint16_t milliseconds);
+	void    queueSelectTarget(cerializer::TargetSource source, uint8_t index, uint16_t milliseconds);
 	void    queueFire(uint16_t milliseconds);
-	void    queueLinger(uint8_t milliseconds);
 	void    updateConfig(cerializer::Config* config);
 	void    processCommandQueue();
 	void    actualizeState();
@@ -122,7 +121,8 @@ private:
 	bool    fireState = false;          ///< Flag indicating the current firing state.
 	bool    needTrackingUpdate = false; ///< Flag indicating if a tracking update is required.
 	uint8_t trackingSpeed = 255;        ///< The speed for tracking movements.
-	uint8_t selectedTarget = 0;         ///< The index of the currently selected target.
+	// uint8_t selectedTarget = 0;         ///< The index of the currently selected target.
+	Target& selectedTarget = radarTarget[0];
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
 };

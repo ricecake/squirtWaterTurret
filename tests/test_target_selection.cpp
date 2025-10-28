@@ -11,7 +11,7 @@ void test_TargetSelection_execute() {
 	// Create a SystemState and a TargetSelection command
 	SystemState state;
 	state.target_source = cerializer::TargetSource::CV;
-	TargetSelection cmd(5, 0xFF, 0);
+	TargetSelection cmd(state.target_source, 5, 0xFF, 0);
 
 	// Execute the command
 	cmd.Execute(&state);
@@ -28,7 +28,7 @@ void test_TargetSelection_queues_next() {
 	// Ensure target is invalid so the timeout is 0
 	state.fetchTarget(1).valid = false;
 
-	TargetSelection cmd(1, 0xFF, 0);
+	TargetSelection cmd(state.target_source, 1, 0xFF, 0);
 	cmd.Execute(&state);
 
 	// The command should have set the target to 1

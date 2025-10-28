@@ -14,7 +14,7 @@ Many operations, like waiting for a motor to reach its destination or waiting fo
 
 The firmware implements the [Command Design Pattern](https://en.wikipedia.org/wiki/Command_pattern) to solve this.
 
--   **`Command` Class:** A `Command` is an object that represents an action to be taken. Key examples include `TargetSelection`, `FireCommand`, and `LingerCommand`.
+-   **`Command` Class:** A `Command` is an object that represents an action to be taken. Key examples include `TargetSelection`, and `FireCommand`.
 -   **`run_after` Timestamp:** Each command has a `run_after` property, which is a timestamp (in microseconds) indicating the earliest time it should be executed.
 -   **Priority Queue:** All pending commands are stored in a `std::priority_queue`. This queue is special because it sorts commands not by importance, but by their `run_after` timestamp. The command with the *earliest* timestamp is always at the front of the queue.
 

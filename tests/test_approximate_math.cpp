@@ -9,7 +9,7 @@
 // Test for the small_root function
 void test_small_root() {
 	// Test with a simple linear function f(x) = x - 5
-	std::function<const fixed(const fixed)> linear_func = [](const fixed x) -> const fixed { return x - fixed(5); };
+	std::function<fixed(const fixed)> linear_func = [](const fixed x) -> fixed { return x - fixed(5); };
 
 	auto result = Approximate::small_root(linear_func);
 
@@ -22,7 +22,7 @@ void test_small_root() {
 void test_n_roots() {
 	// Test with a sine wave function f(x) = sin(x), which has roots at n*pi
 	// Note: The built-in sin function takes a double, so we will use that for this test.
-	std::function<const double(const double)> sin_func = [](const double x) -> const double { return std::sin(x); };
+	std::function<double(const double)> sin_func = [](const double x) -> double { return std::sin(x); };
 
 	// Find the first two roots (pi and 2*pi)
 	auto result = Approximate::n_roots(sin_func, 2);

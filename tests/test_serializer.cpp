@@ -119,7 +119,7 @@ void test_deserialize_incomplete_message() {
 
 	// Act: Parse the stream.
 	deserializer.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
-		message_received = true; // This should not be called
+		message_received = bool(msg); // This should not be called
 	});
 
 	// Assert: No message should have been deserialized.

@@ -61,7 +61,7 @@ void setup() {
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);
 	randomSeed(analogRead(0));
 
-	dptState.queueSelectTarget(1, 3 * 1000);
+	dptState.queueSelectTarget(cerializer::TargetSource::RADAR, 1, 3 * 1000);
 
 	Serial.println("SETUP_FINISHED");
 
@@ -180,6 +180,17 @@ void selectTarget() {
 	    refresh targets will need to be reworked into "check radar" and "check external comms"
 	    since external comms may include things like position changes, and fire commands.
 	*/
+	switch (dptState.target_source) {
+	case cerializer::TargetSource::STATIC:
+	// Set current target to static target
+	case cerializer::TargetSource::RADAR:
+	// Check if the current target matches our criteria.
+	// If not, set target to closest target that does.  Distance should factor in action time.
+	case cerializer::TargetSource::CV:
+		// Check if the current target matches our criteria.
+		// If not, set target to closest target that does.
+	}
+	// Target switch commands should use the queue back method, so they come after any commands to stop firing.
 }
 
 void targetingLoop(void* pvParameters) {
