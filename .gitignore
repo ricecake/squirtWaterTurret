@@ -19,3 +19,4 @@ TestFrames
 documentation/public
 .hugo_build.lock
 build
+junk_*
