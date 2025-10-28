@@ -29,6 +29,8 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(0, 0.01, 0), Ve
 	auto p = staticTarget.Position();
 	p.Z_coord = config.turret_height;
 	staticTarget.Update(p);
+
+	selectedTarget = &staticTarget;
 }
 
 /// @brief Return the current target array, based on which target system is active.
@@ -46,7 +48,7 @@ std::span<Target> SystemState::currentTargetArray() {
 }
 
 Target& SystemState::currentTarget() {
-	return selectedTarget;
+	return *selectedTarget;
 }
 
 void SystemState::setTarget(cerializer::TargetSource source, uint8_t index, uint8_t speed) {
@@ -56,13 +58,13 @@ void SystemState::setTarget(cerializer::TargetSource source, uint8_t index, uint
 
 	switch (target_source) {
 	case cerializer::TargetSource::CV:
-		selectedTarget = cvTarget[index];
+		selectedTarget = &cvTarget[index];
 		break;
 	case cerializer::TargetSource::RADAR:
-		selectedTarget =  radarTarget[index];
+		selectedTarget = &radarTarget[index];
 		break;
 	case cerializer::TargetSource::STATIC:
-		selectedTarget = staticTarget;
+		selectedTarget = &staticTarget;
 		break;
 	default:
 		return;

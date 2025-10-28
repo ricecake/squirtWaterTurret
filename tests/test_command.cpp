@@ -10,5 +10,4 @@
 #include "tests/mocks.h"
 
 // Test runner for the command module
-void run_command_tests() {
-}
+void run_command_tests() {}

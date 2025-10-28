@@ -12,7 +12,6 @@
  * @param state A pointer to the system state.
  */
 void TargetSelection::Execute(SystemState* state) {
-
 	state->setTarget(target_source, target_id, speed);
 	auto currTarget = state->currentTarget();
 
@@ -36,5 +35,10 @@ void TargetSelection::Execute(SystemState* state) {
  * @param speed The tracking speed to use.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-TargetSelection::TargetSelection(cerializer::TargetSource target_source, uint8_t target_id, int speed, int64_t run_after):
+TargetSelection::TargetSelection(
+	cerializer::TargetSource target_source,
+	uint8_t                  target_id,
+	int                      speed,
+	int64_t                  run_after
+):
 	Command(run_after), target_source(target_source), target_id(target_id), speed(speed) {}

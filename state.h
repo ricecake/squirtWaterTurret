@@ -117,12 +117,11 @@ private:
 	const int dirPinB = 26;           ///< Direction pin for stepper motor B.
 	const int firePin = 2;            ///< Pin for the firing mechanism.
 
-	bool    moveState = true;           ///< Flag indicating if movement is enabled.
-	bool    fireState = false;          ///< Flag indicating the current firing state.
-	bool    needTrackingUpdate = false; ///< Flag indicating if a tracking update is required.
-	uint8_t trackingSpeed = 255;        ///< The speed for tracking movements.
-	// uint8_t selectedTarget = 0;         ///< The index of the currently selected target.
-	Target& selectedTarget = radarTarget[0];
+	bool    moveState = true;               ///< Flag indicating if movement is enabled.
+	bool    fireState = false;              ///< Flag indicating the current firing state.
+	bool    needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
+	uint8_t trackingSpeed = 255;            ///< The speed for tracking movements.
+	Target* selectedTarget = &staticTarget; //< A reference to the currently selected target
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
 };
