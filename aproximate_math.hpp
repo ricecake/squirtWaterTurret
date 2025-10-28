@@ -48,8 +48,8 @@ namespace Approximate {
 	template <typename T>
 	constexpr ApproximateResult<T>
 	small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
-		T leftInput = 0;
-		T rightInput = 0.01;
+		T leftInput = T(0);
+		T rightInput = T(0.01);
 		T midInput;
 
 		T leftValue = func(leftInput);
@@ -137,7 +137,7 @@ namespace Approximate {
 		const uint8_t                         rounds = 16
 	) {
 		std::vector<T> roots;
-		T              last_root = 0;
+		T              last_root = T(0);
 
 		for (int i = 0; i < n_roots; i++) {
 			// Start searching slightly after the last root to avoid finding it again.

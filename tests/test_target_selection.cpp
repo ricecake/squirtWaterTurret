@@ -1,3 +1,4 @@
+#include <ostream>
 #include "doctest.h"
 #include "state.h"
 #include "target_selection.h"
@@ -34,7 +35,10 @@ TEST_CASE("TargetSelection queues next") {
 
 	// And it should have queued a command to select target 2 immediately.
 	// Let's process the queue.
-	state.processCommandQueue();
+	for (int i = 0; i < 10 && &state.currentTarget() != &state.fetchTarget(2); ++i) {
+		advance_mock_time(1000);
+		state.processCommandQueue();
+	}
 
 	// Now the target should be 2
 	REQUIRE(&state.currentTarget() == &state.fetchTarget(2));

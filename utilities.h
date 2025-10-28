@@ -121,13 +121,13 @@ using TimeInterval = DynamicTimeInterval<uint64_t, std::ratio<1>>;
 constexpr auto AsSeconds = [](const ChronoDuration auto& d) { return TimeInterval(d.get_duration()); };
 
 // System-wide constants
-const int                    motorInterfaceType = 1;                     ///< Stepper motor driver interface type.
-const int                    maxSpeed = 1000;                            ///< Maximum speed for the motors.
-const int                    acceleration = 3000;                        ///< Acceleration for the motors.
-constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131); ///< Conversion factor from radians to degrees.
-const fixed_16_16            Gz = -9.80665;                              ///< Acceleration due to gravity.
-const int                    altitude = 1320;                            ///< Default altitude for calculations.
-const fixed_16_16            projectileSpeed = 20;                       ///< Speed of the projectile.
+const int                    motorInterfaceType = 1;                           ///< Stepper motor driver interface type.
+const int                    maxSpeed = 1000;                                  ///< Maximum speed for the motors.
+const int                    acceleration = 3000;                              ///< Acceleration for the motors.
+constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131);       ///< Conversion factor from radians to degrees.
+const fixed_16_16            Gz = fixed_16_16(-9.80665);                       ///< Acceleration due to gravity.
+const int                    altitude = 1320;                                  ///< Default altitude for calculations.
+const fixed_16_16            projectileSpeed = fixed_16_16(20);                ///< Speed of the projectile.
 
 /**
  * @brief Creates a time interval in milliseconds with an optional offset.

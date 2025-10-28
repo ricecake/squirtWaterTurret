@@ -1,3 +1,4 @@
+#include "tests/doctest_fpm_helper.h"
 #include "doctest.h"
 #include "fpm_adapter.hpp"
 #include "vector.hpp"

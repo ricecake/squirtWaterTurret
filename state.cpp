@@ -14,7 +14,13 @@
 #include "target_selection.h"
 #include "utilities.h"
 
-SystemState::SystemState(): staticTarget(0, true, PositionVector(0, 0.01, 0), VelocityVector(0, 0, 0)) {
+SystemState::SystemState():
+	staticTarget(
+		0,
+		true,
+		PositionVector(fixed(0), fixed(0.01), fixed(0)),
+		VelocityVector(fixed(0), fixed(0), fixed(0))
+	) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -164,7 +170,7 @@ void SystemState::actualizePosition() {
 	}
 }
 
-fixed SystemState::targetTravelDistance() {
+int SystemState::targetTravelDistance() {
 	auto target = currentTarget();
 	if (!target.valid) {
 		return INT_MAX;
@@ -178,7 +184,7 @@ fixed SystemState::targetTravelDistance() {
 
 	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
 
-	return acos(cos_alpha);
+	return int(acos(cos_alpha));
 }
 
 PositionVector SystemState::targetAimpoint() {

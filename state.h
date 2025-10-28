@@ -34,7 +34,7 @@ class Command;
  */
 struct ConfigParameters {
 	fixed projectile_speed = projectileSpeed; ///< The initial speed of the projectile in meters/second.
-	fixed turret_height = altitude;           ///< The height of the turret from the ground in meters.
+	fixed turret_height = fixed(altitude);    ///< The height of the turret from the ground in meters.
 };
 
 /**
@@ -84,7 +84,7 @@ public:
 	Target& fetchTarget(const uint8_t idx);
 	uint8_t fetchNearestTargetIdx(const PositionVector& point);
 	uint8_t fetchNearestTarget2dIdx(const PositionVector& point);
-	fixed   targetTravelDistance();
+	int     targetTravelDistance();
 
 	// -- Public Attributes --
 	const int   stepFraction = 16;   ///< Microstep fraction for the stepper motors.
@@ -192,8 +192,10 @@ inline Target& SystemState::fetchTarget(const uint8_t idx) {
 inline uint8_t SystemState::fetchNearestTargetIdx(const PositionVector& point) {
 	auto distance = [&](Target& item) {
 		auto pos = item.Position();
-		return pow(pos.X_coord - point.X_coord, 2) + pow(pos.Y_coord - point.Y_coord, 2) +
-			pow(pos.Z_coord - point.Z_coord, 2);
+		auto dx = pos.X_coord - point.X_coord;
+		auto dy = pos.Y_coord - point.Y_coord;
+		auto dz = pos.Z_coord - point.Z_coord;
+		return dx * dx + dy * dy + dz * dz;
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
 	return std::ranges::distance(currentTargetArray().begin(), res);
@@ -202,7 +204,9 @@ inline uint8_t SystemState::fetchNearestTargetIdx(const PositionVector& point) {
 inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point) {
 	auto distance = [&](Target& item) {
 		auto pos = item.Position();
-		return pow(pos.X_coord - point.X_coord, 2) + pow(pos.Y_coord - point.Y_coord, 2);
+		auto dx = pos.X_coord - point.X_coord;
+		auto dy = pos.Y_coord - point.Y_coord;
+		return dx * dx + dy * dy;
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
 	return std::ranges::distance(currentTargetArray().begin(), res);

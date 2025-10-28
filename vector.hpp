@@ -145,7 +145,7 @@ public:
 	 */
 	ClassType normalize() const {
 		NumericType mag = magnitude();
-		if (mag != 0) {
+		if (mag != NumericType(0)) {
 			return ClassType(X_coord / mag, Y_coord / mag, Z_coord / mag);
 		}
 		return ClassType(X_coord, Y_coord, Z_coord);

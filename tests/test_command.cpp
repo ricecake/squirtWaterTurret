@@ -1,3 +1,4 @@
+#include <ostream>
 #include "doctest.h"
 #include "command.h"
 #include "state.h"

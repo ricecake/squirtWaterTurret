@@ -61,9 +61,9 @@ public:
 
 private:
 	// -- Private Attributes --
-	fixed _distance = 0; ///< Cached distance value.
-	fixed _pitch = 0;    ///< Cached pitch value.
-	fixed _yaw = 0;      ///< Cached yaw value.
+	fixed _distance = fixed(0); ///< Cached distance value.
+	fixed _pitch = fixed(0);    ///< Cached pitch value.
+	fixed _yaw = fixed(0);      ///< Cached yaw value.
 };
 
 /**
@@ -95,12 +95,12 @@ public:
 	// -- Constructors --
 	Target() = default;
 	Target(const Target& other) = default;
-	Target(PositionVector P, VelocityVector V = VelocityVector(0, 0, 0));
+	Target(PositionVector P, VelocityVector V = VelocityVector(fixed(0), fixed(0), fixed(0)));
 	Target(
 		uint8_t        index,
 		bool           valid = false,
-		PositionVector P = PositionVector(0, 0, 0),
-		VelocityVector V = VelocityVector(0, 0, 0)
+		PositionVector P = PositionVector(fixed(0), fixed(0), fixed(0)),
+		VelocityVector V = VelocityVector(fixed(0), fixed(0), fixed(0))
 	);
 
 	// -- Public Methods --
@@ -133,7 +133,7 @@ private:
 	VelocityVector velocity;
 };
 
-// ======================================================================================
+// ='""'/ ======================================================================================
 // --- Inline-Defined Methods ---
 // ======================================================================================
 
@@ -156,50 +156,51 @@ inline bool Target::idleExceeds(const ChronoDuration auto limit) const {
 }
 
 inline const PositionVector Target::interceptPosition() const {
-	const PositionVector       proj_pos = PositionVector(0, 0, 1.5);
+	const PositionVector       proj_pos = PositionVector(fixed(0), fixed(0), fixed(1.5));
 	const PositionVector       target_pos = position;
 	const VelocityVector       target_velocity = velocity;
-	const fixed_24_8           proj_speed = 20;
-	const Vector3D<fixed_24_8> Gv(0, 0, 9.814);
+	const fixed_24_8           proj_speed = fixed_24_8(20);
+	const Vector3D<fixed_24_8> Gv(fixed_24_8(0), fixed_24_8(0), fixed_24_8(9.814));
 	const fixed_24_8           G = Gv.magnitude();
 
-	const fixed_24_8 P = target_velocity.X_coord;
-	const fixed_24_8 Q = target_velocity.Z_coord;
-	const fixed_24_8 R = target_velocity.Y_coord;
+	const fixed_24_8 P = fixed_24_8(target_velocity.X_coord);
+	const fixed_24_8 Q = fixed_24_8(target_velocity.Z_coord);
+	const fixed_24_8 R = fixed_24_8(target_velocity.Y_coord);
 
 	const auto       diff = target_pos - proj_pos;
-	const fixed_24_8 H = diff.X_coord;
-	const fixed_24_8 J = diff.Z_coord;
-	const fixed_24_8 K = diff.Y_coord;
+	const fixed_24_8 H = fixed_24_8(diff.X_coord);
+	const fixed_24_8 J = fixed_24_8(diff.Z_coord);
+	const fixed_24_8 K = fixed_24_8(diff.Y_coord);
 
 	const fixed_24_8 L = fixed_24_8(-0.5) * G;
 	const fixed_24_8 S = proj_speed;
 
 	// Quartic Coefficients
 	const fixed_24_8 c0 = L * L;
-	const fixed_24_8 c1 = -2 * Q * L;
-	const fixed_24_8 c2 = -2 * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - pow(S, 2);
-	const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
-	const fixed_24_8 c4 = diff.dot(diff);
+	const fixed_24_8 c1 = -fixed_24_8(2) * Q * L;
+	const fixed_24_8 c2 =
+		-fixed_24_8(2) * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - (S * S);
+	const fixed_24_8 c3 = fixed_24_8(2) * (fixed_24_8(diff.dot(target_velocity)));
+	const fixed_24_8 c4 = fixed_24_8(diff.dot(diff));
 
 	const std::function<const fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic =
 		[=](const fixed_24_8 t) -> const fixed_24_8 {
-		return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
+		return c0 * (t * t * t * t) + c1 * (t * t * t) + c2 * (t * t) + c3 * t + c4;
 	};
 
 	const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
 
-	if (intercept == 0) {
-		return PositionVector(H, K, J);
+	if (intercept == fixed_24_8(0)) {
+		return PositionVector(fixed(H), fixed(K), fixed(J));
 	}
 
-	auto pos = diff + target_velocity * intercept;
-	pos.Z_coord = fixed_24_8(pos.Z_coord) - L * pow(intercept, 2);
+	auto pos = diff + target_velocity * fixed(intercept);
+	pos.Z_coord = fixed(fixed_24_8(pos.Z_coord) - L * (intercept * intercept));
 
 	return PositionVector(
-		(H + P * intercept) / intercept,
-		(K + R * intercept) / intercept,
-		(J + Q * intercept - L * pow(intercept, 2)) / intercept
+		fixed((H + P * intercept) / intercept),
+		fixed((K + R * intercept) / intercept),
+		fixed((J + Q * intercept - L * (intercept * intercept)) / intercept)
 	);
 };
 

@@ -1,3 +1,4 @@
+#include <ostream>
 #include "doctest.h"
 #include "firecontrol.h"
 #include "state.h"
