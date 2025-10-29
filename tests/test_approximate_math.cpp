@@ -1,9 +1,11 @@
-#include <ostream>
-#include <iostream>
-#include "doctest/doctest.h"
 #include "tests/test_approximate_math.h"
+
 #include <cmath>
+#include <iostream>
+#include <ostream>
+
 #include "aproximate_math.hpp"
+#include "doctest/doctest.h"
 #include "fpm_adapter.hpp"
 
 // Test for the small_root function

@@ -1,7 +1,9 @@
-#include <ostream>
-#include <iostream>
-#include "doctest/doctest.h"
 #include "tests/test_vector.h"
+
+#include <iostream>
+#include <ostream>
+
+#include "doctest/doctest.h"
 #include "fpm_adapter.hpp"
 #include "vector.hpp"
 

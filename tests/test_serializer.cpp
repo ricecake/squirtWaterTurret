@@ -1,8 +1,10 @@
-#include "doctest/doctest.h"
 #include "tests/test_serializer.h"
+
 #include <iostream>
 #include <sstream>
 #include <vector>
+
+#include "doctest/doctest.h"
 #include "serializer.hpp"
 
 // Helper function to assert that two Target messages are equal.

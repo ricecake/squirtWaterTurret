@@ -24,9 +24,7 @@ public:
 	/**
 	 * @brief Resets the clock to the real-world current time.
 	 */
-	void reset() {
-		m_current_time = DefaultClock::now();
-	}
+	void reset() { m_current_time = DefaultClock::now(); }
 
 	/**
 	 * @brief The callable operator that returns the current time and advances it.

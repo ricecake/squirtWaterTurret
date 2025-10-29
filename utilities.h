@@ -1,9 +1,9 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 
 #include "fpm_adapter.hpp"
-#include <functional>
 
 // Clocks and clock management
 
@@ -31,11 +31,11 @@ template <class C>
 class Clock_t {
 private:
 	inline static C s_clock = DefaultClock::now;
+
 public:
 	static void setClock(C clock) { s_clock = clock; }
 
 	static TimePoint now() { return s_clock(); }
-
 };
 
 using Clock = Clock_t<std::function<TimePoint(void)>>;

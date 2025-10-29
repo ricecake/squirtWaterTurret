@@ -1,6 +1,8 @@
-#include "doctest/doctest.h"
 #include "tests/test_firecontrol.h"
+
 #include <chrono>
+
+#include "doctest/doctest.h"
 #include "firecontrol.h"
 #include "state.h"
 #include "tests/mocks.h"
@@ -15,7 +17,6 @@ TEST_CASE("FireControl activate") {
 	// To make actionIdleExceeds true, we can just not set last_action
 	// Or set it to a time in the past. The default constructor of Target sets it to epoch.
 	// We need to wait a bit to make sure the time difference is large enough.
-
 
 	FireControl cmd(true, 10, 0);
 	cmd.Execute(&state);

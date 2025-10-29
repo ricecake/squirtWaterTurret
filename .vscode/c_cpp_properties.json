@@ -4,6 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}/external/**",
                 "~/Arduino/libraries/**",
                 "~/.arduino15/packages/esp32/**"
             ],
