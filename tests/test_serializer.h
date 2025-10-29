@@ -1,1 +1,1 @@
-void run_serializer_tests();
+#pragma once
