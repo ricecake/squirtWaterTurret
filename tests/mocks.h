@@ -3,6 +3,8 @@
 #include <chrono>
 #include <cstdint>
 
+#include "mock_time.h"
+
 // Mock implementations for non-Arduino environments
 
 // From state.h
@@ -45,13 +47,4 @@ static inline void pinMode(int, int) {}
 
 static inline void digitalWrite(int, int) {}
 
-// From command.cpp
-static int64_t mock_time = 0;
-
-static inline int64_t esp_timer_get_time() {
-	return mock_time;
-}
-
-static inline void advance_mock_time(int64_t microseconds) {
-	mock_time += microseconds;
-}
+inline static TestClock mock_clock;

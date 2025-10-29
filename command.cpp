@@ -1,12 +1,8 @@
 #include "command.h"
 
-#ifdef ARDUINO
-	#include <esp_timer.h>
-#else
-	#include "tests/mocks.h"
-#endif
-
 #include <chrono>
+
+#include "utilities.h"
 
 /**
  * @brief Constructs a new Command object.
@@ -16,9 +12,9 @@
  *
  * @param run_after The time delay (in microseconds) after which the command should be executed.
  */
-Command::Command(int64_t run_after) {
+Command::Command(uint64_t run_after) {
 	// Assign a unique ID using the current timer value
-	id = esp_timer_get_time();
+	id = microSinceEpoch();
 	// Calculate the absolute execution time
 	this->run_after = id + run_after;
 }

@@ -3,15 +3,16 @@
 #include <chrono>
 
 #include "fpm_adapter.hpp"
+#include <functional>
 
 // Clocks and clock management
 
 template <typename Rep, typename Period>
 class DynamicTimeInterval;
 
-using Clock = std::chrono::high_resolution_clock;
-using TimePoint = Clock::time_point;
-using Duration = Clock::duration;
+using DefaultClock = std::chrono::high_resolution_clock;
+using TimePoint = DefaultClock::time_point;
+using Duration = DefaultClock::duration;
 
 using TimeInterval = DynamicTimeInterval<uint64_t, std::ratio<1>>;
 
@@ -22,6 +23,22 @@ concept ChronoDuration = requires(T obj) {
 
 template <typename T>
 concept ChronoPoint = std::is_base_of_v<std::chrono::time_point<typename T::Clock, typename T::Duration>, T>;
+
+template <class C>
+	requires requires(C obj) {
+		{ obj() } -> std::convertible_to<TimePoint>;
+	}
+class Clock_t {
+private:
+	inline static C s_clock = DefaultClock::now;
+public:
+	static void setClock(C clock) { s_clock = clock; }
+
+	static TimePoint now() { return s_clock(); }
+
+};
+
+using Clock = Clock_t<std::function<TimePoint(void)>>;
 
 /**
  * @brief A flexible time interval class that wraps std::chrono::duration.

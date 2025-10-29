@@ -14,15 +14,15 @@ class SystemState;
 class Command {
 public:
 	// -- Constructors --
-	Command(int64_t run_after);
+	Command(uint64_t run_after);
 	virtual ~Command() = default;
 
 	// -- Public Methods --
 	virtual void Execute(SystemState* state) = 0;
 
 	// -- Public Attributes --
-	int64_t id = 0;        ///< Unique identifier for the command, typically based on a timestamp.
-	int64_t run_after = 0; ///< The time at which the command should be executed.
+	uint64_t id = 0;        ///< Unique identifier for the command, typically based on a timestamp.
+	uint64_t run_after = 0; ///< The time at which the command should be executed.
 };
 
 // ======================================================================================

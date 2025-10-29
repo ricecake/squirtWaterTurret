@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <chrono>
-#include <thread>
 
 #include "firecontrol.h"
 #include "state.h"
@@ -18,7 +17,7 @@ void test_FireControl_activate() {
 	// To make actionIdleExceeds true, we can just not set last_action
 	// Or set it to a time in the past. The default constructor of Target sets it to epoch.
 	// We need to wait a bit to make sure the time difference is large enough.
-	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
 
 	FireControl cmd(true, 10, 0);
 	cmd.Execute(&state);
@@ -35,7 +34,7 @@ void test_FireControl_deactivate() {
 	// distant past, allowing the deactivation check to pass.
 
 	// Wait for a duration longer than the command's duration
-	std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	mock_clock += milliseconds(20);
 
 	FireControl cmd(false, 10, 0);
 	cmd.Execute(&state);

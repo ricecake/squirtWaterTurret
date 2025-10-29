@@ -12,6 +12,7 @@
 #endif
 
 #include "command.h"
+#include "utilities.h"
 
 class SystemState;
 class Command;
@@ -42,14 +43,14 @@ public:
 
 	template <typename T, typename... Args>
 	void runCommandIn(int64_t duration, Args&&... args) {
-		int64_t run_after = esp_timer_get_time() + duration;
+		int64_t run_after = microSinceEpoch() + duration;
 		addCommand<T>(std::forward<Args>(args)..., run_after);
 	}
 
 	std::string serialize() const;
 
 private:
-	int64_t                                                                                  max_run_after = 0;
+	uint64_t                                                                                 max_run_after = 0;
 	std::priority_queue<Command*, std::vector<Command*>, decltype(CommandPointerComparator)> commandQueue;
 	SemaphoreHandle_t                                                                        xMutex;
 };

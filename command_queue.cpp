@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "state.h"
+#include "utilities.h"
 
 CommandQueue::CommandQueue() {
 	xMutex = xSemaphoreCreateMutex();
@@ -10,7 +11,7 @@ CommandQueue::CommandQueue() {
 
 void CommandQueue::process(SystemState* state) {
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		auto now = esp_timer_get_time();
+		auto now = microSinceEpoch();
 		while (!commandQueue.empty()) {
 			auto comm = commandQueue.top();
 			if (now < comm->run_after) {
