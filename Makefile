@@ -4,7 +4,7 @@
 CXX = g++
 # Use C++20 for concepts and other modern features.
 # -I. adds the root directory to the include path.
-CXXFLAGS = -std=gnu++23 -I. -Wall -Wextra -Werror -g
+CXXFLAGS = -std=gnu++23 -I. -Iexternal -Wall -Wextra -Werror -g
 
 # Directories
 BUILD_DIR = build

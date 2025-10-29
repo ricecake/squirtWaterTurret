@@ -1,22 +1,20 @@
+#include "doctest/doctest.h"
 #include "tests/test_serializer.h"
-
-#include <cassert>
 #include <iostream>
 #include <sstream>
 #include <vector>
-
 #include "serializer.hpp"
 
 // Helper function to assert that two Target messages are equal.
 void require_messages_equal(const cerializer::Target& a, const cerializer::Target& b) {
-	assert(a.id == b.id);
-	assert(a.valid == b.valid);
-	assert(a.x == b.x);
-	assert(a.y == b.y);
-	assert(a.z == b.z);
+	CHECK(a.id == b.id);
+	CHECK(a.valid == b.valid);
+	CHECK(a.x == b.x);
+	CHECK(a.y == b.y);
+	CHECK(a.z == b.z);
 }
 
-void test_deserialize_single_valid_message() {
+TEST_CASE("Deserialize single valid message") {
 	// Arrange: Create a message and serialize it into a stream.
 	const cerializer::Target original_message(123, true, 10, 20, 30);
 	auto                     binary_message = original_message.ToBinary();
@@ -32,19 +30,19 @@ void test_deserialize_single_valid_message() {
 		message_received = true;
 
 		// Assert: Check that the deserialized message is correct.
-		assert(msg != nullptr);
-		assert(msg->Code() == cerializer::Target::Type());
+		CHECK(msg != nullptr);
+		CHECK(msg->Code() == cerializer::Target::Type());
 
 		auto received_message = dynamic_cast<cerializer::Target*>(msg.get());
-		assert(received_message != nullptr);
+		CHECK(received_message != nullptr);
 
 		require_messages_equal(original_message, *received_message);
 	});
 
-	assert(message_received);
+	CHECK(message_received);
 }
 
-void test_deserialize_multiple_valid_messages() {
+TEST_CASE("Deserialize multiple valid messages") {
 	// Arrange: Create multiple messages and serialize them into a single stream.
 	const std::vector<cerializer::Target> original_messages = {
 		cerializer::Target(1, true, 10, 20, 30),
@@ -63,23 +61,23 @@ void test_deserialize_multiple_valid_messages() {
 
 	// Act: Parse the stream.
 	deserializer.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
-		assert(msg != nullptr);
-		assert(msg->Code() == cerializer::Target::Type());
+		CHECK(msg != nullptr);
+		CHECK(msg->Code() == cerializer::Target::Type());
 
 		auto received_message = dynamic_cast<cerializer::Target*>(msg.get());
-		assert(received_message != nullptr);
+		CHECK(received_message != nullptr);
 
 		received_messages.push_back(*received_message);
 	});
 
 	// Assert: Check that all messages were received and are correct.
-	assert(received_messages.size() == original_messages.size());
+	CHECK(received_messages.size() == original_messages.size());
 	for (size_t i = 0; i < original_messages.size(); ++i) {
 		require_messages_equal(original_messages[i], received_messages[i]);
 	}
 }
 
-void test_deserialize_with_invalid_data() {
+TEST_CASE("Deserialize with invalid data") {
 	// Arrange: Create a valid message and surround it with junk data.
 	const cerializer::Target original_message(456, true, 11, 22, 33);
 	auto                     binary_message = original_message.ToBinary();
@@ -98,15 +96,15 @@ void test_deserialize_with_invalid_data() {
 		message_received = true;
 
 		// Assert: Check that the deserialized message is correct.
-		assert(msg != nullptr);
+		CHECK(msg != nullptr);
 		auto received_message = dynamic_cast<cerializer::Target*>(msg.get());
 		require_messages_equal(original_message, *received_message);
 	});
 
-	assert(message_received);
+	CHECK(message_received);
 }
 
-void test_deserialize_incomplete_message() {
+TEST_CASE("Deserialize incomplete message") {
 	// Arrange: Create an incomplete message.
 	const cerializer::Target original_message(789, false, 44, 55, 66);
 	auto                     binary_message = original_message.ToBinary();
@@ -123,12 +121,5 @@ void test_deserialize_incomplete_message() {
 	});
 
 	// Assert: No message should have been deserialized.
-	assert(!message_received);
-}
-
-void run_serializer_tests() {
-	test_deserialize_single_valid_message();
-	test_deserialize_multiple_valid_messages();
-	test_deserialize_with_invalid_data();
-	test_deserialize_incomplete_message();
+	CHECK(!message_received);
 }
