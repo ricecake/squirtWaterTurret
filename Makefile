@@ -22,10 +22,13 @@ SRCS = \
 # Test files
 TEST_SRCS = \
     tests/test_command.cpp \
+    tests/test_command_queue.cpp \
     tests/test_firecontrol.cpp \
     tests/test_target_selection.cpp \
     tests/test_approximate_math.cpp \
     tests/test_serializer.cpp \
+    tests/test_state.cpp \
+    tests/test_target.cpp \
     tests/test_vector.cpp \
     tests/main.cpp
 
