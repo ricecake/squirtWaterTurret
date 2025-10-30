@@ -115,9 +115,7 @@ public:
 	bool                 actionIdleExceeds(const ChronoDuration auto limit) const;
 	bool                 idleExceeds(const ChronoDuration auto limit) const;
 	void                 IncrementAction();
-	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval) {
-        return PositionVector(position, velocity, interval);
-    }
+	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval);
 	const PositionVector interceptPosition() const;
 
 	// -- Public Attributes --
@@ -167,6 +165,9 @@ inline PositionVector::PositionVector(PositionVector p, VelocityVector v, Chrono
 constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
 
 // -- Target --
+inline PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
+	return PositionVector(position, velocity, interval);
+}
 inline bool Target::actionIdleExceeds(const ChronoDuration auto limit) const {
 	return timeSinceLastAction() > limit;
 }
