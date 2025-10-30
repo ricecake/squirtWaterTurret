@@ -8,6 +8,15 @@
 #include <stdint.h>
 
 /**
+ * @brief Constructs a PositionVector by adding a DistanceVector to a PositionVector.
+ * @param p The initial position vector.
+ * @param d The distance vector to add.
+ */
+PositionVector::PositionVector(PositionVector p, DistanceVector d) {
+	*this = p + d;
+}
+
+/**
  * @brief Calculates the pitch of the vector, caching the result.
  * @return The pitch in radians.
  */
