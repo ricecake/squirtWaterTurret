@@ -141,12 +141,24 @@ private:
 
 // -- DistanceVector --
 constexpr DistanceVector::DistanceVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+/**
+ * @brief Constructs a DistanceVector from a VelocityVector and a time interval.
+ * @param v The velocity vector.
+ * @param interval The time interval.
+ */
 inline DistanceVector::DistanceVector(VelocityVector v, ChronoDuration auto interval) {
 	*this = v * interval;
 }
 
 // -- PositionVector --
 constexpr PositionVector::PositionVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+
+/**
+ * @brief Constructs a PositionVector by applying a VelocityVector over a time interval to a PositionVector.
+ * @param p The initial position vector.
+ * @param v The velocity vector.
+ * @param interval The time interval.
+ */
 inline PositionVector::PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval) {
 	*this = p + v * interval;
 }
