@@ -28,6 +28,7 @@ TEST_CASE("CommandQueue tests") {
 	// Reset mock state before each test
 	resetMockState();
 	mock_clock.reset();
+    TestClock::ScopedDeterministicClock det_clock;
 	CommandQueue queue;
 	SystemState  state;
 	INFO(queue.serialize());
@@ -67,6 +68,7 @@ TEST_CASE("CommandQueue tests") {
 
 	SUBCASE("runCommandIn schedules command correctly") {
 		// Schedule a command to run in 100 microseconds
+        auto scheduled_time = microSinceEpoch() + 100;
 		queue.runCommandIn<MockCommand>(100, 42); // payload = 42
 
 		// Process queue before the scheduled time
@@ -74,7 +76,7 @@ TEST_CASE("CommandQueue tests") {
 		CHECK(MockCommand::execution_count == 0);
 
 		// Process queue at the scheduled time
-		mock_clock += Microseconds(100);
+		mock_clock.set(scheduled_time);
 		queue.process(&state);
 		CHECK(MockCommand::execution_count == 1);
 	}
@@ -89,4 +91,53 @@ TEST_CASE("CommandQueue tests") {
 
 		CHECK(MockCommand::execution_count == 1);
 	}
+
+    SUBCASE("addCommand schedules command correctly") {
+        mock_clock.set(1000);
+        auto scheduled_time = microSinceEpoch() + 50;
+        // Add a command with a 50 microsecond delay
+        queue.addCommand<MockCommand>(/*payload=*/77, /*run_after_delay=*/50);
+
+        queue.process(&state);
+        CHECK(MockCommand::execution_count == 0);
+
+        mock_clock.set(scheduled_time - 1);
+        queue.process(&state);
+        CHECK(MockCommand::execution_count == 0);
+
+        mock_clock.set(scheduled_time);
+        queue.process(&state);
+        CHECK(MockCommand::execution_count == 1);
+    }
+
+    SUBCASE("addCommandAfter schedules command after the last one") {
+        mock_clock.set(1000);
+        // Schedule a command to run at time 3000
+        auto first_run_time = microSinceEpoch() + 2000;
+        queue.runCommandIn<MockCommand>(2000, /*payload=*/1);
+
+        mock_clock.set(1500);
+        // Schedule another command to run after the previous one.
+        queue.addCommandAfter<MockCommand>(/*payload=*/2);
+
+        // Process just before the first command
+        mock_clock.set(first_run_time - 1);
+        queue.process(&state);
+        CHECK(MockCommand::execution_count == 0);
+
+        // Process at the time of the first command
+        mock_clock.set(first_run_time);
+        queue.process(&state);
+        CHECK(MockCommand::execution_count == 1);
+
+        // Process just before the second command
+        mock_clock.set(first_run_time);
+        queue.process(&state);
+        CHECK(MockCommand::execution_count == 1);
+
+        // Process at the time of the second command
+        mock_clock.set(first_run_time + 1);
+        queue.process(&state);
+        CHECK(MockCommand::execution_count == 2);
+    }
 }

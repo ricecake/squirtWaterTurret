@@ -33,7 +33,7 @@ public:
 	DistanceVector() = default;
 	DistanceVector(const DistanceVector& other) = default;
 	constexpr DistanceVector(fixed x, fixed y, fixed z);
-	DistanceVector(VelocityVector, ChronoDuration auto interval);
+	DistanceVector(VelocityVector v, ChronoDuration auto interval);
 };
 
 /**
@@ -52,7 +52,7 @@ public:
 	PositionVector(const PositionVector& other) = default;
 	constexpr PositionVector(fixed x, fixed y, fixed z);
 	PositionVector(PositionVector, DistanceVector);
-	PositionVector(PositionVector, VelocityVector, ChronoDuration auto interval);
+	PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval);
 
 	// -- Public Methods --
 	fixed Pitch();
@@ -139,14 +139,40 @@ private:
 
 // -- DistanceVector --
 constexpr DistanceVector::DistanceVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+/**
+ * @brief Constructs a DistanceVector from a VelocityVector and a time interval.
+ * @param v The velocity vector.
+ * @param interval The time interval.
+ */
+inline DistanceVector::DistanceVector(VelocityVector v, ChronoDuration auto interval) {
+	*this = v * interval;
+}
 
 // -- PositionVector --
 constexpr PositionVector::PositionVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+
+/**
+ * @brief Constructs a PositionVector by applying a VelocityVector over a time interval to a PositionVector.
+ * @param p The initial position vector.
+ * @param v The velocity vector.
+ * @param interval The time interval.
+ */
+inline PositionVector::PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval) {
+	*this = p + v * interval;
+}
 
 // -- VelocityVector --
 constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
 
 // -- Target --
+/**
+ * @brief Predicts the target's position at a future time.
+ * @param interval The time interval for the prediction.
+ * @return The predicted position vector.
+ */
+inline PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
+	return PositionVector(position, velocity, interval);
+}
 inline bool Target::actionIdleExceeds(const ChronoDuration auto limit) const {
 	return timeSinceLastAction() > limit;
 }
@@ -213,7 +239,7 @@ constexpr const VelocityVector operator/(const DistanceVector& D, const ChronoDu
 }
 
 constexpr const DistanceVector operator*(const VelocityVector& V, const ChronoDuration auto& interval) {
-	auto scale = interval.count();
+	auto scale = static_cast<fixed>(interval.count());
 	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
 }
 
