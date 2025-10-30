@@ -138,6 +138,13 @@ constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t 
 }
 
 /**
+ * @brief Creates a time interval in microseconds.
+ */
+constexpr DynamicTimeInterval<uint64_t, std::micro> microseconds(const uint64_t micros) {
+	return std::chrono::duration<uint64_t, std::micro>(micros);
+}
+
+/**
  * @brief Creates a time interval in seconds with an optional offset.
  */
 template <typename T, typename P>
