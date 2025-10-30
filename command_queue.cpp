@@ -1,5 +1,6 @@
 #include "command_queue.h"
 
+#include <iostream>
 #include <sstream>
 
 #include "state.h"
@@ -11,10 +12,10 @@ CommandQueue::CommandQueue() {
 
 void CommandQueue::process(SystemState* state) {
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		auto now = microSinceEpoch();
+		uint64_t now = microSinceEpoch();
 		while (!commandQueue.empty()) {
 			auto comm = commandQueue.top();
-			if (now < comm->run_after) {
+			if (now <= comm->run_after) {
 				break;
 			}
 			commandQueue.pop();
@@ -30,8 +31,18 @@ std::string CommandQueue::serialize() const {
 	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
 		auto tempQueue = commandQueue;
 		xSemaphoreGive(xMutex);
+
+		auto now = microSinceEpoch();
+		ss << "Time: " << now << std::endl;
+		bool flagged = false;
 		while (!tempQueue.empty()) {
 			auto comm = tempQueue.top();
+
+			if (now <= comm->run_after && !flagged) {
+				ss << "===== WOULD STOP HERE =========" << std::endl;
+				flagged = true;
+			}
+
 			ss << "Command ID: " << comm->id << " Run After: " << comm->run_after << "\n";
 			tempQueue.pop();
 		}

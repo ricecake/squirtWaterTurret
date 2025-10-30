@@ -16,7 +16,7 @@
 
 class SystemState;
 class Command;
-const inline auto CommandPointerComparator = [](const auto& left, const auto& right) {
+const inline auto CommandPointerComparator = [](const Command* left, const Command* right) -> bool {
 	return left->run_after >= right->run_after;
 };
 
@@ -37,14 +37,14 @@ public:
 
 	template <typename T, typename... Args>
 	void addCommandAfter(Args&&... args) {
-		auto last_run_after = max_run_after + 1;
+		auto now = microSinceEpoch();
+		auto last_run_after = (max_run_after - now) + 1;
 		commandQueue.push(new T(std::forward<Args>(args)..., last_run_after));
 	}
 
 	template <typename T, typename... Args>
-	void runCommandIn(int64_t duration, Args&&... args) {
-		int64_t run_after = microSinceEpoch() + duration;
-		addCommand<T>(std::forward<Args>(args)..., run_after);
+	void runCommandIn(uint64_t duration, Args&&... args) {
+		addCommand<T>(std::forward<Args>(args)..., duration);
 	}
 
 	std::string serialize() const;

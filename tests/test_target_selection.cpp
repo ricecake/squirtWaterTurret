@@ -24,6 +24,7 @@ TEST_CASE("TargetSelection execute") {
 // Test that the next target selection is queued
 TEST_CASE("TargetSelection queues next" * doctest::may_fail()) {
 	SystemState state;
+	state.target_source = cerializer::TargetSource::CV;
 	// Ensure target is invalid so the timeout is 0
 	state.fetchTarget(1).valid = false;
 

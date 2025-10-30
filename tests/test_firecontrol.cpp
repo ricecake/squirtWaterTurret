@@ -17,6 +17,7 @@ TEST_CASE("FireControl activate") {
 	// To make actionIdleExceeds true, we can just not set last_action
 	// Or set it to a time in the past. The default constructor of Target sets it to epoch.
 	// We need to wait a bit to make sure the time difference is large enough.
+	mock_clock += Seconds(50);
 
 	FireControl cmd(true, 10, 0);
 	cmd.Execute(&state);
@@ -33,7 +34,7 @@ TEST_CASE("FireControl deactivate") {
 	// distant past, allowing the deactivation check to pass.
 
 	// Wait for a duration longer than the command's duration
-	mock_clock += milliseconds(20);
+	mock_clock += Seconds(20);
 
 	FireControl cmd(false, 10, 0);
 	cmd.Execute(&state);

@@ -35,6 +35,8 @@ private:
 public:
 	static void setClock(C clock) { s_clock = clock; }
 
+	static C getClock() { return s_clock; }
+
 	static TimePoint now() { return s_clock(); }
 };
 
@@ -155,7 +157,7 @@ constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds) {
  */
 template <typename T>
 inline T unitSinceEpoch() {
-	auto now = Clock::now();
+	auto now = std::chrono::time_point_cast<T>(Clock::now());
 	auto duration_since_epoch = now.time_since_epoch();
 	return std::chrono::duration_cast<T>(duration_since_epoch);
 }
@@ -173,6 +175,14 @@ inline uint64_t milliSinceEpoch() {
  */
 inline uint64_t microSinceEpoch() {
 	auto duration = unitSinceEpoch<std::chrono::microseconds>();
+	return duration.count();
+}
+
+/**
+ * @brief Gets the number of nanoseconds since the Unix epoch.
+ */
+inline uint64_t nanoSinceEpoch() {
+	auto duration = unitSinceEpoch<std::chrono::nanoseconds>();
 	return duration.count();
 }
 

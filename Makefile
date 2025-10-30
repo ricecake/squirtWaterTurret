@@ -5,7 +5,6 @@ CXX = g++
 # Use C++20 for concepts and other modern features.
 # -I. adds the root directory to the include path.
 CXXFLAGS = -std=gnu++23 -I. -Iexternal -Wall -Wextra -Werror -g
-
 # Directories
 BUILD_DIR = build
 
@@ -20,14 +19,7 @@ SRCS = \
     target_selection.cpp
 
 # Test files
-TEST_SRCS = \
-    tests/test_command.cpp \
-    tests/test_firecontrol.cpp \
-    tests/test_target_selection.cpp \
-    tests/test_approximate_math.cpp \
-    tests/test_serializer.cpp \
-    tests/test_vector.cpp \
-    tests/main.cpp
+TEST_SRCS := $(wildcard tests/*.cpp)
 
 # Object files
 OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRCS))
@@ -48,11 +40,13 @@ $(TARGET): $(OBJS) $(TEST_OBJS)
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -M $< -MT $@ > $(@:.o=.d)
 
 # Compile test files
 $(BUILD_DIR)/tests/%.o: tests/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -M $< -MT $@ > $(@:.o=.d)
 
 
 # Run the tests
@@ -65,5 +59,7 @@ clean:
 
 format:
 	@find ./ \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.ino' \) ! -path './external/*' ! -path './.*/*' -exec clang-format --Wno-error=unknown -i '{}' \;
+
+-include $(BUILD_DIR)/*.d
 
 .PHONY: all test clean format
