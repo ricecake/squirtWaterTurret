@@ -165,6 +165,11 @@ inline PositionVector::PositionVector(PositionVector p, VelocityVector v, Chrono
 constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
 
 // -- Target --
+/**
+ * @brief Predicts the target's position at a future time.
+ * @param interval The time interval for the prediction.
+ * @return The predicted position vector.
+ */
 inline PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
 	return PositionVector(position, velocity, interval);
 }
