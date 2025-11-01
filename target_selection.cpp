@@ -15,7 +15,7 @@ void TargetSelection::Execute(SystemState* state) {
 	state->setTarget(target_source, target_id, speed);
 	auto currTarget = state->currentTarget();
 
-	uint16_t timeout = 0;
+	uint16_t timeout = 1; // Default to a small delay
 	if (currTarget.valid) {
 		if (currTarget.idleExceeds(seconds(5))) {
 			currTarget.valid = false;

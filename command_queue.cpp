@@ -15,7 +15,7 @@ void CommandQueue::process(SystemState* state) {
 		uint64_t now = microSinceEpoch();
 		while (!commandQueue.empty()) {
 			auto comm = commandQueue.top();
-			if (now <= comm->run_after) {
+			if (now < comm->run_after) {
 				break;
 			}
 			commandQueue.pop();
@@ -38,7 +38,7 @@ std::string CommandQueue::serialize() const {
 		while (!tempQueue.empty()) {
 			auto comm = tempQueue.top();
 
-			if (now <= comm->run_after && !flagged) {
+			if (now < comm->run_after && !flagged) {
 				ss << "===== WOULD STOP HERE =========" << std::endl;
 				flagged = true;
 			}
