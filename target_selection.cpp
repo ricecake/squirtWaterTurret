@@ -36,7 +36,7 @@ void TargetSelection::Execute(SystemState* state) {
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
 TargetSelection::TargetSelection(
-	cerializer::TargetSource target_source,
+	TargetSource target_source,
 	uint8_t                  target_id,
 	int                      speed,
 	int64_t                  run_after

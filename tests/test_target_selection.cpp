@@ -9,7 +9,7 @@
 TEST_CASE("TargetSelection execute") {
 	// Create a SystemState and a TargetSelection command
 	SystemState state;
-	state.target_source = cerializer::TargetSource::CV;
+	state.target_source = TargetSource::CV;
 	TargetSelection cmd(state.target_source, 5, 0xFF, 0);
 
 	// Execute the command
@@ -24,7 +24,7 @@ TEST_CASE("TargetSelection execute") {
 // Test that the next target selection is queued
 TEST_CASE("TargetSelection queues next" * doctest::may_fail()) {
 	SystemState state;
-	state.target_source = cerializer::TargetSource::CV;
+	state.target_source = TargetSource::CV;
 	// Ensure target is invalid so the timeout is 0
 	state.fetchTarget(1).valid = false;
 
@@ -45,7 +45,7 @@ TEST_CASE("TargetSelection queues next" * doctest::may_fail()) {
 // Test that a valid target queues the next selection with a timeout
 TEST_CASE("TargetSelection queues next with timeout for valid target") {
     SystemState state;
-    state.target_source = cerializer::TargetSource::CV;
+    state.target_source = TargetSource::CV;
     mock_clock.reset();
 
     // Make the target valid and not idle
@@ -86,7 +86,7 @@ TEST_CASE("TargetSelection invalidates idle target" * doctest::may_fail()) {
     mock_clock.reset();
     TestClock::ScopedDeterministicClock det_clock;
     SystemState state;
-    state.target_source = cerializer::TargetSource::CV;
+    state.target_source = TargetSource::CV;
 
     // Make the target valid, but leave its last_action time at epoch
     Target& target = state.fetchTarget(7);

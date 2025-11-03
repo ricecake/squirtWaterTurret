@@ -3,6 +3,8 @@
 #include <compare>
 #include <cstdint>
 
+#include "shared_types.h"
+
 class SystemState;
 
 /**
@@ -44,3 +46,21 @@ constexpr auto operator<=>(const Command& left, const Command& right) {
 		return std::weak_ordering::equivalent;
 	}
 }
+
+class SetStrategyCommand: public Command {
+public:
+	SetStrategyCommand(TurretStrategy strategy, uint64_t run_after);
+	void Execute(SystemState* state) override;
+
+private:
+	TurretStrategy strategy;
+};
+
+class SetStanceCommand: public Command {
+public:
+	SetStanceCommand(TurretStance stance, uint64_t run_after);
+	void Execute(SystemState* state) override;
+
+private:
+	TurretStance stance;
+};
