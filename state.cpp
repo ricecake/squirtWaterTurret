@@ -25,7 +25,7 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(0, 0.01, 0), Ve
 
 	xMutex = xSemaphoreCreateMutex();
 
-	target_source = cerializer::TargetSource::STATIC;
+	target_source = TargetSource::STATIC;
 	auto p = staticTarget.Position();
 	p.Z_coord = config.turret_height;
 	staticTarget.Update(p);
@@ -37,11 +37,11 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(0, 0.01, 0), Ve
 /// @return a span of targets, referencing the correct target buffer.
 std::span<Target> SystemState::currentTargetArray() {
 	switch (target_source) {
-	case cerializer::TargetSource::CV:
+	case TargetSource::CV:
 		return std::span(cvTarget.begin(), cvTarget.end());
-	case cerializer::TargetSource::RADAR:
+	case TargetSource::RADAR:
 		return std::span(radarTarget.begin(), radarTarget.end());
-	case cerializer::TargetSource::STATIC:
+	case TargetSource::STATIC:
 	default:
 		return std::span(&staticTarget, 1);
 	}
@@ -51,19 +51,19 @@ Target& SystemState::currentTarget() {
 	return *selectedTarget;
 }
 
-void SystemState::setTarget(cerializer::TargetSource source, uint8_t index, uint8_t speed) {
+void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	if (source != target_source) {
 		return; // No-op because we've changed sources
 	}
 
 	switch (target_source) {
-	case cerializer::TargetSource::CV:
+	case TargetSource::CV:
 		selectedTarget = &cvTarget[index];
 		break;
-	case cerializer::TargetSource::RADAR:
+	case TargetSource::RADAR:
 		selectedTarget = &radarTarget[index];
 		break;
-	case cerializer::TargetSource::STATIC:
+	case TargetSource::STATIC:
 		selectedTarget = &staticTarget;
 		break;
 	default:
@@ -82,6 +82,14 @@ void SystemState::setMove(bool active) {
 	moveState = active;
 }
 
+void SystemState::setStrategy(TurretStrategy strategy) {
+	this->strategy = strategy;
+}
+
+void SystemState::setStance(TurretStance stance) {
+	this->stance = stance;
+}
+
 bool SystemState::getFireState() {
 	return fireState;
 }
@@ -97,7 +105,7 @@ void SystemState::queueFire(uint16_t fireDuration) {
 	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 
-void SystemState::queueSelectTarget(cerializer::TargetSource source, uint8_t index, uint16_t milliseconds) {
+void SystemState::queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds) {
 	commandQueue.addCommand<TargetSelection>(source, index, 0xFF, milliseconds * 1000);
 }
 

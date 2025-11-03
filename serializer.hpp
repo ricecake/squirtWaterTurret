@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 
+#include "shared_types.h"
+
 /**
  * @brief The main namespace for the serialization library.
  */
@@ -559,15 +561,6 @@ namespace cerializer {
 	};
 
 	/**
-	 * @brief An enum to specify the source of targeting data.
-	 */
-	enum class TargetSource : uint8_t {
-		STATIC, ///< Target is a fixed, statically defined point.
-		RADAR,  ///< Target is provided by the onboard radar sensor.
-		CV,     ///< Target is provided by the external computer vision system.
-	};
-
-	/**
 	 * @brief A message to set the active target source.
 	 *
 	 * This message is sent to the microcontroller to command it to switch
@@ -619,6 +612,33 @@ namespace cerializer {
 		 * @return A std::array<char, Size()> containing the serialized payload.
 		 */
 		constexpr std::array<char, Size()> encode() const { return pack(x, y, z); }
+	};
+
+	/**
+	 * @brief A message to set the turret's targeting strategy.
+	 */
+	class SetStrategyMessage: public Message<SetStrategyMessage, 4, TurretStrategy> {
+	public:
+		const TurretStrategy strategy;
+
+	public:
+		constexpr inline SetStrategyMessage(TurretStrategy strategy) noexcept: strategy(strategy) { assert(registered); }
+
+		constexpr std::array<char, Size()> encode() const { return pack(strategy); }
+	};
+
+
+	/**
+	 * @brief A message to set the turret's firing stance.
+	 */
+	class SetStanceMessage: public Message<SetStanceMessage, 5, TurretStance> {
+	public:
+		const TurretStance stance;
+
+	public:
+		constexpr inline SetStanceMessage(TurretStance stance) noexcept: stance(stance) { assert(registered); }
+
+		constexpr std::array<char, Size()> encode() const { return pack(stance); }
 	};
 
 	/**

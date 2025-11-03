@@ -21,6 +21,7 @@
 #include "fpm_adapter.hpp"
 #include "serializer.hpp"
 #include "target.h"
+#include "shared_types.h"
 #include "utilities.h"
 #include "vector.hpp"
 
@@ -70,12 +71,14 @@ public:
 	);
 	void    updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
-	void    setTarget(cerializer::TargetSource source, uint8_t index, uint8_t speed = 0xFF);
+	void    setTarget(TargetSource source, uint8_t index, uint8_t speed = 0xFF);
 	void    setFire(bool active);
 	void    setMove(bool active);
+	void    setStrategy(TurretStrategy strategy);
+	void    setStance(TurretStance stance);
 	bool    getFireState();
 	bool    getMoveState();
-	void    queueSelectTarget(cerializer::TargetSource source, uint8_t index, uint16_t milliseconds);
+	void    queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds);
 	void    queueFire(uint16_t milliseconds);
 	void    updateConfig(cerializer::Config* config);
 	void    processCommandQueue();
@@ -98,7 +101,7 @@ public:
 	AccelStepper      stepperB; ///< Stepper motor B instance.
 	SemaphoreHandle_t xMutex;   ///< Mutex for thread-safe access to shared resources.
 
-	cerializer::TargetSource target_source;
+	TargetSource target_source;
 	std::array<Target, 32>   cvTarget;
 	std::array<Target, 3>    radarTarget;
 	Target                   staticTarget;
@@ -122,6 +125,8 @@ private:
 	bool    needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
 	uint8_t trackingSpeed = 255;            ///< The speed for tracking movements.
 	Target* selectedTarget = &staticTarget; //< A reference to the currently selected target
+	TurretStrategy strategy;
+	TurretStance stance;
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
 };
