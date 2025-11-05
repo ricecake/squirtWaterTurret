@@ -46,47 +46,13 @@ SystemState dptState;
 TaskHandle_t targeting;
 TaskHandle_t systemControl;
 
-void setup() {
-	Serial.begin(9600);
-
-	while (!Serial) {
-		; // wait for serial port to connect. Needed for native USB
-	}
-
-	RadarSerial.begin(256000, SERIAL_8N1, 16, 17);
-	ld2450.begin(RadarSerial, false);
-
-	if (!ld2450.waitForSensorMessage(true)) {
-		Serial.println("SENSOR CONNECTION SEEMS OK");
-	} else {
-		Serial.println("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
-	}
-
-	testSerial.begin(9600, SERIAL_8N1, 19, 18);
-	randomSeed(analogRead(0));
-
-	dptState.queueSelectTarget(cerializer::TargetSource::RADAR, 1, 3 * 1000);
-
-	Serial.println("SETUP_FINISHED");
-
-	Serial.println("Ready!");
-
-	delay(1000);
-
-	Serial.println("Starting!");
-
-	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
-
-	xTaskCreatePinnedToCore(systemControlLoop, "Control", 10000, NULL, 1, &systemControl, 1);
-}
-
 void loop() {
 	vTaskDelay(1000);
 }
 
 int last_time = 0;
 
-void systemControlLoop(void* pvParameters) {
+void systemControlLoop(void*) {
 	for (;;) {
 		dptState.processCommandQueue();
 		dptState.actualizeState();
@@ -167,8 +133,6 @@ void readSerialCommands() {
 }
 
 void generateFireActions() {
-	Target& target = dptState.currentTarget();
-
 	if (dptState.targetTravelDistance() <= 2) {
 		dptState.queueFire(500);
 	}
@@ -185,12 +149,15 @@ void selectTarget() {
 	    since external comms may include things like position changes, and fire commands.
 	*/
 	switch (dptState.target_source) {
-	case cerializer::TargetSource::STATIC:
+	case TargetSource::STATIC:
+	break;
 	// Set current target to static target
-	case cerializer::TargetSource::RADAR:
+	case TargetSource::RADAR:
+	break;
 	// Check if the current target matches our criteria.
 	// If not, set target to closest target that does.  Distance should factor in action time.
-	case cerializer::TargetSource::CV:
+	case TargetSource::CV:
+	break;
 		// Check if the current target matches our criteria.
 		// If not, set target to closest target that does.
 	}
@@ -206,7 +173,7 @@ the queue at the back.  It will change sources and everything
 */
 }
 
-void targetingLoop(void* pvParameters) {
+void targetingLoop(void*) {
 	for (;;) {
 		refreshRadarTargets();
 		readSerialCommands();
@@ -215,3 +182,38 @@ void targetingLoop(void* pvParameters) {
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 }
+
+void setup() {
+	Serial.begin(9600);
+
+	while (!Serial) {
+		; // wait for serial port to connect. Needed for native USB
+	}
+
+	RadarSerial.begin(256000, SERIAL_8N1, 16, 17);
+	ld2450.begin(RadarSerial, false);
+
+	if (!ld2450.waitForSensorMessage(true)) {
+		Serial.println("SENSOR CONNECTION SEEMS OK");
+	} else {
+		Serial.println("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
+	}
+
+	testSerial.begin(9600, SERIAL_8N1, 19, 18);
+	randomSeed(analogRead(0));
+
+	dptState.queueSelectTarget(TargetSource::RADAR, 1, 3 * 1000);
+
+	Serial.println("SETUP_FINISHED");
+
+	Serial.println("Ready!");
+
+	delay(1000);
+
+	Serial.println("Starting!");
+
+	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
+
+	xTaskCreatePinnedToCore(systemControlLoop, "Control", 10000, NULL, 1, &systemControl, 1);
+}
+

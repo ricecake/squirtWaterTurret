@@ -108,7 +108,8 @@ public:
 };
 
 // Mock for Arduino.h
-using TaskHandle_t = int*;
+using TaskHandle_t = void*;
+using std::min;
 
 static inline void randomSeed(int) {}
 
@@ -120,7 +121,7 @@ static inline void delay(int) {}
 
 static inline void vTaskDelay(int) {}
 
-static inline void xTaskCreatePinnedToCore(void (*)(void*), const char*, int, void*, int, TaskHandle_t, int) {}
+static inline void xTaskCreatePinnedToCore(void (*)(void*), const char*, int, void*, int, TaskHandle_t*, int) {}
 
 #define portTICK_PERIOD_MS 1
 
