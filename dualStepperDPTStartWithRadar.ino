@@ -191,6 +191,15 @@ void selectTarget() {
 		// If not, set target to closest target that does.
 	}
 	// Target switch commands should use the queue back method, so they come after any commands to stop firing.
+
+	/*
+Depending on the source and the mode (persistent, closest, farthest, random, least, most, etc (basically how we pick the
+target from the set of sources)), we pick the new target.  Should have a new target source "scan", that just does an
+idle sentry scan, and a mode for "aggressive" that will have it test fire. Also changes the fire cadenece in other
+modes. Scan will issue a command that moves around and re-queues itself.  It will stop if it sees that a target has been
+selected or sources have changed. Select target is now what will be used to actually put a change of target order into
+the queue at the back.  It will change sources and everything
+*/
 }
 
 void targetingLoop(void* pvParameters) {

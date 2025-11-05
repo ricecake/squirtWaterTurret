@@ -139,6 +139,7 @@ private:
 
 // -- DistanceVector --
 constexpr DistanceVector::DistanceVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+
 /**
  * @brief Constructs a DistanceVector from a VelocityVector and a time interval.
  * @param v The velocity vector.
@@ -173,6 +174,7 @@ constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z
 inline PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
 	return PositionVector(position, velocity, interval);
 }
+
 inline bool Target::actionIdleExceeds(const ChronoDuration auto limit) const {
 	return timeSinceLastAction() > limit;
 }

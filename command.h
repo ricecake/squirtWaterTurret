@@ -14,6 +14,8 @@ class SystemState;
  * object that encapsulates a request.
  */
 class Command {
+	inline static uint64_t id_counter = 0;
+
 public:
 	// -- Constructors --
 	Command(uint64_t run_after);

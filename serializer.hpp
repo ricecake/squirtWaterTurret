@@ -20,9 +20,8 @@
 #include <span>
 #include <tuple>
 
-#include <stdint.h>
-
 #include "shared_types.h"
+#include <stdint.h>
 
 /**
  * @brief The main namespace for the serialization library.
@@ -622,11 +621,12 @@ namespace cerializer {
 		const TurretStrategy strategy;
 
 	public:
-		constexpr inline SetStrategyMessage(TurretStrategy strategy) noexcept: strategy(strategy) { assert(registered); }
+		constexpr inline SetStrategyMessage(TurretStrategy strategy) noexcept: strategy(strategy) {
+			assert(registered);
+		}
 
 		constexpr std::array<char, Size()> encode() const { return pack(strategy); }
 	};
-
 
 	/**
 	 * @brief A message to set the turret's firing stance.

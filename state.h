@@ -20,8 +20,8 @@
 #include "command_queue.h"
 #include "fpm_adapter.hpp"
 #include "serializer.hpp"
-#include "target.h"
 #include "shared_types.h"
+#include "target.h"
 #include "utilities.h"
 #include "vector.hpp"
 
@@ -101,10 +101,10 @@ public:
 	AccelStepper      stepperB; ///< Stepper motor B instance.
 	SemaphoreHandle_t xMutex;   ///< Mutex for thread-safe access to shared resources.
 
-	TargetSource target_source;
-	std::array<Target, 32>   cvTarget;
-	std::array<Target, 3>    radarTarget;
-	Target                   staticTarget;
+	TargetSource           target_source;
+	std::array<Target, 32> cvTarget;
+	std::array<Target, 3>  radarTarget;
+	Target                 staticTarget;
 
 private:
 	// -- Private Methods --
@@ -120,13 +120,13 @@ private:
 	const int dirPinB = 26;           ///< Direction pin for stepper motor B.
 	const int firePin = 2;            ///< Pin for the firing mechanism.
 
-	bool    moveState = true;               ///< Flag indicating if movement is enabled.
-	bool    fireState = false;              ///< Flag indicating the current firing state.
-	bool    needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
-	uint8_t trackingSpeed = 255;            ///< The speed for tracking movements.
-	Target* selectedTarget = &staticTarget; //< A reference to the currently selected target
+	bool           moveState = true;               ///< Flag indicating if movement is enabled.
+	bool           fireState = false;              ///< Flag indicating the current firing state.
+	bool           needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
+	uint8_t        trackingSpeed = 255;            ///< The speed for tracking movements.
+	Target*        selectedTarget = &staticTarget; //< A reference to the currently selected target
 	TurretStrategy strategy;
-	TurretStance stance;
+	TurretStance   stance;
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
 };

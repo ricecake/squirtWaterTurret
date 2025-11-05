@@ -48,3 +48,10 @@ static inline void pinMode(int, int) {}
 static inline void digitalWrite(int, int) {}
 
 inline static TestClock mock_clock;
+
+template <typename T>
+T roundedDifference(const T& left, const T& right, const T& margin) {
+	auto roundL = left - left % margin;
+	auto roundR = right - right % margin;
+	return roundL - roundR;
+}

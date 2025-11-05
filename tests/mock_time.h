@@ -44,6 +44,7 @@ public:
 	 */
 	struct ScopedDeterministicClock {
 		ScopedDeterministicClock() { s_advance_randomly = false; }
+
 		~ScopedDeterministicClock() { s_advance_randomly = true; }
 	};
 

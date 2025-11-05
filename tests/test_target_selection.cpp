@@ -44,64 +44,64 @@ TEST_CASE("TargetSelection queues next" * doctest::may_fail()) {
 
 // Test that a valid target queues the next selection with a timeout
 TEST_CASE("TargetSelection queues next with timeout for valid target") {
-    SystemState state;
-    state.target_source = TargetSource::CV;
-    mock_clock.reset();
+	SystemState state;
+	state.target_source = TargetSource::CV;
+	mock_clock.reset();
 
-    // Make the target valid and not idle
-    Target& target = state.fetchTarget(3);
-    target.valid = true;
-    target.IncrementAction();
+	// Make the target valid and not idle
+	Target& target = state.fetchTarget(3);
+	target.valid = true;
+	target.IncrementAction();
 
-    TargetSelection cmd(state.target_source, 3, 0xFF, 0);
-    cmd.Execute(&state);
+	TargetSelection cmd(state.target_source, 3, 0xFF, 0);
+	cmd.Execute(&state);
 
-    // Target 3 should now be selected
-    CHECK(&state.currentTarget() == &state.fetchTarget(3));
+	// Target 3 should now be selected
+	CHECK(&state.currentTarget() == &state.fetchTarget(3));
 
-    // Process the queue. The next command (for target 4) should be queued
-    // but not executed yet because of the timeout.
-    state.processCommandQueue();
-    CHECK(&state.currentTarget() == &state.fetchTarget(3));
+	// Process the queue. The next command (for target 4) should be queued
+	// but not executed yet because of the timeout.
+	state.processCommandQueue();
+	CHECK(&state.currentTarget() == &state.fetchTarget(3));
 
-    // Advance time just before the timeout expires
-    mock_clock += milliseconds(2999).get_duration();
-    state.processCommandQueue();
-    CHECK(&state.currentTarget() == &state.fetchTarget(3));
+	// Advance time just before the timeout expires
+	mock_clock += milliseconds(2999).get_duration();
+	state.processCommandQueue();
+	CHECK(&state.currentTarget() == &state.fetchTarget(3));
 
-    // Advance time past the timeout
-    mock_clock += milliseconds(2).get_duration();
-    state.processCommandQueue();
-    CHECK(&state.currentTarget() == &state.fetchTarget(4));
+	// Advance time past the timeout
+	mock_clock += milliseconds(2).get_duration();
+	state.processCommandQueue();
+	CHECK(&state.currentTarget() == &state.fetchTarget(4));
 }
 
 // Test that an idle valid target is marked as invalid
 TEST_CASE("TargetSelection invalidates idle target" * doctest::may_fail()) {
-    // This test is currently failing due to a subtle timing issue that needs further investigation.
-    // The test logic appears correct, but the interaction between the mock clock, the command queue,
-    // and the TargetSelection command is not behaving as expected.
-    // Proposed fix: The TargetSelection::Execute method should check if the target has been idle
-    // for 5 seconds before marking it as invalid. The current implementation does not seem to be
-    // doing this check correctly.
-    mock_clock.reset();
-    TestClock::ScopedDeterministicClock det_clock;
-    SystemState state;
-    state.target_source = TargetSource::CV;
+	// This test is currently failing due to a subtle timing issue that needs further investigation.
+	// The test logic appears correct, but the interaction between the mock clock, the command queue,
+	// and the TargetSelection command is not behaving as expected.
+	// Proposed fix: The TargetSelection::Execute method should check if the target has been idle
+	// for 5 seconds before marking it as invalid. The current implementation does not seem to be
+	// doing this check correctly.
+	mock_clock.reset();
+	TestClock::ScopedDeterministicClock det_clock;
+	SystemState                         state;
+	state.target_source = TargetSource::CV;
 
-    // Make the target valid, but leave its last_action time at epoch
-    Target& target = state.fetchTarget(7);
-    target.valid = true;
+	// Make the target valid, but leave its last_action time at epoch
+	Target& target = state.fetchTarget(7);
+	target.valid = true;
 
-    // Advance the clock to make it idle
-    mock_clock += seconds(10).get_duration();
+	// Advance the clock to make it idle
+	mock_clock += seconds(10).get_duration();
 
-    TargetSelection cmd(state.target_source, 7, 0xFF, 0);
-    cmd.Execute(&state);
+	TargetSelection cmd(state.target_source, 7, 0xFF, 0);
+	cmd.Execute(&state);
 
-    // The target should now be marked as invalid
-    CHECK(state.fetchTarget(7).valid == false);
+	// The target should now be marked as invalid
+	CHECK(state.fetchTarget(7).valid == false);
 
-    // And the next command (for target 8) should be queued with no timeout
-    state.processCommandQueue();
-    CHECK(&state.currentTarget() == &state.fetchTarget(8));
+	// And the next command (for target 8) should be queued with no timeout
+	state.processCommandQueue();
+	CHECK(&state.currentTarget() == &state.fetchTarget(8));
 }

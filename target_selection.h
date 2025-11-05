@@ -21,6 +21,6 @@ public:
 private:
 	// -- Private Attributes --
 	TargetSource target_source;
-	uint8_t                  target_id;    ///< The ID of the target to be selected.
-	int                      speed = 0xFF; ///< The tracking speed to use for the selected target.
+	uint8_t      target_id;    ///< The ID of the target to be selected.
+	int          speed = 0xFF; ///< The tracking speed to use for the selected target.
 };

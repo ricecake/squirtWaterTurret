@@ -26,12 +26,7 @@ enum class TurretStrategy : uint8_t {
 	LONGEST_TRAVEL
 };
 
-
 /**
  * @brief An enum to specify the turret's firing stance.
  */
-enum class TurretStance : uint8_t {
-	AGGRESSIVE,
-	PASSIVE,
-	NEUTRAL
-};
+enum class TurretStance : uint8_t { AGGRESSIVE, PASSIVE, NEUTRAL };
