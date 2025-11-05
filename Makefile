@@ -24,6 +24,7 @@ TEST_SRCS := $(wildcard tests/*.cpp)
 # Object files
 OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRCS))
 TEST_OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(TEST_SRCS))
+DEPS = $(OBJS:.o=.d) $(TEST_OBJS:.o=.d)
 
 # Target executable
 TARGET = $(BUILD_DIR)/test_runner
@@ -39,14 +40,12 @@ $(TARGET): $(OBJS) $(TEST_OBJS)
 # Compile source files
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-	$(CXX) $(CXXFLAGS) -M $< -MT $@ > $(@:.o=.d)
+	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
 # Compile test files
 $(BUILD_DIR)/tests/%.o: tests/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-	$(CXX) $(CXXFLAGS) -M $< -MT $@ > $(@:.o=.d)
+	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
 
 # Run the tests
@@ -60,6 +59,6 @@ clean:
 format:
 	@find ./ \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.ino' \) ! -path './external/*' ! -path './.*/*' -exec clang-format --Wno-error=unknown -i '{}' \;
 
--include $(BUILD_DIR)/*.d
+-include $(DEPS)
 
 .PHONY: all test clean format
