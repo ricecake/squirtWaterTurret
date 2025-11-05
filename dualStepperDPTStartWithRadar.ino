@@ -1,17 +1,21 @@
 #include <climits>
 #include <vector>
 
-#include "HardwareSerial.h"
-#include "LD2450.h"
-#include "esp32-hal-gpio.h"
-#include "esp_timer.h"
 #include "serializer.hpp"
 #include "state.h"
 #include "utilities.h"
-#include <AccelStepper.h>
-#include <Arduino.h>
-#include <HardwareSerial.h>
 #include <stdint.h>
+
+#ifdef ARDUINO
+#include "esp_timer.h"
+#include "LD2450.h"
+#include <Arduino.h>
+#include "esp32-hal-gpio.h"
+#include "HardwareSerial.h"
+#include <AccelStepper.h>
+#else
+#include "tests/mocks.h"
+#endif
 
 HardwareSerial RadarSerial(1);
 HardwareSerial testSerial(2);
