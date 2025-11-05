@@ -1,5 +1,3 @@
-#include "tests/test_firecontrol.h"
-
 #include <chrono>
 
 #include "doctest/doctest.h"

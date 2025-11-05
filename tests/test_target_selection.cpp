@@ -1,5 +1,3 @@
-#include "tests/test_target_selection.h"
-
 #include "doctest/doctest.h"
 #include "state.h"
 #include "target_selection.h"

@@ -1,5 +1,3 @@
-#include "tests/test_serializer.h"
-
 #include <iostream>
 #include <sstream>
 #include <vector>

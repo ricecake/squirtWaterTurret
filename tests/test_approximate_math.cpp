@@ -1,5 +1,3 @@
-#include "tests/test_approximate_math.h"
-
 #include <cmath>
 #include <iostream>
 #include <ostream>

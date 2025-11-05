@@ -1,5 +1,3 @@
-#include "tests/test_vector.h"
-
 #include <iostream>
 #include <ostream>
 
