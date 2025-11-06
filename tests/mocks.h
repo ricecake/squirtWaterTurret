@@ -12,6 +12,7 @@
 // From state.h
 struct AccelStepper {
 	static const int FULL4WIRE = 4;
+
 	AccelStepper(int = 0, int = 0, int = 0, int = 0, int = 0, bool = true) {}
 
 	void setAcceleration(int) {}
@@ -76,6 +77,7 @@ public:
 	void print(const char* message) { std::cout << message; }
 
 	void println(const char* message) { std::cout << message << std::endl; }
+
 	operator bool() const { return true; }
 };
 

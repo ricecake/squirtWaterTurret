@@ -7,14 +7,20 @@
 #include <stdint.h>
 
 #ifdef ARDUINO
-#include "esp_timer.h"
-#include "LD2450.h"
-#include <Arduino.h>
-#include "esp32-hal-gpio.h"
-#include "HardwareSerial.h"
-#include <AccelStepper.h>
+	#include "HardwareSerial.h"
+	#include "LD2450.h"
+	#include "esp32-hal-gpio.h"
+	#include "esp_timer.h"
+	#include <AccelStepper.h>
+	#include <Arduino.h>
 #else
-#include "tests/mocks.h"
+	#include "tests/mocks.h"
+
+void setup();
+
+int main() {
+	setup();
+}
 #endif
 
 HardwareSerial RadarSerial(1);
@@ -150,14 +156,14 @@ void selectTarget() {
 	*/
 	switch (dptState.target_source) {
 	case TargetSource::STATIC:
-	break;
+		break;
 	// Set current target to static target
 	case TargetSource::RADAR:
-	break;
+		break;
 	// Check if the current target matches our criteria.
 	// If not, set target to closest target that does.  Distance should factor in action time.
 	case TargetSource::CV:
-	break;
+		break;
 		// Check if the current target matches our criteria.
 		// If not, set target to closest target that does.
 	}
@@ -216,4 +222,3 @@ void setup() {
 
 	xTaskCreatePinnedToCore(systemControlLoop, "Control", 10000, NULL, 1, &systemControl, 1);
 }
-
