@@ -1,20 +1,35 @@
 #include <climits>
+#include <cstdint>
 #include <vector>
 
-#include "HardwareSerial.h"
-#include "LD2450.h"
-#include "esp32-hal-gpio.h"
-#include "esp_timer.h"
 #include "serializer.hpp"
 #include "state.h"
 #include "utilities.h"
-#include <AccelStepper.h>
-#include <Arduino.h>
-#include <HardwareSerial.h>
-#include <stdint.h>
 
-HardwareSerial RadarSerial(1);
-HardwareSerial testSerial(2);
+#ifdef ARDUINO
+	#include "HardwareSerial.h"
+	#include "LD2450.h"
+	#include "esp32-hal-gpio.h"
+	#include "esp_timer.h"
+	#include <AccelStepper.h>
+	#include <Arduino.h>
+#else
+	#include "tests/mocks.h"
+
+void setup();
+
+int main() {
+	Clock::setClock(DefaultClock::now);
+	setup();
+	while (!threads.empty()) {
+		for (auto& i : threads) {
+			if (i.joinable()) {
+				i.join();
+			}
+		}
+	}
+}
+#endif
 
 struct IOWrapper {
 	HardwareSerial& io;
@@ -32,6 +47,9 @@ struct IOWrapper {
 	IOWrapper(HardwareSerial& io): io(io) {};
 };
 
+HardwareSerial RadarSerial(1);
+HardwareSerial testSerial(2);
+
 IOWrapper wrapped(testSerial);
 
 cerializer::Deserializer deserializer(wrapped);
@@ -42,52 +60,8 @@ SystemState dptState;
 TaskHandle_t targeting;
 TaskHandle_t systemControl;
 
-void setup() {
-	Serial.begin(9600);
-
-	while (!Serial) {
-		; // wait for serial port to connect. Needed for native USB
-	}
-
-	RadarSerial.begin(256000, SERIAL_8N1, 16, 17);
-	ld2450.begin(RadarSerial, false);
-
-	if (!ld2450.waitForSensorMessage(true)) {
-		Serial.println("SENSOR CONNECTION SEEMS OK");
-	} else {
-		Serial.println("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
-	}
-
-	testSerial.begin(9600, SERIAL_8N1, 19, 18);
-	randomSeed(analogRead(0));
-
-	dptState.queueSelectTarget(cerializer::TargetSource::RADAR, 1, 3 * 1000);
-
-	Serial.println("SETUP_FINISHED");
-
-	Serial.println("Ready!");
-
-	delay(1000);
-
-	Serial.println("Starting!");
-
-	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
-
-	xTaskCreatePinnedToCore(systemControlLoop, "Control", 10000, NULL, 1, &systemControl, 1);
-}
-
 void loop() {
 	vTaskDelay(1000);
-}
-
-int last_time = 0;
-
-void systemControlLoop(void* pvParameters) {
-	for (;;) {
-		dptState.processCommandQueue();
-		dptState.actualizeState();
-		vTaskDelay(1);
-	}
 }
 
 void refreshRadarTargets() {
@@ -162,14 +136,6 @@ void readSerialCommands() {
 	}));
 }
 
-void generateFireActions() {
-	Target& target = dptState.currentTarget();
-
-	if (dptState.targetTravelDistance() <= 2) {
-		dptState.queueFire(500);
-	}
-}
-
 void selectTarget() {
 	/*
 	    // Should find the nearest target not acted upon recently
@@ -181,12 +147,15 @@ void selectTarget() {
 	    since external comms may include things like position changes, and fire commands.
 	*/
 	switch (dptState.target_source) {
-	case cerializer::TargetSource::STATIC:
+	case TargetSource::STATIC:
+		break;
 	// Set current target to static target
-	case cerializer::TargetSource::RADAR:
+	case TargetSource::RADAR:
+		break;
 	// Check if the current target matches our criteria.
 	// If not, set target to closest target that does.  Distance should factor in action time.
-	case cerializer::TargetSource::CV:
+	case TargetSource::CV:
+		break;
 		// Check if the current target matches our criteria.
 		// If not, set target to closest target that does.
 	}
@@ -202,12 +171,87 @@ the queue at the back.  It will change sources and everything
 */
 }
 
-void targetingLoop(void* pvParameters) {
+void generateFireActions() {
+	if (dptState.targetTravelDistance() <= 2) {
+		dptState.queueFire(500);
+	}
+}
+
+void systemControlLoop(void*) {
 	for (;;) {
-		refreshRadarTargets();
-		readSerialCommands();
-		selectTarget();
-		generateFireActions();
+		try {
+			dptState.processCommandQueue();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+		try {
+			dptState.actualizeState();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+		vTaskDelay(1);
+	}
+}
+
+void targetingLoop(void*) {
+	for (;;) {
+		try {
+			refreshRadarTargets();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+
+		try {
+			readSerialCommands();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+
+		try {
+			selectTarget();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+
+		try {
+			generateFireActions();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
+}
+
+void setup() {
+	Serial.begin(9600);
+
+	while (!Serial) {
+		; // wait for serial port to connect. Needed for native USB
+	}
+
+	RadarSerial.begin(256000, SERIAL_8N1, 16, 17);
+	ld2450.begin(RadarSerial, false);
+
+	if (!ld2450.waitForSensorMessage(true)) {
+		Serial.println("SENSOR CONNECTION SEEMS OK");
+	} else {
+		Serial.println("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
+	}
+
+	testSerial.begin(9600, SERIAL_8N1, 19, 18);
+	randomSeed(analogRead(0));
+
+	dptState.queueSelectTarget(TargetSource::RADAR, 1, 3 * 1000);
+
+	Serial.println("SETUP_FINISHED");
+
+	Serial.println("Ready!");
+
+	delay(1000);
+
+	Serial.println("Starting!");
+
+	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
+
+	xTaskCreatePinnedToCore(systemControlLoop, "Control", 10000, NULL, 1, &systemControl, 1);
 }

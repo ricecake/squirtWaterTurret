@@ -123,7 +123,12 @@ public:
 	/**
 	 * @brief Computes the magnitude (length) of the vector.
 	 */
-	NumericType magnitude() const { return sqrt((X_coord * X_coord) + (Y_coord * Y_coord) + (Z_coord * Z_coord)); }
+	NumericType magnitude() const {
+		auto xs = X_coord * X_coord;
+		auto ys = Y_coord * Y_coord;
+		auto zs = Z_coord * Z_coord;
+		return sqrt(xs + ys + zs);
+	}
 
 	/**
 	 * @brief Computes the magnitude in the XY plane.

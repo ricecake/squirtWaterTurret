@@ -18,7 +18,7 @@ class Command {
 
 public:
 	// -- Constructors --
-	Command(uint64_t run_after);
+	Command(uint64_t run_after = 0);
 	virtual ~Command() = default;
 
 	// -- Public Methods --

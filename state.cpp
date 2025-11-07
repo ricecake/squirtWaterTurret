@@ -14,7 +14,7 @@
 #include "target_selection.h"
 #include "utilities.h"
 
-SystemState::SystemState(): staticTarget(0, true, PositionVector(0, 0.01, 0), VelocityVector(0, 0, 0)) {
+SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -22,8 +22,6 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(0, 0.01, 0), Ve
 	stepperB.setAcceleration(acceleration);
 
 	pinMode(firePin, OUTPUT);
-
-	xMutex = xSemaphoreCreateMutex();
 
 	target_source = TargetSource::STATIC;
 	auto p = staticTarget.Position();
@@ -99,9 +97,11 @@ bool SystemState::getMoveState() {
 }
 
 void SystemState::queueFire(uint16_t fireDuration) {
-	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
-	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
-	commandQueue.addCommand<FireControl>(true, fireDuration, start.microseconds());
+	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
+}
+
+void SystemState::queueCeaseFire(uint16_t fireDuration) {
+	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration);
 	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 

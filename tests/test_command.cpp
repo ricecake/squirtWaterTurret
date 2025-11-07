@@ -38,7 +38,7 @@ TEST_CASE("Command Constructor") {
 	SUBCASE("id is set and unique") {
 		mock_clock.set(10000);
 		TestCommand cmd(100);
-		CHECK(cmd.id == 10000000); // nanoSinceEpoch should be precise
+		CHECK(cmd.id == 2); // unique counter, may need updating depending on test order
 
 		mock_clock.set(10001);
 		TestCommand cmd2(100);

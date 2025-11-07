@@ -8,13 +8,14 @@
 			"name": "(gdb) Launch-y",
 			"type": "cppdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/a.out",
+			"program": "${workspaceFolder}/build/mock_binary",
 			"args": [],
 			"stopAtEntry": false,
 			"cwd": "${fileDirname}",
 			"environment": [],
 			"externalConsole": false,
 			"MIMode": "gdb",
+			"preLaunchTask": "build_with_make",
 			"setupCommands": [
 				{
 					"description": "Enable pretty-printing for gdb",
@@ -25,9 +26,13 @@
 					"description": "Set Disassembly Flavor to Intel",
 					"text": "-gdb-set disassembly-flavor intel",
 					"ignoreFailures": true
+				},
+				{
+					"description": "View derived object fields",
+					"text": "set print object on",
+					"ignoreFailures": true
 				}
 			]
 		}
-
 	]
 }

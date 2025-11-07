@@ -80,6 +80,7 @@ public:
 	bool    getMoveState();
 	void    queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds);
 	void    queueFire(uint16_t milliseconds);
+	void    queueCeaseFire(uint16_t milliseconds);
 	void    updateConfig(cerializer::Config* config);
 	void    processCommandQueue();
 	void    actualizeState();
@@ -96,10 +97,9 @@ public:
 	const int   v_min = -1000;       ///< Minimum vertical position.
 	const fixed angleToStep{0.1125}; ///< Conversion factor from angle to motor steps.
 
-	ConfigParameters  config;   ///< Runtime configuration parameters.
-	AccelStepper      stepperA; ///< Stepper motor A instance.
-	AccelStepper      stepperB; ///< Stepper motor B instance.
-	SemaphoreHandle_t xMutex;   ///< Mutex for thread-safe access to shared resources.
+	ConfigParameters config;   ///< Runtime configuration parameters.
+	AccelStepper     stepperA; ///< Stepper motor A instance.
+	AccelStepper     stepperB; ///< Stepper motor B instance.
 
 	TargetSource           target_source;
 	std::array<Target, 32> cvTarget;
@@ -150,7 +150,7 @@ inline void SystemState::updateTarget(
 	if (indifferenceMargin > 0) {
 		auto oldTarget = targetArray[idx];
 		auto oldTargetPos = oldTarget.Position();
-		if (oldTargetPos) {
+		if (oldTarget.valid && oldTargetPos) {
 			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
 			doUpdate = (travelAngle) > indifferenceMargin;
 		}
