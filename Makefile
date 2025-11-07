@@ -5,7 +5,8 @@ CXX = g++
 # Use C++20 for concepts and other modern features.
 # -I. adds the root directory to the include path.
 CXXFLAGS = \
-	-std=gnu++23 -I. -Iexternal -Wall -Wextra -Werror -g \
+	-std=gnu++23 -I. -Iexternal -Wall -Wextra -Werror \
+	-g \
 	-fsanitize=address \
 	-fsanitize=leak \
 	-fsanitize=undefined \
@@ -13,6 +14,8 @@ CXXFLAGS = \
 	-fsanitize=bounds \
 	-fprofile-arcs \
 	-pg
+# 	-O3
+
 # Directories
 BUILD_DIR = build
 

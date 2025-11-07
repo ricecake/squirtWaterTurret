@@ -31,9 +31,6 @@ int main() {
 }
 #endif
 
-HardwareSerial RadarSerial(1);
-HardwareSerial testSerial(2);
-
 struct IOWrapper {
 	HardwareSerial& io;
 
@@ -50,6 +47,9 @@ struct IOWrapper {
 	IOWrapper(HardwareSerial& io): io(io) {};
 };
 
+HardwareSerial RadarSerial(1);
+HardwareSerial testSerial(2);
+
 IOWrapper wrapped(testSerial);
 
 cerializer::Deserializer deserializer(wrapped);
@@ -62,24 +62,6 @@ TaskHandle_t systemControl;
 
 void loop() {
 	vTaskDelay(1000);
-}
-
-int last_time = 0;
-
-void systemControlLoop(void*) {
-	for (;;) {
-		try {
-			dptState.processCommandQueue();
-		} catch (const std::exception& e) {
-			std::cerr << "Caught exception: " << e.what() << std::endl;
-		}
-		try {
-			dptState.actualizeState();
-		} catch (const std::exception& e) {
-			std::cerr << "Caught exception: " << e.what() << std::endl;
-		}
-		vTaskDelay(1);
-	}
 }
 
 void refreshRadarTargets() {
@@ -154,12 +136,6 @@ void readSerialCommands() {
 	}));
 }
 
-void generateFireActions() {
-	if (dptState.targetTravelDistance() <= 2) {
-		dptState.queueFire(500);
-	}
-}
-
 void selectTarget() {
 	/*
 	    // Should find the nearest target not acted upon recently
@@ -193,6 +169,28 @@ modes. Scan will issue a command that moves around and re-queues itself.  It wil
 selected or sources have changed. Select target is now what will be used to actually put a change of target order into
 the queue at the back.  It will change sources and everything
 */
+}
+
+void generateFireActions() {
+	if (dptState.targetTravelDistance() <= 2) {
+		dptState.queueFire(500);
+	}
+}
+
+void systemControlLoop(void*) {
+	for (;;) {
+		try {
+			dptState.processCommandQueue();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+		try {
+			dptState.actualizeState();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+		vTaskDelay(1);
+	}
 }
 
 void targetingLoop(void*) {

@@ -6,34 +6,48 @@
 #include "state.h"
 #include "utilities.h"
 
-CommandQueue::CommandQueue() {
-	xMutex = xSemaphoreCreateMutex();
-}
+CommandQueue::CommandQueue() = default;
 
 void CommandQueue::process(SystemState* state) {
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		uint64_t now = microSinceEpoch();
+	uint64_t                              now = microSinceEpoch();
+	std::vector<std::shared_ptr<Command>> runnable_commands;
+	{
+		std::lock_guard<std::mutex> lock(xMutex);
 		while (!commandQueue.empty()) {
-			auto comm = commandQueue.top();
-			if (comm) {
-				if (now < comm->run_after) {
-					break;
-				}
-				comm->Execute(state);
+			// Defensively check for null pointers, which seem to be the cause
+			// of the crash. We don't know why they are in the queue, but we
+			// can at least handle them gracefully.
+			if (!commandQueue.top()) {
+				commandQueue.pop();
+				continue;
 			}
+
+			if (now < commandQueue.top()->run_after) {
+				// The queue is sorted by time, so we can stop here.
+				break;
+			}
+			// If the command is ready to run, move it to a temporary vector.
+			runnable_commands.push_back(commandQueue.top());
 			commandQueue.pop();
 		}
-		xSemaphoreGive(xMutex);
+	}
+
+	// Execute the commands outside of the mutex lock to allow for re-entrant
+	// command scheduling.
+	for (const auto& comm : runnable_commands) {
+		if (comm) {
+			comm->Execute(state);
+		}
 	}
 }
 
-std::string CommandQueue::serialize() const {
+std::string CommandQueue::serialize() {
 	std::stringstream ss;
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-		auto tempQueue = commandQueue;
-		xSemaphoreGive(xMutex);
+	auto              now = microSinceEpoch();
+	{
+		std::lock_guard<std::mutex> lock(xMutex);
+		auto                        tempQueue = commandQueue;
 
-		auto now = microSinceEpoch();
 		ss << "Time: " << now << std::endl;
 		bool flagged = false;
 		while (!tempQueue.empty()) {
@@ -49,5 +63,6 @@ std::string CommandQueue::serialize() const {
 			tempQueue.pop();
 		}
 	}
+
 	return ss.str();
 }
