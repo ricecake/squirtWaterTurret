@@ -15,12 +15,13 @@ void CommandQueue::process(SystemState* state) {
 		uint64_t now = microSinceEpoch();
 		while (!commandQueue.empty()) {
 			auto comm = commandQueue.top();
-			if (now < comm->run_after) {
-				break;
+			if (comm) {
+				if (now < comm->run_after) {
+					break;
+				}
+				comm->Execute(state);
 			}
 			commandQueue.pop();
-			comm->Execute(state);
-			delete comm;
 		}
 		xSemaphoreGive(xMutex);
 	}
@@ -37,13 +38,14 @@ std::string CommandQueue::serialize() const {
 		bool flagged = false;
 		while (!tempQueue.empty()) {
 			auto comm = tempQueue.top();
+			if (comm) {
+				if (now < comm->run_after && !flagged) {
+					ss << "===== WOULD STOP HERE =========" << std::endl;
+					flagged = true;
+				}
 
-			if (now < comm->run_after && !flagged) {
-				ss << "===== WOULD STOP HERE =========" << std::endl;
-				flagged = true;
+				ss << "Command ID: " << comm->id << " Run After: " << comm->run_after << "\n";
 			}
-
-			ss << "Command ID: " << comm->id << " Run After: " << comm->run_after << "\n";
 			tempQueue.pop();
 		}
 	}

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <queue>
 #include <string>
 #include <vector>
@@ -16,8 +17,12 @@
 
 class SystemState;
 class Command;
-const inline auto CommandPointerComparator = [](const Command* left, const Command* right) -> bool {
-	return left->run_after >= right->run_after;
+const inline auto CommandPointerComparator = [](const std::shared_ptr<Command>& left,
+                                                const std::shared_ptr<Command>& right) -> bool {
+	if (left && right) {
+		return left->run_after >= right->run_after;
+	}
+	return bool(left);
 };
 
 class CommandQueue {
@@ -27,10 +32,10 @@ public:
 
 	template <typename T, typename... Args>
 	void addCommand(Args&&... args) {
-		auto newCommand = new T(std::forward<Args>(args)...);
+		auto newCommand = std::make_shared<T>(std::forward<Args>(args)...);
 		max_run_after = std::max(max_run_after, newCommand->run_after);
 		if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-			commandQueue.push(newCommand);
+			commandQueue.push(std::move(newCommand));
 			xSemaphoreGive(xMutex);
 		}
 	}
@@ -39,7 +44,11 @@ public:
 	void addCommandAfter(Args&&... args) {
 		auto now = microSinceEpoch();
 		auto last_run_after = (max_run_after - now) + 1;
-		commandQueue.push(new T(std::forward<Args>(args)..., last_run_after));
+		auto newCommand = std::make_shared<T>(std::forward<Args>(args)..., last_run_after);
+		if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+			commandQueue.push(std::move(newCommand));
+			xSemaphoreGive(xMutex);
+		}
 	}
 
 	template <typename T, typename... Args>
@@ -50,7 +59,11 @@ public:
 	std::string serialize() const;
 
 private:
-	uint64_t                                                                                 max_run_after = 0;
-	std::priority_queue<Command*, std::vector<Command*>, decltype(CommandPointerComparator)> commandQueue;
-	SemaphoreHandle_t                                                                        xMutex;
+	uint64_t max_run_after = 0;
+	std::priority_queue<
+		std::shared_ptr<Command>,
+		std::vector<std::shared_ptr<Command>>,
+		decltype(CommandPointerComparator)>
+					  commandQueue;
+	SemaphoreHandle_t xMutex;
 };

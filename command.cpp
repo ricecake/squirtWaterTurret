@@ -15,8 +15,7 @@
  */
 Command::Command(uint64_t run_after) {
 	// Assign a unique ID using the current timer value
-	// id = id_counter++;
-	id = nanoSinceEpoch();
+	id = id_counter++;
 	// Calculate the absolute execution time
 	this->run_after = microSinceEpoch() + run_after;
 }

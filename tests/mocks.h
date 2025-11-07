@@ -3,7 +3,10 @@
 #include <chrono>
 #include <cstdint>
 #include <iostream>
+#include <mutex>
 #include <random>
+#include <thread>
+#include <vector>
 
 #include "mock_time.h"
 
@@ -38,15 +41,19 @@ using SemaphoreHandle_t = int;
 #define LOW 0x0
 #define SERIAL_8N1 0
 
+static std::mutex myMutex;
+
 static inline SemaphoreHandle_t xSemaphoreCreateMutex() {
 	return 0;
 }
 
 static inline int xSemaphoreTake(SemaphoreHandle_t, uint32_t) {
-	return pdTRUE;
+	return myMutex.try_lock();
 }
 
-static inline void xSemaphoreGive(SemaphoreHandle_t) {}
+static inline void xSemaphoreGive(SemaphoreHandle_t) {
+	return myMutex.unlock();
+}
 
 static inline void pinMode(int, int) {}
 
@@ -74,9 +81,9 @@ public:
 
 	size_t readBytes(char*, size_t) { return 0; }
 
-	void print(const char* message) { std::cout << message; }
+	void print(auto message) { std::cout << message; }
 
-	void println(const char* message) { std::cout << message << std::endl; }
+	void println(auto message) { std::cout << message << std::endl; }
 
 	operator bool() const { return true; }
 };
@@ -100,9 +107,9 @@ public:
 	RadarTarget getTarget(int) {
 		RadarTarget target;
 		target.valid = true;
-		target.x = rand() % 2000 - 1000;
-		target.y = rand() % 2000;
-		target.id = rand() % 10;
+		target.x = rand() % 200 - 100;
+		target.y = rand() % 100;
+		target.id = rand() % 3;
 		return target;
 	}
 
@@ -121,10 +128,15 @@ static inline int analogRead(int) {
 
 static inline void delay(int) {}
 
-static inline void vTaskDelay(int) {}
+static inline void vTaskDelay(int d) {
+	// std::this_thread::sleep_for(std::chrono::milliseconds(d));
+	std::this_thread::sleep_for(std::chrono::microseconds(d));
+}
 
-static inline void xTaskCreatePinnedToCore(void (*)(void*), const char*, int, void*, int, TaskHandle_t*, int) {}
+static std::vector<std::thread> threads;
+
+static inline void xTaskCreatePinnedToCore(auto task, const char*, int, void* parameters, int, TaskHandle_t*, int) {
+	threads.emplace_back(task, parameters);
+}
 
 #define portTICK_PERIOD_MS 1
-
-// Mocks for esp_timer.h and esp32-hal-gpio.h are mostly empty as their functions are already mocked.

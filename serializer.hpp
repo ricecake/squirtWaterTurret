@@ -406,7 +406,7 @@ namespace cerializer {
 	class Message: public BasePacket {
 	public:
 		/// @brief A static flag that triggers registration with the MessageMaker factory upon program start.
-		static bool registered;
+		static const bool registered;
 
 	public:
 		/**
@@ -475,7 +475,7 @@ namespace cerializer {
 	};
 
 	template <typename Derived, uint8_t TypeVal, typename... FieldTypes>
-	bool Message<Derived, TypeVal, FieldTypes...>::registered = MessageMaker::Register(
+	const bool Message<Derived, TypeVal, FieldTypes...>::registered = MessageMaker::Register(
 		TypeVal,
 		[](const std::span<char>& binaryData) -> BasePointer {
 			auto obj = Derived::LoadBinary(binaryData);

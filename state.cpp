@@ -99,9 +99,11 @@ bool SystemState::getMoveState() {
 }
 
 void SystemState::queueFire(uint16_t fireDuration) {
-	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
-	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
-	commandQueue.addCommand<FireControl>(true, fireDuration, start.microseconds());
+	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
+}
+
+void SystemState::queueCeaseFire(uint16_t fireDuration) {
+	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration);
 	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 

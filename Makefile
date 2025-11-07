@@ -4,7 +4,15 @@
 CXX = g++
 # Use C++20 for concepts and other modern features.
 # -I. adds the root directory to the include path.
-CXXFLAGS = -std=gnu++23 -I. -Iexternal -Wall -Wextra -Werror -g
+CXXFLAGS = \
+	-std=gnu++23 -I. -Iexternal -Wall -Wextra -Werror -g \
+	-fsanitize=address \
+	-fsanitize=leak \
+	-fsanitize=undefined \
+	-fsanitize=signed-integer-overflow \
+	-fsanitize=bounds \
+	-fprofile-arcs \
+	-pg
 # Directories
 BUILD_DIR = build
 
@@ -32,6 +40,8 @@ DEPS = $(OBJS:.o=.d) $(TEST_OBJS:.o=.d)
 # Target executable
 TARGET = $(BUILD_DIR)/test_runner
 SKETCH_TARGET = $(BUILD_DIR)/mock_binary
+sketch: $(SKETCH_TARGET)
+testbin: $(TARGET)
 
 # Default target
 all: $(TARGET) $(SKETCH_TARGET)
@@ -62,8 +72,11 @@ $(BUILD_DIR)/%.o: %.ino
 	$(CXX) -x c++ $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
 
 # Run the tests
-test: all
+test: $(TARGET)
 	./$(TARGET)
+
+smoke: $(SKETCH_TARGET)
+	./$(SKETCH_TARGET)
 
 # Clean up build artifacts
 clean:
@@ -74,4 +87,4 @@ format:
 
 -include $(DEPS)
 
-.PHONY: all test clean format
+.PHONY: all test smoke sketch testbin clean format

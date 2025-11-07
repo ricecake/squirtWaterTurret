@@ -1,10 +1,10 @@
 #include <climits>
+#include <cstdint>
 #include <vector>
 
 #include "serializer.hpp"
 #include "state.h"
 #include "utilities.h"
-#include <stdint.h>
 
 #ifdef ARDUINO
 	#include "HardwareSerial.h"
@@ -19,7 +19,15 @@
 void setup();
 
 int main() {
+	Clock::setClock(DefaultClock::now);
 	setup();
+	while (!threads.empty()) {
+		for (auto& i : threads) {
+			if (i.joinable()) {
+				i.join();
+			}
+		}
+	}
 }
 #endif
 
@@ -60,8 +68,16 @@ int last_time = 0;
 
 void systemControlLoop(void*) {
 	for (;;) {
-		dptState.processCommandQueue();
-		dptState.actualizeState();
+		try {
+			dptState.processCommandQueue();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+		try {
+			dptState.actualizeState();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
 		vTaskDelay(1);
 	}
 }
@@ -181,10 +197,29 @@ the queue at the back.  It will change sources and everything
 
 void targetingLoop(void*) {
 	for (;;) {
-		refreshRadarTargets();
-		readSerialCommands();
-		selectTarget();
-		generateFireActions();
+		try {
+			refreshRadarTargets();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+
+		try {
+			readSerialCommands();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+
+		try {
+			selectTarget();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
+
+		try {
+			generateFireActions();
+		} catch (const std::exception& e) {
+			std::cerr << "Caught exception: " << e.what() << std::endl;
+		}
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 }

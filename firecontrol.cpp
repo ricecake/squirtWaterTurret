@@ -1,7 +1,8 @@
 #include "firecontrol.h"
 
+#include <cstdint>
+
 #include "utilities.h"
-#include <stdint.h>
 
 /**
  * @brief Constructs a new FireControl object.
@@ -23,16 +24,17 @@ FireControl::FireControl(bool active, uint16_t duration, int64_t run_after):
  * @param state A pointer to the system state.
  */
 void FireControl::Execute(SystemState* state) {
-	Target& target = state->currentTarget();
-
 	// Do nothing if the desired fire state is already the current state
 	if (state->getFireState() == active) {
 		return;
 	}
 
+	Target& target = state->currentTarget();
+
 	// Activate firing if the target has been idle longer than the action interval
 	if (active && target.actionIdleExceeds(fireActionInterval)) {
 		state->setFire(active);
+		state->queueCeaseFire(duration);
 	}
 	// Deactivate firing after the specified duration and increment the action counter
 	else if (!active && target.actionIdleExceeds(milliseconds(duration, fireActionInterval))) {
