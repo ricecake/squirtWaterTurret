@@ -26,7 +26,6 @@ Think of `SystemState` as the "god object" of the firmware, but in a way that's 
 **Key Subclasses:**
 -   **`TargetSelection`:** Enqueues a command to change the currently active target. It contains the target's ID and the desired tracking speed.
 -   **`FireControl`:** Enqueues a command to activate or deactivate the firing mechanism. It includes a duration, allowing for timed bursts.
--   **`LingerCommand`:** A "no-op" command that simply does nothing. Its purpose is to create a programmable delay in the command queue without blocking execution.
 
 When a function like `SystemState::queueFire(duration)` is called, it doesn't immediately fire. Instead, it creates a `FireControl` object with the appropriate `run_after` timestamp and pushes it onto the command queue for later execution.
 

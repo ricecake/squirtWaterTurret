@@ -1,256 +1,187 @@
+#include "state.h"
+
+#ifdef ARDUINO
+	#include "HardwareSerial.h"
+#endif
+#include <algorithm>
 #include <chrono>
 #include <ratio>
-#include "HardwareSerial.h"
-#include "utilities.h"
-#include "state.h"
-#include "firecontrol.h"
-#include "target_selection.h"
-#include "fpm_adapter.hpp"
-#include "aproximate_math.hpp"
 
-SystemState::SystemState()
-{
+#include "aproximate_math.hpp"
+#include "firecontrol.h"
+#include "fpm_adapter.hpp"
+#include "target.h"
+#include "target_selection.h"
+#include "utilities.h"
+
+SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
 	stepperA.setAcceleration(acceleration);
 	stepperB.setAcceleration(acceleration);
 
-	steppers.addStepper(stepperA);
-	steppers.addStepper(stepperB);
-
 	pinMode(firePin, OUTPUT);
 
-	xMutex = xSemaphoreCreateMutex();
+	target_source = TargetSource::STATIC;
+	auto p = staticTarget.Position();
+	p.Z_coord = config.turret_height;
+	staticTarget.Update(p);
+
+	selectedTarget = &staticTarget;
 }
 
-Target &SystemState::currentTarget()
-{
-	return target[selectedTarget];
-}
-
-void SystemState::updateNearestTarget(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin) {
-	auto idx = fetchNearestTargetIdx(newPosition);
-	updateTarget(idx, valid, newPosition, indifferenceMargin);
-}
-
-void SystemState::updateNearestTarget2d(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin) {
-	auto idx = fetchNearestTarget2dIdx(newPosition);
-	auto prev = fetchTarget(idx);
-	newPosition.Z_coord = prev.Position().Z_coord;
-	updateTarget(idx, valid, newPosition, indifferenceMargin);
-}
-
-void SystemState::updateTarget(const uint8_t idx, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin)
-{
-	// Serial.printf("saw %f %f %f %f/%f\n", float(newPosition.X_coord), float(newPosition.Y_coord), float(newPosition.Z_coord), float(newPosition.Pitch()), float(newPosition.Yaw()));
-	bool doUpdate = true;
-	if (indifferenceMargin > 0)
-	{
-		auto oldTarget = target[idx];
-		auto oldTargetPos = oldTarget.Position();
-		if (oldTargetPos) {
-			// auto distance = newPosition - oldTargetPos;
-
-			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
-			doUpdate = (travelAngle) > indifferenceMargin;
-			// auto yawDist = fixed(distance.yaw());
-			// auto pitchDist = fixed(distance.pitch());
-			// doUpdate = indifferenceMargin <= sqrt(pow(yawDist, 2), pow(pitchDist, 2))/angleToStep;
-
-			// doUpdate = distance.magnitude() >= fixed(indifferenceMargin)/100 + oldTarget.Velocity().magnitude();
-		}
-	}
-
-	if (doUpdate)
-	{
-		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that are real
-		target[idx].Update(newPosition);
-		target[idx].valid = valid;
-		needTrackingUpdate = true;
+/// @brief Return the current target array, based on which target system is active.
+/// @return a span of targets, referencing the correct target buffer.
+std::span<Target> SystemState::currentTargetArray() {
+	switch (target_source) {
+	case TargetSource::CV:
+		return std::span(cvTarget.begin(), cvTarget.end());
+	case TargetSource::RADAR:
+		return std::span(radarTarget.begin(), radarTarget.end());
+	case TargetSource::STATIC:
+	default:
+		return std::span(&staticTarget, 1);
 	}
 }
 
-void SystemState::setTarget(uint8_t index, uint8_t speed)
-{
-	selectedTarget = index;
+Target& SystemState::currentTarget() {
+	return *selectedTarget;
+}
+
+void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
+	if (source != target_source) {
+		return; // No-op because we've changed sources
+	}
+
+	switch (target_source) {
+	case TargetSource::CV:
+		selectedTarget = &cvTarget[index];
+		break;
+	case TargetSource::RADAR:
+		selectedTarget = &radarTarget[index];
+		break;
+	case TargetSource::STATIC:
+		selectedTarget = &staticTarget;
+		break;
+	default:
+		return;
+	}
+
 	trackingSpeed = speed;
 	needTrackingUpdate = true;
 }
 
-void SystemState::setFire(bool active)
-{
+void SystemState::setFire(bool active) {
 	fireState = active;
+}
+
+void SystemState::setMove(bool active) {
+	moveState = active;
+}
+
+void SystemState::setStrategy(TurretStrategy strategy) {
+	this->strategy = strategy;
+}
+
+void SystemState::setStance(TurretStance stance) {
+	this->stance = stance;
 }
 
 bool SystemState::getFireState() {
 	return fireState;
 }
 
-void SystemState::queueFire(uint16_t fireDuration)
-{
-	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
-	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
-
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-	{
-		// Serial.println("======");
-		// Serial.println(fireDuration);
-		// Serial.println(start.microseconds());
-		// Serial.println(end.microseconds());
-		// Serial.println(DynamicTimeInterval<uint32_t, std::milli>(fireDuration).microseconds());
-		// Serial.println("======");
-		commandQueue.push(new FireControl(true, fireDuration, start.microseconds()));
-		commandQueue.push(new FireControl(false, fireDuration, end.microseconds()));
-		xSemaphoreGive(xMutex);
-	}
+bool SystemState::getMoveState() {
+	return moveState;
 }
 
-void SystemState::queueLinger(uint8_t milliseconds)
-{
+void SystemState::queueFire(uint16_t fireDuration) {
+	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
 }
 
-void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds)
-{
-	commandQueue.push(new TargetSelection(
-		index, 0xFF, milliseconds * 1000));
+void SystemState::queueCeaseFire(uint16_t fireDuration) {
+	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration);
+	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 
-void SystemState::processCommandQueue()
-{
-	auto now = esp_timer_get_time();
-	if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
-	{
-		// if (!newQueue.empty()) {
-		// Serial.println("BEGIN QUEUE DUMP");
-		// auto newQueue = commandQueue;
-		// while(!newQueue.empty()) {
-		// 	auto i = newQueue.top();
-		// 	newQueue.pop();
-		// 	Serial.printf("\t\tDUMP %lld: %lld %lld\n", now, i->run_after, i->id);
-		// }
-		// Serial.println("END QUEUE DUMP");
-		// }
-		while (!commandQueue.empty())
-		{
-			auto comm = commandQueue.top();
-
-			if (now <= comm->run_after)
-			{
-				break;
-			}
-
-			commandQueue.pop();
-			comm->Execute(this);
-			delete comm;
-		}
-		xSemaphoreGive(xMutex);
-	}
+void SystemState::queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds) {
+	commandQueue.addCommand<TargetSelection>(source, index, 0xFF, milliseconds * 1000);
 }
 
-void SystemState::actualizeState()
-{
+void SystemState::updateConfig(cerializer::Config* config) {
+	this->config.projectile_speed = fixed(config->projectile_speed);
+	this->config.turret_height = fixed(config->turret_height);
+	stepperA.setMaxSpeed(config->max_speed);
+	stepperA.setAcceleration(config->acceleration);
+	stepperB.setMaxSpeed(config->max_speed);
+	stepperB.setAcceleration(config->acceleration);
+}
+
+/**
+ * @brief Processes the command queue, executing any commands that are due.
+ */
+void SystemState::processCommandQueue() {
+	commandQueue.process(this);
+}
+
+/**
+ * @brief Updates the physical state of the system to match the desired state.
+ */
+void SystemState::actualizeState() {
 	actualizePosition();
 	actualizeFiring();
 }
 
-void SystemState::actualizeFiring()
-{
+/**
+ * @brief Activates or deactivates the firing pin based on the current fire state.
+ */
+void SystemState::actualizeFiring() {
 	digitalWrite(firePin, fireState ? HIGH : LOW);
 }
 
-void SystemState::actualizePosition()
-{
+/**
+ * @brief Updates the motor positions to track the current target.
+ */
+void SystemState::actualizePosition() {
+	if (!moveState) {
+		return;
+	}
+
 	auto target = currentTarget();
-	// Serial.println("pos check");
-
-	// Serial.println(target.valid);
-	// Serial.println(target.X_coord);
-	// Serial.println(target.Y_coord);
-	// Serial.println(target.Z_coord);
-	// Serial.printf("V: %i    loc: %f    %f\n", target.valid, float(target.Pitch()), float(target.Yaw()));
-	if (needTrackingUpdate && target.valid)
-	{
-		// Serial.println("Updating Tracking");
-		/*
-		This might need to be some form of smoothing function that takes target positions and smooths them out into a motion path?
-		Basically take multiple target positions over time, and try to match the targets velocity, and also their positiono.
-		I think that's something that a pid controller does?
-		Yes, pid controller.
-		Pitch and yaw each get a controller, and it should output a movement speed for each motor.
-		We should set the speed for each of them and use runSpeed to move at that velocity.
-		It's inputs should be the current position in the respective dimension.
-
-		Specifically, a pid controller on the quaternion of the firing angle with a kalman tracker of some sort for smoothing and prediction.
-		*/
-
+	if (needTrackingUpdate && target.valid) {
+		// Calculate the aimpoint using the target's intercept position
 		auto aimpoint = target.interceptPosition();
-		// auto position = target.Position();
-		// Serial.printf("At %f %f %f %f/%f\n", float(position.X_coord), float(position.Y_coord), float(position.Z_coord), float(position.Pitch()), float(position.Yaw()));
-		// Serial.printf("Aim %f %f %f %f/%f\n", float(aimpoint.X_coord), float(aimpoint.Y_coord), float(aimpoint.Z_coord), float(aimpoint.Pitch()), float(aimpoint.Yaw()));
-		// auto cyaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
-		// auto cpitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
+		auto pitch = long(std::min(std::max(aimpoint.Pitch(), fixed(-60)), fixed(60)) / angleToStep);
+		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
 
-		// Serial.printf("Curr %f %f\n", float(cpitch), float(cyaw));
-
-		// Serial.printf("loc: %f    %f\n", float(target.Pitch()), float(target.Yaw()));
-		auto pitch = long(min(max(aimpoint.Pitch(), -60), 60) / angleToStep);
-		auto yaw = long(min(max(aimpoint.Yaw(), -70), 70) / angleToStep);
-
-		// int delta_A = pitch + yaw;
-		// int delta_B = yaw - pitch;
-
+		// Convert pitch and yaw to motor steps
 		int delta_A = yaw + pitch;
 		int delta_B = pitch - yaw;
 
-		// long moveA = delta_A - stepperA.currentPosition();
-		// long moveB = delta_B - stepperB.currentPosition();
-		// long distance = pow(moveA, 2) + pow(moveB, 2);
-
-		// if (distance <= 50)
-		// {
-		// 	return;
-		// }
-
+		// Set motor speed based on tracking speed
 		double iterMaxSpeed = trackingSpeed / double(0xFF) * maxSpeed * stepFraction;
-		// long moveA = delta_A - stepperA.currentPosition();
-		// long moveB = delta_B - stepperB.currentPosition();
-		// long distance = sqrt(pow(moveA, 2) + pow(moveB, 2));
-		// iterMaxSpeed *= distance / (distance + 1);
 
-		// iterMaxSpeed *= iterMaxSpeed/maxSpeed * min(distance/float(400), float(1));
-		// iterMaxSpeed = max(min(iterMaxSpeed, float(maxSpeed)), float(25));
-		// iterMaxSpeed = min(iterMaxSpeed, float(maxSpeed));
-
-		// Serial.printf("Moving to (%f, %f) [%i, %i] at %f via delta (%i, %i) -> %i\n", target.Pitch(), target.Yaw(), pitch, yaw, iterMaxSpeed, moveA, moveB, distance);
-
-		long delta[2] = {
-			delta_A,
-			delta_B,
-		};
 		stepperA.setMaxSpeed(iterMaxSpeed);
 		stepperB.setMaxSpeed(iterMaxSpeed);
 
+		// Move motors to the new target position
 		stepperA.moveTo(delta_A);
 		stepperB.moveTo(delta_B);
 
-		// steppers.moveTo(delta);
 		needTrackingUpdate = false;
 	}
 
-	if (stepperA.distanceToGo() || stepperB.distanceToGo())
-	{
-		// steppers.run();
+	// Continuously run the motors to move towards the target
+	if (stepperA.distanceToGo() || stepperB.distanceToGo()) {
 		stepperA.run();
 		stepperB.run();
 	}
 }
 
-fixed SystemState::targetTravelDistance()
-{
+fixed SystemState::targetTravelDistance() {
 	auto target = currentTarget();
-	if (!target.valid)
-	{
+	if (!target.valid) {
 		return INT_MAX;
 	}
 	auto aimpoint = target.interceptPosition();
@@ -258,30 +189,14 @@ fixed SystemState::targetTravelDistance()
 	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
 	auto pitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
 
-	// Serial.printf("At %f %f Want %f %f\n", pitch, yaw, target.Pitch(), target.Yaw());
-			// return atan2(cross(other).magnitude(), dot(other)) * rad2DegFactor;
+	auto delta_yaw = aimpoint.Yaw() - yaw;
 
-	// sqrt(sin(yaw)sin(yaw`)cos(pitch-pitch`)+cos(yaw)cos(yaw`)
+	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
 
-	// return sqrt(sin(yaw)*sin(aimpoint.Yaw())*cos(pitch-aimpoint.Pitch())+cos(yaw)*cos(aimpoint.Yaw()));
-
-
-	// return sqrt(pow(yaw - aimpoint.Yaw(), 2) + pow(pitch - aimpoint.Pitch(), 2));
-
-    auto delta_yaw = aimpoint.Yaw() - yaw;
-
-    // The argument for arccosine, derived from the Spherical Law of Cosines.
-    auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) +
-                       cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
-
-    // Clamp the value to handle potential floating-point inaccuracies
-    // cos_alpha = max(-1.0, min(1.0, cos_alpha));
-
-    return acos(cos_alpha);
+	return acos(cos_alpha);
 }
 
-PositionVector SystemState::targetAimpoint()
-{
+PositionVector SystemState::targetAimpoint() {
 	const auto target = currentTarget();
 	return target.interceptPosition();
 }

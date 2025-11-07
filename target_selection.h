@@ -1,17 +1,26 @@
 #pragma once
 
 #include "command.h"
+#include "shared_types.h"
 
-class TargetSelection : public Command
-{
-	uint8_t target_id;
-	int speed = 0xFF;
-
+/**
+ * @brief A command to select a target for the system to focus on.
+ *
+ * This class implements the Command interface to schedule a change in the
+ * currently selected target. The radar identifies potential targets, and this
+ * command is used to specify which one to track and engage.
+ */
+class TargetSelection: public Command {
 public:
-	void Execute(SystemState *state);
-	TargetSelection(uint8_t, int, int64_t);
+	// -- Constructors --
+	TargetSelection(TargetSource, uint8_t, int, int64_t);
 
-	// This should actually just be speed and target index.
-	// The radar will set the targets as it finds them, and then we schedule which one we're interested in.
+	// -- Public Methods --
+	void Execute(SystemState* state) override;
+
+private:
+	// -- Private Attributes --
+	TargetSource target_source;
+	uint8_t      target_id;    ///< The ID of the target to be selected.
+	int          speed = 0xFF; ///< The tracking speed to use for the selected target.
 };
-

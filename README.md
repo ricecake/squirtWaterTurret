@@ -18,7 +18,7 @@ The high-level logic runs as a Python script, leveraging a Luxonis OAK-D camera 
 
 The low-level control system is a C++ application running on an ESP32 microcontroller.
 
-*   **Motion System:** It controls a pan/tilt turret built with two stepper motors, using the `AccelStepper` and `MultiStepper` libraries for smooth, coordinated movement.
+*   **Motion System:** It controls a pan/tilt turret built with two stepper motors, using the `AccelStepper` library for smooth, coordinated movement.
 *   **Dual-Mode Input:** The firmware can operate in two modes. It can either receive target coordinates from the main CV system or function independently using an LD2450 radar module for basic motion detection.
 *   **Command Queue:** To manage operations, the firmware uses a time-sequenced command queue. Actions like "move to coordinates," "select target," and "fire" are scheduled and executed in order. This allows for sequencing complex behaviors without blocking the main control loop.
 
@@ -58,7 +58,7 @@ Unsuspecting.
 *   C++ (Arduino Framework)
 *   `depthai`
 *   `sqlite-vec`
-*   `AccelStepper` & `MultiStepper`
+*   `AccelStepper`
 
 ## Getting Started
 

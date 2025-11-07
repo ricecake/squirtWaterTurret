@@ -2,6 +2,7 @@
 *.o
 *.s
 *.xpp
+*.out
 a.out
 example*
 buildNotes.txt
@@ -18,3 +19,5 @@ test_runner
 TestFrames
 documentation/public
 .hugo_build.lock
+build
+junk_*

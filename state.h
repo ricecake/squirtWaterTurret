@@ -1,140 +1,213 @@
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
-#include <stdint.h>
 #include <queue>
-#include <AccelStepper.h>
-#include <MultiStepper.h>
+#include <span>
 
-#include "vector.hpp"
+#ifdef ARDUINO
+	#include "freertos/FreeRTOS.h"
+	#include "freertos/semphr.h"
+	#include <AccelStepper.h>
+	#include <Arduino.h>
+#else
+	#include "tests/mocks.h"
+#endif
+
 #include "command.h"
-#include "target.h"
+#include "command_queue.h"
 #include "fpm_adapter.hpp"
+#include "serializer.hpp"
+#include "shared_types.h"
+#include "target.h"
+#include "utilities.h"
+#include "vector.hpp"
 
 using fixed = fixed_16_16;
-
 class Command;
 
-class SystemState
-{
-private:
-	const int motorInterfaceType = 1;
-
-	// Define pin connections
-	// const int stepPinB = 32;
-	// const int dirPinB = 33;
-	// const int stepPinA = 25;
-	// const int dirPinA = 26;
-	const int stepPinA = 32;
-	const int dirPinA = 33;
-	const int stepPinB = 25;
-	const int dirPinB = 26;
-
-	const int firePin = 2;
-
-public:
-	// Define motor limits
-	// const int maxSpeed = maxSpeed; // This should be made more internal, and things should use proportional values.  Half speed, full speed, etc.
-	// const int acceleration = 120;
-
-	// Define other constants
-	const int stepFraction = 16; // The microstep fraction
-
-	const int h_max = 500;
-	const int v_max = 1000;
-	const int h_min = -500;
-	const int v_min = -1000;
-
-	const fixed angleToStep{0.1125}; //(360 / 200) / 1 / 16; // circle / steps per circle / gear ratio / step division
-
-private:
-
-public:
-	AccelStepper stepperA;
-	AccelStepper stepperB;
-	MultiStepper steppers;
-
-	SemaphoreHandle_t xMutex;
-
-private:
-	bool moveState = true;
-	bool fireState = false;
-	bool needTrackingUpdate = false;
-	uint8_t trackingSpeed = 255;
-	uint8_t selectedTarget = 0;
-
-private:
-	PositionVector targetAimpoint();
-	std::array<Target, 32> target;
-	std::array<Target, 3> radarTarget; // Separate the two -- by default populate the radar target and prefer the target list if possible
-	std::priority_queue<Command *, std::vector<Command *>, decltype([](auto left, auto right)
-																	{ return left->run_after >= right->run_after; })>
-		commandQueue;
-
-public:
-	SystemState();
-	Target &currentTarget();
-	constexpr size_t size() {
-		return target.size();
-	}
-	void updateTarget(const uint8_t idx, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin = 0);
-	inline void updateTargetById(const uint8_t id, const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin = 0) {
-		auto pred = [&](Target& item) {
-			return item.id == id;
-		};
-		auto found = std::ranges::find_if(target, pred);
-
-		if (found == target.end()) {
-			auto pred = [&](Target& item) {
-				return item.valid == false;
-			};
-			found = std::ranges::find_if(target, pred);
-		}
-
-		if (found == target.end()) {
-			auto pred = [&](Target& item) {
-				return item.seen;
-			};
-			found = std::ranges::min_element(target, std::ranges::less{}, pred);
-		}
-
-		updateTarget(found->index, valid, newPosition, indifferenceMargin);
-		target[found->index].id = id;
-	};
-	void updateNearestTarget(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin = 0);
-	void updateNearestTarget2d(const bool valid, PositionVector &newPosition, const uint16_t indifferenceMargin = 0);
-	void setTarget(uint8_t index, uint8_t speed = 0xFF);
-	void setFire(bool active);
-	bool getFireState();
-	void queueSelectTarget(uint8_t index, uint16_t milliseconds);
-	void queueFire(uint16_t milliseconds);
-	void queueLinger(uint8_t milliseconds);
-	void processCommandQueue();
-	void actualizeState();
-	inline Target &fetchTarget(const uint8_t idx) {
-		return target[idx];
-	}
-	inline uint8_t fetchNearestTargetIdx(const PositionVector& point) {
-		auto distance = [&](Target& item){
-			auto pos = item.Position();
-			return pow(pos.X_coord - point.X_coord, 2)+pow(pos.Y_coord - point.Y_coord, 2)+pow(pos.Z_coord - point.Z_coord, 2);
-		};
-		auto res = std::ranges::min_element(target, std::ranges::less{}, distance);
-		return std::ranges::distance(target.begin(), res);
-	}
-
-	inline uint8_t fetchNearestTarget2dIdx(const PositionVector& point) {
-		auto distance = [&](Target& item){
-			auto pos = item.Position();
-			return pow(pos.X_coord - point.X_coord, 2)+pow(pos.Y_coord - point.Y_coord, 2);
-		};
-		auto res = std::ranges::min_element(target, std::ranges::less{}, distance);
-		return std::ranges::distance(target.begin(), res);
-	}
-
-	fixed targetTravelDistance();
-
-private:
-	void actualizePosition();
-	void actualizeFiring();
+/**
+ * @brief A struct to hold tunable configuration parameters for the system.
+ *
+ * These values are expected to be set at runtime via a configuration message.
+ */
+struct ConfigParameters {
+	fixed projectile_speed = projectileSpeed; ///< The initial speed of the projectile in meters/second.
+	fixed turret_height = altitude;           ///< The height of the turret from the ground in meters.
 };
+
+/**
+ * @brief Manages the overall state of the system.
+ *
+ * This class encapsulates all system components, including motors, targets,
+ * and the command queue. It provides an interface for updating and controlling
+ * the system's behavior.
+ */
+class SystemState {
+public:
+	// -- Constructors --
+	SystemState();
+
+	// -- Public Methods --
+	Target&           currentTarget();
+	std::span<Target> currentTargetArray();
+	inline size_t     size();
+
+	void updateTarget(
+		auto&           targetArray,
+		const uint8_t   idx,
+		const bool      valid,
+		PositionVector& newPosition,
+		const uint16_t  indifferenceMargin = 0
+	);
+	void updateTargetById(
+		auto&           targetArray,
+		const uint8_t   id,
+		const bool      valid,
+		PositionVector& newPosition,
+		const uint16_t  indifferenceMargin = 0
+	);
+	void    updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+	void    setTarget(TargetSource source, uint8_t index, uint8_t speed = 0xFF);
+	void    setFire(bool active);
+	void    setMove(bool active);
+	void    setStrategy(TurretStrategy strategy);
+	void    setStance(TurretStance stance);
+	bool    getFireState();
+	bool    getMoveState();
+	void    queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds);
+	void    queueFire(uint16_t milliseconds);
+	void    queueCeaseFire(uint16_t milliseconds);
+	void    updateConfig(cerializer::Config* config);
+	void    processCommandQueue();
+	void    actualizeState();
+	Target& fetchTarget(const uint8_t idx);
+	uint8_t fetchNearestTargetIdx(const PositionVector& point);
+	uint8_t fetchNearestTarget2dIdx(const PositionVector& point);
+	fixed   targetTravelDistance();
+
+	// -- Public Attributes --
+	const int   stepFraction = 16;   ///< Microstep fraction for the stepper motors.
+	const int   h_max = 500;         ///< Maximum horizontal position.
+	const int   v_max = 1000;        ///< Maximum vertical position.
+	const int   h_min = -500;        ///< Minimum horizontal position.
+	const int   v_min = -1000;       ///< Minimum vertical position.
+	const fixed angleToStep{0.1125}; ///< Conversion factor from angle to motor steps.
+
+	ConfigParameters config;   ///< Runtime configuration parameters.
+	AccelStepper     stepperA; ///< Stepper motor A instance.
+	AccelStepper     stepperB; ///< Stepper motor B instance.
+
+	TargetSource           target_source;
+	std::array<Target, 32> cvTarget;
+	std::array<Target, 3>  radarTarget;
+	Target                 staticTarget;
+
+private:
+	// -- Private Methods --
+	void           actualizePosition();
+	void           actualizeFiring();
+	PositionVector targetAimpoint();
+
+	// -- Private Attributes --
+	const int motorInterfaceType = 1; ///< Stepper motor driver interface type.
+	const int stepPinA = 32;          ///< Step pin for stepper motor A.
+	const int dirPinA = 33;           ///< Direction pin for stepper motor A.
+	const int stepPinB = 25;          ///< Step pin for stepper motor B.
+	const int dirPinB = 26;           ///< Direction pin for stepper motor B.
+	const int firePin = 2;            ///< Pin for the firing mechanism.
+
+	bool           moveState = true;               ///< Flag indicating if movement is enabled.
+	bool           fireState = false;              ///< Flag indicating the current firing state.
+	bool           needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
+	uint8_t        trackingSpeed = 255;            ///< The speed for tracking movements.
+	Target*        selectedTarget = &staticTarget; //< A reference to the currently selected target
+	TurretStrategy strategy;
+	TurretStance   stance;
+
+	CommandQueue commandQueue; ///< Priority queue for pending commands.
+};
+
+// ======================================================================================
+// --- Inline-Defined Methods ---
+// ======================================================================================
+
+inline size_t SystemState::size() {
+	return currentTargetArray().size();
+}
+
+inline void SystemState::updateTarget(
+	auto&           targetArray,
+	const uint8_t   idx,
+	const bool      valid,
+	PositionVector& newPosition,
+	const uint16_t  indifferenceMargin
+) {
+	bool doUpdate = true;
+	if (indifferenceMargin > 0) {
+		auto oldTarget = targetArray[idx];
+		auto oldTargetPos = oldTarget.Position();
+		if (oldTarget.valid && oldTargetPos) {
+			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
+			doUpdate = (travelAngle) > indifferenceMargin;
+		}
+	}
+
+	if (doUpdate) {
+		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that
+		// are real
+		targetArray[idx].Update(newPosition);
+		targetArray[idx].valid = valid;
+		needTrackingUpdate = true;
+	}
+}
+
+inline void SystemState::updateTargetById(
+	auto&           targetArray,
+	const uint8_t   id,
+	const bool      valid,
+	PositionVector& newPosition,
+	const uint16_t  indifferenceMargin
+) {
+	auto pred = [&](const Target& item) { return item.id == id; };
+	auto found = std::ranges::find_if(targetArray, pred);
+
+	if (found == targetArray.end()) {
+		auto pred = [&](const Target& item) { return item.valid == false; };
+		found = std::ranges::find_if(targetArray, pred);
+	}
+
+	if (found == targetArray.end()) {
+		auto pred = [&](const Target& item) { return item.seen; };
+		found = std::ranges::min_element(targetArray, std::ranges::less{}, pred);
+	}
+
+	updateTarget(targetArray, found->index, valid, newPosition, indifferenceMargin);
+	targetArray[found->index].id = id;
+};
+
+inline Target& SystemState::fetchTarget(const uint8_t idx) {
+	return currentTargetArray()[idx];
+}
+
+inline uint8_t SystemState::fetchNearestTargetIdx(const PositionVector& point) {
+	auto distance = [&](Target& item) {
+		auto pos = item.Position();
+		return pow(pos.X_coord - point.X_coord, 2) + pow(pos.Y_coord - point.Y_coord, 2) +
+			pow(pos.Z_coord - point.Z_coord, 2);
+	};
+	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
+	return std::ranges::distance(currentTargetArray().begin(), res);
+}
+
+inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point) {
+	auto distance = [&](Target& item) {
+		auto pos = item.Position();
+		return pow(pos.X_coord - point.X_coord, 2) + pow(pos.Y_coord - point.Y_coord, 2);
+	};
+	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
+	return std::ranges::distance(currentTargetArray().begin(), res);
+}
