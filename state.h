@@ -97,10 +97,9 @@ public:
 	const int   v_min = -1000;       ///< Minimum vertical position.
 	const fixed angleToStep{0.1125}; ///< Conversion factor from angle to motor steps.
 
-	ConfigParameters  config;   ///< Runtime configuration parameters.
-	AccelStepper      stepperA; ///< Stepper motor A instance.
-	AccelStepper      stepperB; ///< Stepper motor B instance.
-	SemaphoreHandle_t xMutex;   ///< Mutex for thread-safe access to shared resources.
+	ConfigParameters config;   ///< Runtime configuration parameters.
+	AccelStepper     stepperA; ///< Stepper motor A instance.
+	AccelStepper     stepperB; ///< Stepper motor B instance.
 
 	TargetSource           target_source;
 	std::array<Target, 32> cvTarget;

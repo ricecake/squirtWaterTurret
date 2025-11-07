@@ -41,20 +41,6 @@ using SemaphoreHandle_t = int;
 #define LOW 0x0
 #define SERIAL_8N1 0
 
-static std::mutex myMutex;
-
-static inline SemaphoreHandle_t xSemaphoreCreateMutex() {
-	return 0;
-}
-
-static inline int xSemaphoreTake(SemaphoreHandle_t, uint32_t) {
-	return myMutex.try_lock();
-}
-
-static inline void xSemaphoreGive(SemaphoreHandle_t) {
-	return myMutex.unlock();
-}
-
 static inline void pinMode(int, int) {}
 
 static inline void digitalWrite(int, int) {}
@@ -129,8 +115,7 @@ static inline int analogRead(int) {
 static inline void delay(int) {}
 
 static inline void vTaskDelay(int d) {
-	// std::this_thread::sleep_for(std::chrono::milliseconds(d));
-	std::this_thread::sleep_for(std::chrono::microseconds(d));
+	std::this_thread::sleep_for(std::chrono::milliseconds(d));
 }
 
 static std::vector<std::thread> threads;

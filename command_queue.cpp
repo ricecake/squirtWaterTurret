@@ -9,10 +9,10 @@
 CommandQueue::CommandQueue() = default;
 
 void CommandQueue::process(SystemState* state) {
+	uint64_t                              now = microSinceEpoch();
 	std::vector<std::shared_ptr<Command>> runnable_commands;
 	{
 		std::lock_guard<std::mutex> lock(xMutex);
-		uint64_t now = microSinceEpoch();
 		while (!commandQueue.empty()) {
 			// Defensively check for null pointers, which seem to be the cause
 			// of the crash. We don't know why they are in the queue, but we
@@ -22,14 +22,13 @@ void CommandQueue::process(SystemState* state) {
 				continue;
 			}
 
-			// If the command is ready to run, move it to a temporary vector.
-			if (now >= commandQueue.top()->run_after) {
-				runnable_commands.push_back(commandQueue.top());
-				commandQueue.pop();
-			} else {
+			if (now < commandQueue.top()->run_after) {
 				// The queue is sorted by time, so we can stop here.
 				break;
 			}
+			// If the command is ready to run, move it to a temporary vector.
+			runnable_commands.push_back(commandQueue.top());
+			commandQueue.pop();
 		}
 	}
 
@@ -44,11 +43,11 @@ void CommandQueue::process(SystemState* state) {
 
 std::string CommandQueue::serialize() {
 	std::stringstream ss;
+	auto              now = microSinceEpoch();
 	{
 		std::lock_guard<std::mutex> lock(xMutex);
-		auto tempQueue = commandQueue;
+		auto                        tempQueue = commandQueue;
 
-		auto now = microSinceEpoch();
 		ss << "Time: " << now << std::endl;
 		bool flagged = false;
 		while (!tempQueue.empty()) {
@@ -64,5 +63,6 @@ std::string CommandQueue::serialize() {
 			tempQueue.pop();
 		}
 	}
+
 	return ss.str();
 }

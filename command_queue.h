@@ -7,8 +7,10 @@
 #include <vector>
 
 #include "command.h"
-#include "tests/mocks.h"
 #include "utilities.h"
+#ifndef ARDUINO
+	#include "tests/mocks.h"
+#endif
 
 class SystemState;
 class Command;
@@ -40,9 +42,9 @@ public:
 
 	template <typename T, typename... Args>
 	void addCommandAfter(Args&&... args) {
-		auto now = microSinceEpoch();
-		auto last_run_after = (max_run_after - now) + 1;
-		auto newCommand = std::make_shared<T>(std::forward<Args>(args)..., last_run_after);
+		auto                        now = microSinceEpoch();
+		auto                        last_run_after = (max_run_after - now) + 1;
+		auto                        newCommand = std::make_shared<T>(std::forward<Args>(args)..., last_run_after);
 		std::lock_guard<std::mutex> lock(xMutex);
 		commandQueue.push(std::move(newCommand));
 	}
@@ -60,6 +62,6 @@ private:
 		std::shared_ptr<Command>,
 		std::vector<std::shared_ptr<Command>>,
 		decltype(CommandPointerComparator)>
-						commandQueue;
-	mutable std::mutex	xMutex;
+					   commandQueue;
+	mutable std::mutex xMutex;
 };
