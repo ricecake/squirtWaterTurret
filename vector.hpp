@@ -159,17 +159,17 @@ public:
 	/**
 	 * @brief Computes the pitch angle of the vector.
 	 */
-	NumericType pitch() const { return atan2(Z_coord, magnitudeXY()) * rad2DegFactor; }
+	NumericType pitch() const { return atan2(Z_coord, magnitudeXY()); }
 
 	/**
 	 * @brief Computes the yaw angle of the vector.
 	 */
-	NumericType yaw() const { return atan2(X_coord, Y_coord) * rad2DegFactor; }
+	NumericType yaw() const { return atan2(X_coord, Y_coord); }
 
 	/**
 	 * @brief Computes the angle to another vector.
 	 */
 	NumericType angleTo(const VectorCompatible<NumericType> auto& other) const {
-		return atan2(cross(other).magnitude(), dot(other)) * rad2DegFactor;
+		return atan2(cross(other).magnitude(), dot(other));
 	}
 };
