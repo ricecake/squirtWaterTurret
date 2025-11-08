@@ -35,8 +35,8 @@ TEST_CASE("PositionVector") {
 	SUBCASE("Methods") {
 		PositionVector v(3, 4, 5);
 		CHECK(v.Distance() == 5);
-		CHECK(is_close(v.Pitch(), fixed(0.785398)));
-		CHECK(is_close(v.Yaw(), fixed(0.643501)));
+		CHECK(is_close(v.Pitch(), fixed(45)));
+		CHECK(is_close(v.Yaw(), fixed(36.8698), fixed(0.01)));
 	}
 }
 

@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef ARDUINO
-	#include <Arduino.h>
-#endif
-
 #include <chrono>
 #include <cstdint>
 
