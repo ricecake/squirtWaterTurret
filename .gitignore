@@ -21,3 +21,4 @@ documentation/public
 .hugo_build.lock
 build
 junk_*
+__pycache__/
