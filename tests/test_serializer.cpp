@@ -22,11 +22,11 @@ TEST_CASE("Deserialize single valid message") {
 	std::stringstream stream;
 	stream.write(binary_message.data(), binary_message.size());
 
-	cerializer::Deserializer<std::stringstream> deserializer(stream);
-	bool                                        message_received = false;
+	cerializer::StreamHandler<std::stringstream> handler(stream);
+	bool                                         message_received = false;
 
 	// Act: Parse the stream.
-	deserializer.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
+	handler.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
 		message_received = true;
 
 		// Assert: Check that the deserialized message is correct.
@@ -56,11 +56,11 @@ TEST_CASE("Deserialize multiple valid messages") {
 		stream.write(binary_message.data(), binary_message.size());
 	}
 
-	cerializer::Deserializer<std::stringstream> deserializer(stream);
-	std::vector<cerializer::Target>             received_messages;
+	cerializer::StreamHandler<std::stringstream> handler(stream);
+	std::vector<cerializer::Target>              received_messages;
 
 	// Act: Parse the stream.
-	deserializer.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
+	handler.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
 		CHECK(msg != nullptr);
 		CHECK(msg->Code() == cerializer::Target::Type());
 
@@ -88,11 +88,11 @@ TEST_CASE("Deserialize with invalid data") {
 	stream.write(binary_message.data(), binary_message.size());
 	stream << junk_data;
 
-	cerializer::Deserializer<std::stringstream> deserializer(stream);
-	bool                                        message_received = false;
+	cerializer::StreamHandler<std::stringstream> handler(stream);
+	bool                                         message_received = false;
 
 	// Act: Parse the stream.
-	deserializer.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
+	handler.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
 		message_received = true;
 
 		// Assert: Check that the deserialized message is correct.
@@ -112,14 +112,37 @@ TEST_CASE("Deserialize incomplete message") {
 	std::stringstream stream;
 	stream.write(binary_message.data(), binary_message.size() - 1); // Write all but the last byte
 
-	cerializer::Deserializer<std::stringstream> deserializer(stream);
-	bool                                        message_received = false;
+	cerializer::StreamHandler<std::stringstream> handler(stream);
+	bool                                         message_received = false;
 
 	// Act: Parse the stream.
-	deserializer.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
+	handler.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
 		message_received = bool(msg); // This should not be called
 	});
 
 	// Assert: No message should have been deserialized.
 	CHECK(!message_received);
+}
+
+TEST_CASE("Serialize and deserialize a message") {
+	// Arrange: Create a message and a stream.
+	const cerializer::Target original_message(101, true, 12, 13, 14);
+	std::stringstream        stream;
+
+	cerializer::StreamHandler<std::stringstream> handler(stream);
+	bool                                         message_received = false;
+
+	// Act: Write the message to the stream, then parse it back.
+	handler.Write(original_message);
+
+	handler.ParseStream<cerializer::BasePacket>([&](cerializer::BasePointer& msg) {
+		message_received = true;
+
+		// Assert: Check that the deserialized message is correct.
+		CHECK(msg != nullptr);
+		auto received_message = dynamic_cast<cerializer::Target*>(msg.get());
+		require_messages_equal(original_message, *received_message);
+	});
+
+	CHECK(message_received);
 }

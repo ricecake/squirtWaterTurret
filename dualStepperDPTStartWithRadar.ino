@@ -42,6 +42,8 @@ struct IOWrapper {
 		return 0;
 	};
 
+	void write(const char* cbuf, size_t count) { io.write(reinterpret_cast<const uint8_t*>(cbuf), count); };
+
 	bool good() { return bool(io); };
 
 	IOWrapper(HardwareSerial& io): io(io) {};
@@ -52,8 +54,8 @@ HardwareSerial testSerial(2);
 
 IOWrapper wrapped(testSerial);
 
-cerializer::Deserializer deserializer(wrapped);
-LD2450                   ld2450;
+cerializer::StreamHandler streamHandler(wrapped);
+LD2450                    ld2450;
 
 SystemState dptState;
 
@@ -95,10 +97,11 @@ void refreshRadarTargets() {
 }
 
 void readSerialCommands() {
-	deserializer.ParseStream(std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
-		if (!thing) {
-			return;
-		}
+	streamHandler.ParseStream<cerializer::BasePacket>(
+		std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
+			if (!thing) {
+				return;
+			}
 
 		switch (thing->Code()) {
 		case cerializer::Target::Type(): {

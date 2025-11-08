@@ -67,6 +67,11 @@ public:
 
 	size_t readBytes(char*, size_t) { return 0; }
 
+	size_t write(const uint8_t* buffer, size_t size) {
+		std::cout.write(reinterpret_cast<const char*>(buffer), size);
+		return size;
+	}
+
 	void print(auto message) { std::cout << message; }
 
 	void println(auto message) { std::cout << message << std::endl; }
