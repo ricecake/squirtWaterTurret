@@ -72,6 +72,24 @@ private:
 // ======================================================================================
 
 // -- Target --
+
+/**
+ * @brief Constructs a Target with a given position and velocity.
+ * @param P The position vector.
+ * @param V The velocity vector.
+ */
+inline Target::Target(PositionVector P, VelocityVector V): position(P), velocity(V) {}
+
+/**
+ * @brief Constructs a Target with an index, validity, position, and velocity.
+ * @param index The index of the target.
+ * @param valid The validity of the target.
+ * @param P The position vector.
+ * @param V The velocity vector.
+ */
+inline Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V):
+	valid(valid), index(index), position(P), velocity(V) {}
+
 /**
  * @brief Predicts the target's position at a future time.
  * @param interval The time interval for the prediction.
@@ -89,50 +107,41 @@ inline bool Target::idleExceeds(const ChronoDuration auto limit) const {
 	return timeSinceLastSeen() > limit;
 }
 
-inline const PositionVector Target::interceptPosition() const {
-	const PositionVector       proj_pos = PositionVector(0, 0, 1.5);
-	const PositionVector       target_pos = position;
-	const VelocityVector       target_velocity = velocity;
-	const fixed_24_8           proj_speed = 20;
-	const Vector3D<fixed_24_8> Gv(0, 0, 9.814);
-	const fixed_24_8           G = Gv.magnitude();
+/**
+ * @brief Gets the velocity of the target.
+ * @return The velocity vector.
+ */
+inline const VelocityVector Target::Velocity() const {
+	return velocity;
+}
 
-	const fixed_24_8 P = target_velocity.X_coord;
-	const fixed_24_8 Q = target_velocity.Z_coord;
-	const fixed_24_8 R = target_velocity.Y_coord;
+/**
+ * @brief Gets the position of the target.
+ * @return The position vector.
+ */
+inline const PositionVector Target::Position() const {
+	return position;
+}
 
-	const auto       diff = target_pos - proj_pos;
-	const fixed_24_8 H = diff.X_coord;
-	const fixed_24_8 J = diff.Z_coord;
-	const fixed_24_8 K = diff.Y_coord;
+/**
+ * @brief Calculates the time elapsed since the last action was performed on this target.
+ * @return The time interval since the last action.
+ */
+inline TimeInterval Target::timeSinceLastAction() const {
+	return TimeInterval(Clock::now() - last_action);
+}
 
-	const fixed_24_8 L = fixed_24_8(-0.5) * G;
-	const fixed_24_8 S = proj_speed;
+/**
+ * @brief Calculates the time elapsed since the target was last seen.
+ * @return The time interval since the last sighting.
+ */
+inline TimeInterval Target::timeSinceLastSeen() const {
+	return TimeInterval(Clock::now() - seen);
+}
 
-	// Quartic Coefficients
-	const fixed_24_8 c0 = L * L;
-	const fixed_24_8 c1 = -2 * Q * L;
-	const fixed_24_8 c2 = -2 * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - pow(S, 2);
-	const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
-	const fixed_24_8 c4 = diff.dot(diff);
-
-	const std::function<fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic =
-		[=](const fixed_24_8 t) -> fixed_24_8 {
-		return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
-	};
-
-	const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
-
-	if (intercept == 0) {
-		return PositionVector(H, K, J);
-	}
-
-	auto pos = diff + target_velocity * intercept;
-	pos.Z_coord = fixed_24_8(pos.Z_coord) - L * pow(intercept, 2);
-
-	return PositionVector(
-		(H + P * intercept) / intercept,
-		(K + R * intercept) / intercept,
-		(J + Q * intercept - L * pow(intercept, 2)) / intercept
-	);
-};
+/**
+ * @brief Increments the action counter by updating the last action timestamp.
+ */
+inline void Target::IncrementAction() {
+	last_action = Clock::now();
+}
