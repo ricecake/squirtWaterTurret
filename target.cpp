@@ -8,61 +8,6 @@
 #include <stdint.h>
 
 /**
- * @brief Constructs a PositionVector by adding a DistanceVector to a PositionVector.
- * @param p The initial position vector.
- * @param d The distance vector to add.
- */
-PositionVector::PositionVector(PositionVector p, DistanceVector d) {
-	*this = p + d;
-}
-
-/**
- * @brief Calculates the pitch of the vector, caching the result.
- * @return The pitch in radians.
- */
-fixed PositionVector::Pitch() {
-	if (!_pitch) {
-		_pitch = pitch();
-	}
-	return _pitch;
-}
-
-/**
- * @brief Calculates the yaw of the vector, caching the result.
- * @return The yaw in radians.
- */
-fixed PositionVector::Yaw() {
-	if (!_yaw) {
-		_yaw = yaw();
-	}
-	return _yaw;
-}
-
-/**
- * @brief Calculates the 2D magnitude (distance) of the vector, caching the result.
- * @return The distance in the XY plane.
- */
-fixed PositionVector::Distance() {
-	if (!_distance) {
-		_distance = magnitudeXY();
-	}
-	return _distance;
-}
-
-/**
- * @brief Constructs a VelocityVector from a DistanceVector and a time interval.
- * @param dist The distance vector.
- * @param interval The time interval.
- */
-VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval) {
-	if (interval.count()) {
-		X_coord = dist.X_coord / interval.count();
-		Y_coord = dist.Y_coord / interval.count();
-		Z_coord = dist.Z_coord / interval.count();
-	}
-}
-
-/**
  * @brief Constructs a Target with a given position and velocity.
  * @param P The position vector.
  * @param V The velocity vector.

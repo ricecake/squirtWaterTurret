@@ -1,9 +1,9 @@
 #include "doctest/doctest.h"
 #include "mock_time.h"
+#include "spatial.h"
 #include "target.h"
-#include "vector.hpp"
 
-TestClock mock_clock;
+extern TestClock mock_clock;
 
 TEST_CASE("Target PredictedPosition") {
 	mock_clock.reset();
