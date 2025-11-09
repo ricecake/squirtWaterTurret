@@ -23,11 +23,12 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		const fixed          g = 9.814;
 
 		// 1. Calculate the initial velocity vector of the projectile.
-		PositionVector initial_proj_vel_pos = aiming_position.normalize() * projectile_speed;
+		DistanceVector       initial_proj_vel_dv =
+			(aiming_position - initial_proj_pos).normalize() * projectile_speed;
 		VelocityVector initial_proj_vel(
-			initial_proj_vel_pos.X_coord,
-			initial_proj_vel_pos.Y_coord,
-			initial_proj_vel_pos.Z_coord
+			initial_proj_vel_dv.X_coord,
+			initial_proj_vel_dv.Y_coord,
+			initial_proj_vel_dv.Z_coord
 		);
 
 		// 2. Calculate the time of flight to the target's XZ plane.
@@ -61,11 +62,12 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		const fixed          g = 9.814;
 
 		// 1. Calculate the initial velocity vector of the projectile.
-		PositionVector initial_proj_vel_pos = aiming_position.normalize() * projectile_speed;
+		DistanceVector       initial_proj_vel_dv =
+			(aiming_position - initial_proj_pos).normalize() * projectile_speed;
 		VelocityVector initial_proj_vel(
-			initial_proj_vel_pos.X_coord,
-			initial_proj_vel_pos.Y_coord,
-			initial_proj_vel_pos.Z_coord
+			initial_proj_vel_dv.X_coord,
+			initial_proj_vel_dv.Y_coord,
+			initial_proj_vel_dv.Z_coord
 		);
 
 		// 2. Calculate the time of flight.
