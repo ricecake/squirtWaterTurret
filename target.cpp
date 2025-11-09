@@ -66,7 +66,7 @@ const PositionVector Target::interceptPosition() const {
 
 	const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
 
-	if (intercept == 0) {
+	if (!converged || intercept == 0) {
 		return PositionVector(H, K, J);
 	}
 
