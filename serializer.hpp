@@ -158,11 +158,19 @@ namespace cerializer {
 		requires(std::is_trivially_copyable_v<Ts> && ...) && Container<Cont, char>
 	constexpr inline Dest unpack(const Cont& binaryData) {
 		if constexpr (sizeof...(Ts) < 1) {
-			return *reinterpret_cast<Dest*>(binaryData.data());
+			Dest dest;
+			std::memcpy(&dest, binaryData.data(), sizeof(Dest));
+			return dest;
 		} else {
-			auto            offset = 0;
-			std::span<char> dataView(binaryData);
-			return Dest{*reinterpret_cast<Ts*>(dataView.subspan(postfixAdd(offset, sizeof(Ts)), sizeof(Ts)).data())...};
+			std::tuple<Ts...> args_tuple;
+			size_t            offset = 0;
+			auto              unpack_field = [&](auto& field) {
+                using FieldType = std::remove_reference_t<decltype(field)>;
+                std::memcpy(&field, binaryData.data() + offset, sizeof(FieldType));
+                offset += sizeof(FieldType);
+			};
+			std::apply([&](auto&... fields) { (unpack_field(fields), ...); }, args_tuple);
+			return std::make_from_tuple<Dest>(args_tuple);
 		}
 	};
 

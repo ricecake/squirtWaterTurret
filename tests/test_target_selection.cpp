@@ -20,7 +20,7 @@ TEST_CASE("TargetSelection execute") {
 }
 
 // Test that the next target selection is queued
-TEST_CASE("TargetSelection queues next" * doctest::may_fail()) {
+TEST_CASE("TargetSelection queues next") {
 	SystemState state;
 	state.target_source = TargetSource::CV;
 	// Ensure target is invalid so the timeout is 0
@@ -34,6 +34,7 @@ TEST_CASE("TargetSelection queues next" * doctest::may_fail()) {
 
 	// And it should have queued a command to select target 2 immediately.
 	// Let's process the queue.
+	mock_clock += microseconds(2000).get_duration();
 	state.processCommandQueue();
 
 	// Now the target should be 2
@@ -74,13 +75,7 @@ TEST_CASE("TargetSelection queues next with timeout for valid target") {
 }
 
 // Test that an idle valid target is marked as invalid
-TEST_CASE("TargetSelection invalidates idle target" * doctest::may_fail()) {
-	// This test is currently failing due to a subtle timing issue that needs further investigation.
-	// The test logic appears correct, but the interaction between the mock clock, the command queue,
-	// and the TargetSelection command is not behaving as expected.
-	// Proposed fix: The TargetSelection::Execute method should check if the target has been idle
-	// for 5 seconds before marking it as invalid. The current implementation does not seem to be
-	// doing this check correctly.
+TEST_CASE("TargetSelection invalidates idle target") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
 	SystemState                         state;
@@ -100,6 +95,7 @@ TEST_CASE("TargetSelection invalidates idle target" * doctest::may_fail()) {
 	CHECK(state.fetchTarget(7).valid == false);
 
 	// And the next command (for target 8) should be queued with no timeout
+	mock_clock += microseconds(2000).get_duration();
 	state.processCommandQueue();
 	CHECK(&state.currentTarget() == &state.fetchTarget(8));
 }
