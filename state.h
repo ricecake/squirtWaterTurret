@@ -36,6 +36,7 @@ class Command;
 struct ConfigParameters {
 	fixed projectile_speed = projectileSpeed; ///< The initial speed of the projectile in meters/second.
 	fixed turret_height = altitude;           ///< The height of the turret from the ground in meters.
+	fixed projectile_max_range = 40.0;        ///< The maximum effective range of the projectile in meters.
 };
 
 /**
@@ -111,6 +112,7 @@ private:
 	void           actualizePosition();
 	void           actualizeFiring();
 	PositionVector targetAimpoint();
+	PositionVector getAimpoint();
 
 	// -- Private Attributes --
 	const int motorInterfaceType = 1; ///< Stepper motor driver interface type.

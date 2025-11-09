@@ -41,13 +41,13 @@ const PositionVector Target::interceptPosition() const {
 	const fixed_24_8           G = Gv.magnitude();
 
 	const fixed_24_8 P = target_velocity.X_coord;
-	const fixed_24_8 Q = target_velocity.Z_coord;
-	const fixed_24_8 R = target_velocity.Y_coord;
+	const fixed_24_8 Q = target_velocity.Y_coord;
+	const fixed_24_8 R = target_velocity.Z_coord;
 
 	const auto       diff = target_pos - proj_pos;
 	const fixed_24_8 H = diff.X_coord;
-	const fixed_24_8 J = diff.Z_coord;
-	const fixed_24_8 K = diff.Y_coord;
+	const fixed_24_8 J = diff.Y_coord;
+	const fixed_24_8 K = diff.Z_coord;
 
 	const fixed_24_8 L = fixed_24_8(-0.5) * G;
 	const fixed_24_8 S = proj_speed;
