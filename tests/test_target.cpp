@@ -23,12 +23,11 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		const fixed          g = 9.814;
 
 		// 1. Calculate the initial velocity vector of the projectile.
-		DistanceVector       initial_proj_vel_dv =
-			(aiming_position - initial_proj_pos).normalize() * projectile_speed;
+		PositionVector initial_proj_vel_pos = aiming_position.normalize() * projectile_speed;
 		VelocityVector initial_proj_vel(
-			initial_proj_vel_dv.X_coord,
-			initial_proj_vel_dv.Y_coord,
-			initial_proj_vel_dv.Z_coord
+			initial_proj_vel_pos.X_coord,
+			initial_proj_vel_pos.Y_coord,
+			initial_proj_vel_pos.Z_coord
 		);
 
 		// 2. Calculate the time of flight to the target's XZ plane.
@@ -39,7 +38,7 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		final_proj_pos.X_coord = initial_proj_pos.X_coord + initial_proj_vel.X_coord * time_of_flight;
 		final_proj_pos.Y_coord = initial_proj_pos.Y_coord + initial_proj_vel.Y_coord * time_of_flight;
 		final_proj_pos.Z_coord = initial_proj_pos.Z_coord + initial_proj_vel.Z_coord * time_of_flight -
-		                       fixed(0.5) * g * pow(time_of_flight, 2);
+		                       fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 4. Check if the projectile's final position is close to the target's position.
 		CHECK(is_close(final_proj_pos.X_coord, target_pos.X_coord, fixed(0.1)));
@@ -62,12 +61,11 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		const fixed          g = 9.814;
 
 		// 1. Calculate the initial velocity vector of the projectile.
-		DistanceVector       initial_proj_vel_dv =
-			(aiming_position - initial_proj_pos).normalize() * projectile_speed;
+		PositionVector initial_proj_vel_pos = aiming_position.normalize() * projectile_speed;
 		VelocityVector initial_proj_vel(
-			initial_proj_vel_dv.X_coord,
-			initial_proj_vel_dv.Y_coord,
-			initial_proj_vel_dv.Z_coord
+			initial_proj_vel_pos.X_coord,
+			initial_proj_vel_pos.Y_coord,
+			initial_proj_vel_pos.Z_coord
 		);
 
 		// 2. Calculate the time of flight.
@@ -81,7 +79,7 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		final_proj_pos.X_coord = initial_proj_pos.X_coord + initial_proj_vel.X_coord * time_of_flight;
 		final_proj_pos.Y_coord = initial_proj_pos.Y_coord + initial_proj_vel.Y_coord * time_of_flight;
 		final_proj_pos.Z_coord = initial_proj_pos.Z_coord + initial_proj_vel.Z_coord * time_of_flight -
-		                       fixed(0.5) * g * pow(time_of_flight, 2);
+		                       fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 5. Check if the positions are close.
 		CHECK(is_close(final_proj_pos.X_coord, final_target_pos.X_coord, fixed(0.1)));

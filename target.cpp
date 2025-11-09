@@ -55,14 +55,13 @@ const PositionVector Target::interceptPosition() const {
 	// Quartic Coefficients
 	const fixed_24_8 c0 = L * L;
 	const fixed_24_8 c1 = -2 * Q * L;
-	const fixed_24_8 c2 = -2 * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - (S * S);
+	const fixed_24_8 c2 = -2 * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - pow(S, 2);
 	const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
 	const fixed_24_8 c4 = diff.dot(diff);
 
 	const std::function<fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic =
 		[=](const fixed_24_8 t) -> fixed_24_8 {
-		const fixed_24_8 t2 = t * t;
-		return c0 * (t2 * t2) + c1 * (t2 * t) + c2 * t2 + c3 * t + c4;
+		return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
 	};
 
 	const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
@@ -72,11 +71,11 @@ const PositionVector Target::interceptPosition() const {
 	}
 
 	auto pos = diff + target_velocity * intercept;
-	pos.Z_coord = fixed_24_8(pos.Z_coord) - L * (intercept * intercept);
+	pos.Z_coord = fixed_24_8(pos.Z_coord) - L * pow(intercept, 2);
 
 	return PositionVector(
 		(H + P * intercept) / intercept,
 		(K + R * intercept) / intercept,
-		(J + Q * intercept - L * (intercept * intercept)) / intercept
+		(J + Q * intercept - L * pow(intercept, 2)) / intercept
 	);
 };
