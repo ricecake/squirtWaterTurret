@@ -7,6 +7,7 @@
  * type-safe and extensible.
  */
 #pragma once
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cassert>
@@ -19,7 +20,6 @@
 #include <memory>
 #include <span>
 #include <tuple>
-#include <algorithm>
 
 #include "shared_types.h"
 #include <stdint.h>

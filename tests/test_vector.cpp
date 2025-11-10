@@ -3,14 +3,10 @@
 
 #include "doctest/doctest.h"
 #include "fpm_adapter.hpp"
+#include "spatial.h"
 #include "vector.hpp"
 
 using fixed = fixed_16_16;
-
-// Helper to check for approximate equality of fixed-point numbers
-bool is_close(fixed a, fixed b, fixed tolerance = fixed(0.001)) {
-	return fpm::abs(a - b) < tolerance;
-}
 
 TEST_CASE("Vector addition") {
 	Vector3D<fixed> v1{1, 2, 3};
