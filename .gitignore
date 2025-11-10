@@ -2,6 +2,7 @@
 *.o
 *.s
 *.xpp
+*.out
 a.out
 example*
 buildNotes.txt
@@ -17,3 +18,7 @@ test_runner
 .depthai_cached_models
 TestFrames
 site/
+documentation/public
+.hugo_build.lock
+build
+junk_*

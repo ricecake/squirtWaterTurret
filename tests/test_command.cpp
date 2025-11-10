@@ -1,40 +1,47 @@
-#include "tests/test_command.h"
-
-#include <cassert>
-
 #include "command.h"
+#include "doctest/doctest.h"
+#include "mock_time.h"
 #include "state.h"
-#include "tests/mocks.h"
+#include "utilities.h"
 
-// Test case for the LingerCommand
-#include "tests/mocks.h"
+// A concrete command for testing purposes
+class TestCommand: public Command {
+public:
+	TestCommand(uint64_t run_after_delay): Command(run_after_delay) {}
 
-void test_LingerCommand_initialization() {
-	// Create a LingerCommand with a specific run_after value
-	advance_mock_time(1);
-	LingerCommand cmd(100);
-	int64_t       now = esp_timer_get_time();
+	void Execute(SystemState*) override { /* Do nothing */ }
+};
 
-	// Verify that the run_after is initialized correctly.
-	// It should be roughly now + 100.
-	assert(cmd.run_after >= now);
-}
+TEST_CASE("Command Constructor") {
+	mock_clock.reset();
+	TestClock::ScopedDeterministicClock det_clock;
 
-void test_LingerCommand_execute() {
-	// Create a SystemState and a LingerCommand
-	SystemState   state;
-	LingerCommand cmd(0);
+	SUBCASE("run_after is calculated correctly") {
+		uint64_t delay = 1000; // 1000 microseconds
+		mock_clock.set(5000);
 
-	// Execute the command
-	cmd.Execute(&state);
+		TestCommand cmd(delay);
 
-	// Verify that the state remains unchanged
-	// The default selected target is 0. LingerCommand should not change it.
-	assert(&state.currentTarget() == &state.fetchTarget(0));
-}
+		// With a deterministic clock, the time should be exact.
+		CHECK(cmd.run_after == 5000 + delay);
+	}
 
-// Test runner for the command module
-void run_command_tests() {
-	test_LingerCommand_initialization();
-	test_LingerCommand_execute();
+	SUBCASE("run_after with zero delay") {
+		uint64_t delay = 0;
+		mock_clock.set(12345);
+
+		TestCommand cmd(delay);
+
+		CHECK(cmd.run_after == 12345);
+	}
+
+	SUBCASE("id is set and unique") {
+		mock_clock.set(10000);
+		TestCommand cmd(100);
+		CHECK(cmd.id == 2); // unique counter, may need updating depending on test order
+
+		mock_clock.set(10001);
+		TestCommand cmd2(100);
+		CHECK(cmd2.id > cmd.id);
+	}
 }

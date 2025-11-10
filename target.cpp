@@ -8,31 +8,12 @@
 #include <stdint.h>
 
 /**
- * @brief Constructs a DistanceVector from a VelocityVector and a time interval.
- * @param v The velocity vector.
- * @param interval The time interval.
- */
-DistanceVector::DistanceVector(VelocityVector v, ChronoDuration auto interval) {
-	*this = v * interval;
-}
-
-/**
  * @brief Constructs a PositionVector by adding a DistanceVector to a PositionVector.
  * @param p The initial position vector.
  * @param d The distance vector to add.
  */
 PositionVector::PositionVector(PositionVector p, DistanceVector d) {
 	*this = p + d;
-}
-
-/**
- * @brief Constructs a PositionVector by applying a VelocityVector over a time interval to a PositionVector.
- * @param p The initial position vector.
- * @param v The velocity vector.
- * @param interval The time interval.
- */
-PositionVector::PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval) {
-	*this = p + v * interval;
 }
 
 /**
@@ -86,7 +67,7 @@ VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval) {
  * @param P The position vector.
  * @param V The velocity vector.
  */
-Target::Target(PositionVector P, VelocityVector V) : position(P), velocity(V) {}
+Target::Target(PositionVector P, VelocityVector V): position(P), velocity(V) {}
 
 /**
  * @brief Constructs a Target with an index, validity, position, and velocity.
@@ -95,7 +76,7 @@ Target::Target(PositionVector P, VelocityVector V) : position(P), velocity(V) {}
  * @param P The position vector.
  * @param V The velocity vector.
  */
-Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V) :
+Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V):
 	valid(valid), index(index), position(P), velocity(V) {}
 
 /**
@@ -121,15 +102,6 @@ void Target::Update(PositionVector P) {
 	position = P;
 	last_seen = seen;
 	seen = new_seen;
-}
-
-/**
- * @brief Predicts the target's position at a future time.
- * @param interval The time interval for the prediction.
- * @return The predicted position vector.
- */
-PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
-	return PositionVector(position, velocity, interval);
 }
 
 /**

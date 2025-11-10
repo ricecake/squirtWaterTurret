@@ -20,6 +20,7 @@
 #include "command_queue.h"
 #include "fpm_adapter.hpp"
 #include "serializer.hpp"
+#include "shared_types.h"
 #include "target.h"
 #include "utilities.h"
 #include "vector.hpp"
@@ -52,7 +53,7 @@ public:
 	// -- Public Methods --
 	Target&           currentTarget();
 	std::span<Target> currentTargetArray();
-	constexpr size_t  size();
+	inline size_t     size();
 
 	void updateTarget(
 		auto&           targetArray,
@@ -70,14 +71,16 @@ public:
 	);
 	void    updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
-	void    setTarget(uint8_t index, uint8_t speed = 0xFF);
+	void    setTarget(TargetSource source, uint8_t index, uint8_t speed = 0xFF);
 	void    setFire(bool active);
 	void    setMove(bool active);
+	void    setStrategy(TurretStrategy strategy);
+	void    setStance(TurretStance stance);
 	bool    getFireState();
 	bool    getMoveState();
-	void    queueSelectTarget(uint8_t index, uint16_t milliseconds);
+	void    queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds);
 	void    queueFire(uint16_t milliseconds);
-	void    queueLinger(uint8_t milliseconds);
+	void    queueCeaseFire(uint16_t milliseconds);
 	void    updateConfig(cerializer::Config* config);
 	void    processCommandQueue();
 	void    actualizeState();
@@ -94,15 +97,14 @@ public:
 	const int   v_min = -1000;       ///< Minimum vertical position.
 	const fixed angleToStep{0.1125}; ///< Conversion factor from angle to motor steps.
 
-	ConfigParameters  config;   ///< Runtime configuration parameters.
-	AccelStepper      stepperA; ///< Stepper motor A instance.
-	AccelStepper      stepperB; ///< Stepper motor B instance.
-	SemaphoreHandle_t xMutex;   ///< Mutex for thread-safe access to shared resources.
+	ConfigParameters config;   ///< Runtime configuration parameters.
+	AccelStepper     stepperA; ///< Stepper motor A instance.
+	AccelStepper     stepperB; ///< Stepper motor B instance.
 
-	cerializer::TargetSource target_source;
-	std::array<Target, 32>   cvTarget;
-	std::array<Target, 3>    radarTarget;
-	Target                   staticTarget;
+	TargetSource           target_source;
+	std::array<Target, 32> cvTarget;
+	std::array<Target, 3>  radarTarget;
+	Target                 staticTarget;
 
 private:
 	// -- Private Methods --
@@ -118,11 +120,13 @@ private:
 	const int dirPinB = 26;           ///< Direction pin for stepper motor B.
 	const int firePin = 2;            ///< Pin for the firing mechanism.
 
-	bool    moveState = true;           ///< Flag indicating if movement is enabled.
-	bool    fireState = false;          ///< Flag indicating the current firing state.
-	bool    needTrackingUpdate = false; ///< Flag indicating if a tracking update is required.
-	uint8_t trackingSpeed = 255;        ///< The speed for tracking movements.
-	uint8_t selectedTarget = 0;         ///< The index of the currently selected target.
+	bool           moveState = true;               ///< Flag indicating if movement is enabled.
+	bool           fireState = false;              ///< Flag indicating the current firing state.
+	bool           needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
+	uint8_t        trackingSpeed = 255;            ///< The speed for tracking movements.
+	Target*        selectedTarget = &staticTarget; //< A reference to the currently selected target
+	TurretStrategy strategy;
+	TurretStance   stance;
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
 };
@@ -131,7 +135,7 @@ private:
 // --- Inline-Defined Methods ---
 // ======================================================================================
 
-constexpr size_t SystemState::size() {
+inline size_t SystemState::size() {
 	return currentTargetArray().size();
 }
 
@@ -146,7 +150,7 @@ inline void SystemState::updateTarget(
 	if (indifferenceMargin > 0) {
 		auto oldTarget = targetArray[idx];
 		auto oldTargetPos = oldTarget.Position();
-		if (oldTargetPos) {
+		if (oldTarget.valid && oldTargetPos) {
 			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
 			doUpdate = (travelAngle) > indifferenceMargin;
 		}

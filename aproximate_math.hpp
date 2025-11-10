@@ -2,6 +2,7 @@
 
 #include <cmath> // For std::signbit
 #include <functional>
+#include <vector>
 
 #include "fpm_adapter.hpp"
 #include <stdint.h>
@@ -46,7 +47,7 @@ namespace Approximate {
 	 */
 	template <typename T>
 	constexpr ApproximateResult<T>
-	small_root(const std::function<const T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
+	small_root(const std::function<T(const T)> func, const T error = T(0.001), const uint8_t rounds = 16) {
 		T leftInput = 0;
 		T rightInput = 0.01;
 		T midInput;
@@ -101,5 +102,59 @@ namespace Approximate {
 
 		} while (round++ < rounds);
 		return ApproximateResult<T>(false, midInput);
+	}
+
+	/**
+	 * @brief Finds N roots of a function using a combination of the secant and bisection methods.
+	 *
+	 * This function attempts to find N roots of the given function `func` within a specified
+	 * number of iterations for each root. It repeatedly searches for roots, beginning each
+	 * new search just after the previously found root.
+	 *
+	 * @tparam T The numeric type for the calculation.
+	 * @param func The function for which to find roots.
+	 * @param n_roots The number of roots to find.
+	 * @param error The desired proportional error for convergence for each root.
+	 * @brief Finds N smallest positive roots of a function using a combination of the secant and bisection methods.
+	 *
+	 * This function attempts to find N roots of the given function `func` within a specified
+	 * number of iterations for each root. It repeatedly searches for roots, beginning each
+	 * new search just after the previously found root. This implementation finds the N smallest
+	 * positive roots.
+	 *
+	 * @tparam T The numeric type for the calculation.
+	 * @param func The function for which to find roots.
+	 * @param n_roots The number of roots to find.
+	 * @param error The desired proportional error for convergence for each root.
+	 * @param rounds The maximum number of iterations to perform for each root.
+	 * @return An ApproximateResult containing a std::vector of the found roots.
+	 */
+	template <typename T>
+	ApproximateResult<std::vector<T>> n_roots(
+		const std::function<T(const T)> func,
+		const uint8_t                   n_roots,
+		const T                         error = T(0.001),
+		const uint8_t                   rounds = 16
+	) {
+		std::vector<T> roots;
+		T              last_root = 0;
+
+		for (int i = 0; i < n_roots; i++) {
+			// Start searching slightly after the last root to avoid finding it again.
+			const T search_start = last_root + error;
+
+			std::function<T(const T)> shifted_func = [&](const T x) { return func(x + search_start); };
+			auto                      result = small_root(shifted_func, error, rounds);
+			if (result.converged) {
+				// The new root is relative to the search start.
+				last_root = search_start + result.result;
+				roots.push_back(last_root);
+			} else {
+				// If we can't find another root, we're done.
+				return ApproximateResult<std::vector<T>>{false, roots};
+			}
+		}
+
+		return ApproximateResult<std::vector<T>>{true, roots};
 	}
 } // namespace Approximate

@@ -1,38 +1,46 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 
 #include "fpm_adapter.hpp"
 
-// struct FixedReprHighResClock : public std::chrono::high_resolution_clock {
-// 	using rep = fixed;
-// 	using duration = std::chrono::duration<rep, std::nano>;
-// 	using time_point = std::chrono::time_point<FixedReprHighResClock, duration>;
-// };
-
-using Clock = std::chrono::high_resolution_clock;
-// using Clock = FixedReprHighResClock;
-using TimePoint = Clock::time_point;
-using Duration = Clock::duration;
+// Clocks and clock management
 
 template <typename Rep, typename Period>
 class DynamicTimeInterval;
 
+using DefaultClock = std::chrono::high_resolution_clock;
+using TimePoint = DefaultClock::time_point;
+using Duration = DefaultClock::duration;
+
+using TimeInterval = DynamicTimeInterval<uint64_t, std::ratio<1>>;
+
 template <typename T>
 concept ChronoDuration = requires(T obj) {
-	// typename TimeInterval<typename T::rep, typename T::period>;
-	// std::is_base_of_v<TimeInterval<typename T::rep, typename T::period>, T>;
 	requires std::same_as<DynamicTimeInterval<typename T::rep, typename T::period>, T>;
 };
 
 template <typename T>
 concept ChronoPoint = std::is_base_of_v<std::chrono::time_point<typename T::Clock, typename T::Duration>, T>;
 
-// class VDur : public std::chrono::duration<fixed>
-// {
-// 	public:
-// 	VDur(fixed t): std::chrono::duration<fixed>(t){};
-// };
+template <class C>
+	requires requires(C obj) {
+		{ obj() } -> std::convertible_to<TimePoint>;
+	}
+class Clock_t {
+private:
+	inline static C s_clock = DefaultClock::now;
+
+public:
+	static void setClock(C clock) { s_clock = clock; }
+
+	static C getClock() { return s_clock; }
+
+	static TimePoint now() { return s_clock(); }
+};
+
+using Clock = Clock_t<std::function<TimePoint(void)>>;
 
 /**
  * @brief A flexible time interval class that wraps std::chrono::duration.
@@ -58,15 +66,15 @@ public:
 	/**
 	 * @brief Constructs a DynamicTimeInterval from a std::chrono::duration.
 	 */
-	constexpr DynamicTimeInterval(DurationType d) : m_duration(d) {}
+	constexpr DynamicTimeInterval(DurationType d): m_duration(d) {}
 
 	/**
 	 * @brief Constructs a DynamicTimeInterval from a raw count of ticks.
 	 */
-	constexpr DynamicTimeInterval(Rep count) : m_duration(count) {}
+	constexpr DynamicTimeInterval(Rep count): m_duration(count) {}
 
 	template <typename Orep, typename Operiod>
-	constexpr DynamicTimeInterval(std::chrono::duration<Orep, Operiod> d) :
+	constexpr DynamicTimeInterval(std::chrono::duration<Orep, Operiod> d):
 		m_duration(std::chrono::duration_cast<DurationType>(d)) {}
 
 	/**
@@ -112,23 +120,6 @@ private:
 	const DurationType m_duration;
 };
 
-using TimeInterval = DynamicTimeInterval<uint64_t, std::ratio<1>>;
-
-/**
- * DEPRECATE
- * This function is not used anywhere in the codebase.
- */
-constexpr auto AsSeconds = [](const ChronoDuration auto& d) { return TimeInterval(d.get_duration()); };
-
-// System-wide constants
-const int                    motorInterfaceType = 1;                     ///< Stepper motor driver interface type.
-const int                    maxSpeed = 1000;                            ///< Maximum speed for the motors.
-const int                    acceleration = 3000;                        ///< Acceleration for the motors.
-constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131); ///< Conversion factor from radians to degrees.
-const fixed_16_16            Gz = -9.80665;                              ///< Acceleration due to gravity.
-const int                    altitude = 1320;                            ///< Default altitude for calculations.
-const fixed_16_16            projectileSpeed = 20;                       ///< Speed of the projectile.
-
 /**
  * @brief Creates a time interval in milliseconds with an optional offset.
  */
@@ -147,6 +138,13 @@ constexpr DynamicTimeInterval<uint64_t, std::milli> milliseconds(const uint64_t 
 }
 
 /**
+ * @brief Creates a time interval in microseconds.
+ */
+constexpr DynamicTimeInterval<uint64_t, std::micro> microseconds(const uint64_t micros) {
+	return std::chrono::duration<uint64_t, std::micro>(micros);
+}
+
+/**
  * @brief Creates a time interval in seconds with an optional offset.
  */
 template <typename T, typename P>
@@ -161,14 +159,48 @@ constexpr DynamicTimeInterval<uint64_t> seconds(uint64_t seconds) {
 	return std::chrono::duration<uint64_t, std::ratio<1>>(seconds);
 }
 
-/// @brief The interval after which a fire action can be repeated.
-const auto fireActionInterval = seconds(3);
+/**
+ * @brief Gets the number of std::chrono Units since the Unix epoch.
+ */
+template <typename T>
+inline T unitSinceEpoch() {
+	auto now = std::chrono::time_point_cast<T>(Clock::now());
+	auto duration_since_epoch = now.time_since_epoch();
+	return std::chrono::duration_cast<T>(duration_since_epoch);
+}
 
 /**
  * @brief Gets the number of milliseconds since the Unix epoch.
  */
 inline uint64_t milliSinceEpoch() {
-	auto now = std::chrono::system_clock::now();
-	auto duration_since_epoch = now.time_since_epoch();
-	return std::chrono::duration_cast<std::chrono::milliseconds>(duration_since_epoch).count();
+	auto duration = unitSinceEpoch<std::chrono::milliseconds>();
+	return duration.count();
 }
+
+/**
+ * @brief Gets the number of microseconds since the Unix epoch.
+ */
+inline uint64_t microSinceEpoch() {
+	auto duration = unitSinceEpoch<std::chrono::microseconds>();
+	return duration.count();
+}
+
+/**
+ * @brief Gets the number of nanoseconds since the Unix epoch.
+ */
+inline uint64_t nanoSinceEpoch() {
+	auto duration = unitSinceEpoch<std::chrono::nanoseconds>();
+	return duration.count();
+}
+
+// System-wide constants
+const int                    motorInterfaceType = 1;                     ///< Stepper motor driver interface type.
+const int                    maxSpeed = 1000;                            ///< Maximum speed for the motors.
+const int                    acceleration = 3000;                        ///< Acceleration for the motors.
+constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131); ///< Conversion factor from radians to degrees.
+const fixed_16_16            Gz = -9.80665;                              ///< Acceleration due to gravity.
+const int                    altitude = 1320;                            ///< Default altitude for calculations.
+const fixed_16_16            projectileSpeed = 20;                       ///< Speed of the projectile.
+
+/// @brief The interval after which a fire action can be repeated.
+const auto fireActionInterval = seconds(3);

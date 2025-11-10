@@ -14,7 +14,7 @@
 #include "target_selection.h"
 #include "utilities.h"
 
-SystemState::SystemState() : staticTarget(0, true, PositionVector(0, 0.01, 0), VelocityVector(0, 0, 0)) {
+SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -23,42 +23,51 @@ SystemState::SystemState() : staticTarget(0, true, PositionVector(0, 0.01, 0), V
 
 	pinMode(firePin, OUTPUT);
 
-	xMutex = xSemaphoreCreateMutex();
-
-	target_source = cerializer::TargetSource::STATIC;
+	target_source = TargetSource::STATIC;
 	auto p = staticTarget.Position();
 	p.Z_coord = config.turret_height;
 	staticTarget.Update(p);
+
+	selectedTarget = &staticTarget;
 }
 
 /// @brief Return the current target array, based on which target system is active.
 /// @return a span of targets, referencing the correct target buffer.
 std::span<Target> SystemState::currentTargetArray() {
 	switch (target_source) {
-	case cerializer::TargetSource::CV:
+	case TargetSource::CV:
 		return std::span(cvTarget.begin(), cvTarget.end());
-	case cerializer::TargetSource::RADAR:
+	case TargetSource::RADAR:
 		return std::span(radarTarget.begin(), radarTarget.end());
-	case cerializer::TargetSource::STATIC:
+	case TargetSource::STATIC:
 	default:
 		return std::span(&staticTarget, 1);
 	}
 }
 
 Target& SystemState::currentTarget() {
-	switch (target_source) {
-	case cerializer::TargetSource::CV:
-		return cvTarget[selectedTarget];
-	case cerializer::TargetSource::RADAR:
-		return radarTarget[selectedTarget];
-	case cerializer::TargetSource::STATIC:
-	default:
-		return staticTarget;
-	}
+	return *selectedTarget;
 }
 
-void SystemState::setTarget(uint8_t index, uint8_t speed) {
-	selectedTarget = index;
+void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
+	if (source != target_source) {
+		return; // No-op because we've changed sources
+	}
+
+	switch (target_source) {
+	case TargetSource::CV:
+		selectedTarget = &cvTarget[index];
+		break;
+	case TargetSource::RADAR:
+		selectedTarget = &radarTarget[index];
+		break;
+	case TargetSource::STATIC:
+		selectedTarget = &staticTarget;
+		break;
+	default:
+		return;
+	}
+
 	trackingSpeed = speed;
 	needTrackingUpdate = true;
 }
@@ -71,6 +80,14 @@ void SystemState::setMove(bool active) {
 	moveState = active;
 }
 
+void SystemState::setStrategy(TurretStrategy strategy) {
+	this->strategy = strategy;
+}
+
+void SystemState::setStance(TurretStance stance) {
+	this->stance = stance;
+}
+
 bool SystemState::getFireState() {
 	return fireState;
 }
@@ -79,21 +96,17 @@ bool SystemState::getMoveState() {
 	return moveState;
 }
 
-#include "firecontrol.h"
 void SystemState::queueFire(uint16_t fireDuration) {
-	auto start = DynamicTimeInterval<uint32_t, std::milli>(5);
-	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration) + start;
-	commandQueue.addCommand<FireControl>(true, fireDuration, start.microseconds());
+	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
+}
+
+void SystemState::queueCeaseFire(uint16_t fireDuration) {
+	auto end = DynamicTimeInterval<uint32_t, std::milli>(fireDuration);
 	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 
-void SystemState::queueLinger(uint8_t milliseconds) {
-	commandQueue.addCommand<LingerCommand>(milliseconds * 1000);
-}
-
-#include "target_selection.h"
-void SystemState::queueSelectTarget(uint8_t index, uint16_t milliseconds) {
-	commandQueue.addCommand<TargetSelection>(index, 0xFF, milliseconds * 1000);
+void SystemState::queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds) {
+	commandQueue.addCommand<TargetSelection>(source, index, 0xFF, milliseconds * 1000);
 }
 
 void SystemState::updateConfig(cerializer::Config* config) {

@@ -1,22 +1,30 @@
 #pragma once
 
+#include <memory>
+#include <mutex>
 #include <queue>
 #include <string>
 #include <vector>
 
-#ifdef ARDUINO
-	#include "freertos/FreeRTOS.h"
-	#include "freertos/semphr.h"
-#else
+#include "command.h"
+#include "utilities.h"
+#ifndef ARDUINO
 	#include "tests/mocks.h"
 #endif
 
-#include "command.h"
-
 class SystemState;
 class Command;
-const inline auto CommandPointerComparator = [](const auto& left, const auto& right) {
-	return left->run_after >= right->run_after;
+const inline auto CommandPointerComparator = [](const std::shared_ptr<Command>& left,
+                                                const std::shared_ptr<Command>& right) -> bool {
+	// A null command is "greater" than any valid command, so it will sink to the
+	// bottom of the priority queue.
+	if (!left) {
+		return true;
+	}
+	if (!right) {
+		return false;
+	}
+	return left->run_after > right->run_after;
 };
 
 class CommandQueue {
@@ -26,40 +34,34 @@ public:
 
 	template <typename T, typename... Args>
 	void addCommand(Args&&... args) {
-		if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-			commandQueue.push(new T(std::forward<Args>(args)...));
-			xSemaphoreGive(xMutex);
-		}
+		auto newCommand = std::make_shared<T>(std::forward<Args>(args)...);
+		max_run_after = std::max(max_run_after, newCommand->run_after);
+		std::lock_guard<std::mutex> lock(xMutex);
+		commandQueue.push(std::move(newCommand));
 	}
 
 	template <typename T, typename... Args>
 	void addCommandAfter(Args&&... args) {
-		if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
-			int64_t last_run_after = esp_timer_get_time();
-			if (!commandQueue.empty()) {
-				auto     tempQueue = commandQueue;
-				Command* cmd = nullptr;
-				while (!tempQueue.empty()) {
-					cmd = tempQueue.top();
-					tempQueue.pop();
-				}
-				last_run_after = cmd->run_after;
-			}
-
-			commandQueue.push(new T(std::forward<Args>(args)..., last_run_after));
-			xSemaphoreGive(xMutex);
-		}
+		auto                        now = microSinceEpoch();
+		auto                        last_run_after = (max_run_after - now) + 1;
+		auto                        newCommand = std::make_shared<T>(std::forward<Args>(args)..., last_run_after);
+		std::lock_guard<std::mutex> lock(xMutex);
+		commandQueue.push(std::move(newCommand));
 	}
 
 	template <typename T, typename... Args>
-	void runCommandIn(int64_t duration, Args&&... args) {
-		int64_t run_after = esp_timer_get_time() + duration;
-		addCommand<T>(std::forward<Args>(args)..., run_after);
+	void runCommandIn(uint64_t duration, Args&&... args) {
+		addCommand<T>(std::forward<Args>(args)..., duration);
 	}
 
-	std::string serialize() const;
+	std::string serialize();
 
 private:
-	std::priority_queue<Command*, std::vector<Command*>, decltype(CommandPointerComparator)> commandQueue;
-	SemaphoreHandle_t                                                                        xMutex;
+	uint64_t max_run_after = 0;
+	std::priority_queue<
+		std::shared_ptr<Command>,
+		std::vector<std::shared_ptr<Command>>,
+		decltype(CommandPointerComparator)>
+					   commandQueue;
+	mutable std::mutex xMutex;
 };

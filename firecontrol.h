@@ -4,12 +4,6 @@
 #include <functional>
 #include <queue>
 
-#ifdef ARDUINO
-	#include <AccelStepper.h>
-#else
-	#include "tests/mocks.h"
-#endif
-
 #include "command.h"
 #include "state.h"
 

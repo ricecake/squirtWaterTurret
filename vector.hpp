@@ -11,7 +11,7 @@ concept Number = requires(T obj, U thi) {
 	requires std::is_arithmetic_v<T> || requires {
 		obj + thi;
 		obj - thi;
-		obj* thi;
+		obj * thi;
 		obj / thi;
 	};
 };
@@ -64,8 +64,9 @@ public:
 	NumericType Y_coord; ///< The Y-coordinate of the vector.
 	NumericType Z_coord; ///< The Z-coordinate of the vector.
 
-	constexpr explicit Vector3D() : X_coord(0), Y_coord(0), Z_coord(0) {}
-	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord) :
+	constexpr explicit Vector3D(): X_coord(0), Y_coord(0), Z_coord(0) {}
+
+	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord):
 		X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
 
 	/**
@@ -122,7 +123,12 @@ public:
 	/**
 	 * @brief Computes the magnitude (length) of the vector.
 	 */
-	NumericType magnitude() const { return sqrt((X_coord * X_coord) + (Y_coord * Y_coord) + (Z_coord * Z_coord)); }
+	NumericType magnitude() const {
+		auto xs = X_coord * X_coord;
+		auto ys = Y_coord * Y_coord;
+		auto zs = Z_coord * Z_coord;
+		return sqrt(xs + ys + zs);
+	}
 
 	/**
 	 * @brief Computes the magnitude in the XY plane.

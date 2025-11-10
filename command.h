@@ -3,6 +3,8 @@
 #include <compare>
 #include <cstdint>
 
+#include "shared_types.h"
+
 class SystemState;
 
 /**
@@ -12,31 +14,19 @@ class SystemState;
  * object that encapsulates a request.
  */
 class Command {
+	inline static uint64_t id_counter = 0;
+
 public:
 	// -- Constructors --
-	Command(int64_t run_after);
+	Command(uint64_t run_after = 0);
 	virtual ~Command() = default;
 
 	// -- Public Methods --
 	virtual void Execute(SystemState* state) = 0;
 
 	// -- Public Attributes --
-	int64_t id = 0;        ///< Unique identifier for the command, typically based on a timestamp.
-	int64_t run_after = 0; ///< The time at which the command should be executed.
-};
-
-/**
- * @brief A command that does nothing, effectively creating a delay.
- *
- * This command is used to introduce a pause in the command queue processing.
- */
-class LingerCommand: public Command {
-public:
-	// -- Constructors --
-	LingerCommand(int64_t run_after);
-
-	// -- Public Methods --
-	void Execute(SystemState* state) override;
+	uint64_t id = 0;        ///< Unique identifier for the command, typically based on a timestamp.
+	uint64_t run_after = 0; ///< The time at which the command should be executed.
 };
 
 // ======================================================================================
@@ -58,3 +48,21 @@ constexpr auto operator<=>(const Command& left, const Command& right) {
 		return std::weak_ordering::equivalent;
 	}
 }
+
+class SetStrategyCommand: public Command {
+public:
+	SetStrategyCommand(TurretStrategy strategy, uint64_t run_after);
+	void Execute(SystemState* state) override;
+
+private:
+	TurretStrategy strategy;
+};
+
+class SetStanceCommand: public Command {
+public:
+	SetStanceCommand(TurretStance stance, uint64_t run_after);
+	void Execute(SystemState* state) override;
+
+private:
+	TurretStance stance;
+};
