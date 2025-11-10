@@ -42,7 +42,7 @@ struct IOWrapper {
 		return 0;
 	};
 
-	void write(const char* cbuf, size_t count) { io.write(cbuf, count); };
+	void write(const char* cbuf, size_t count) { io.write(reinterpret_cast<const uint8_t*>(cbuf), count); };
 
 	bool good() { return bool(io); };
 

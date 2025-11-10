@@ -20,6 +20,7 @@
 #include <memory>
 #include <span>
 #include <tuple>
+#include <algorithm>
 
 #include "shared_types.h"
 #include <stdint.h>
