@@ -9,79 +9,13 @@
 
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"
+#include "spatial.h"
 #include "utilities.h"
 #include "vector.hpp"
 
 using fixed = fixed_16_16;
 
 class Target;
-class PositionVector;
-class DistanceVector;
-class VelocityVector;
-
-/**
- * @brief Represents a 3D distance vector.
- *
- * This class is used to define a displacement in 3D space.
- */
-class DistanceVector: public Vector3D<fixed, DistanceVector> {
-public:
-	// -- Type Definitions --
-	using Vec = Vector3D<fixed, DistanceVector>;
-
-	// -- Constructors --
-	DistanceVector() = default;
-	DistanceVector(const DistanceVector& other) = default;
-	constexpr DistanceVector(fixed x, fixed y, fixed z);
-	DistanceVector(VelocityVector v, ChronoDuration auto interval);
-};
-
-/**
- * @brief Represents a 3D position vector.
- *
- * This class defines a specific point in 3D space and provides methods
- * to calculate pitch, yaw, and distance.
- */
-class PositionVector: public Vector3D<fixed, PositionVector> {
-public:
-	// -- Type Definitions --
-	using Vec = Vector3D<fixed, PositionVector>;
-
-	// -- Constructors --
-	PositionVector() = default;
-	PositionVector(const PositionVector& other) = default;
-	constexpr PositionVector(fixed x, fixed y, fixed z);
-	PositionVector(PositionVector, DistanceVector);
-	PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval);
-
-	// -- Public Methods --
-	fixed Pitch();
-	fixed Yaw();
-	fixed Distance();
-
-private:
-	// -- Private Attributes --
-	fixed _distance = 0; ///< Cached distance value.
-	fixed _pitch = 0;    ///< Cached pitch value.
-	fixed _yaw = 0;      ///< Cached yaw value.
-};
-
-/**
- * @brief Represents a 3D velocity vector.
- *
- * This class is used to define the rate of change of position.
- */
-class VelocityVector: public Vector3D<fixed, VelocityVector> {
-public:
-	// -- Type Definitions --
-	using Vec = Vector3D<fixed, VelocityVector>;
-
-	// -- Constructors --
-	VelocityVector() = default;
-	VelocityVector(const VelocityVector& other) = default;
-	constexpr VelocityVector(fixed x, fixed y, fixed z);
-	VelocityVector(DistanceVector, TimeInterval interval);
-};
 
 /**
  * @brief Represents a target in the system.
@@ -137,35 +71,25 @@ private:
 // --- Inline-Defined Methods ---
 // ======================================================================================
 
-// -- DistanceVector --
-constexpr DistanceVector::DistanceVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
-
-/**
- * @brief Constructs a DistanceVector from a VelocityVector and a time interval.
- * @param v The velocity vector.
- * @param interval The time interval.
- */
-inline DistanceVector::DistanceVector(VelocityVector v, ChronoDuration auto interval) {
-	*this = v * interval;
-}
-
-// -- PositionVector --
-constexpr PositionVector::PositionVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
-
-/**
- * @brief Constructs a PositionVector by applying a VelocityVector over a time interval to a PositionVector.
- * @param p The initial position vector.
- * @param v The velocity vector.
- * @param interval The time interval.
- */
-inline PositionVector::PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval) {
-	*this = p + v * interval;
-}
-
-// -- VelocityVector --
-constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
-
 // -- Target --
+
+/**
+ * @brief Constructs a Target with a given position and velocity.
+ * @param P The position vector.
+ * @param V The velocity vector.
+ */
+inline Target::Target(PositionVector P, VelocityVector V): position(P), velocity(V) {}
+
+/**
+ * @brief Constructs a Target with an index, validity, position, and velocity.
+ * @param index The index of the target.
+ * @param valid The validity of the target.
+ * @param P The position vector.
+ * @param V The velocity vector.
+ */
+inline Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V):
+	valid(valid), index(index), position(P), velocity(V) {}
+
 /**
  * @brief Predicts the target's position at a future time.
  * @param interval The time interval for the prediction.
@@ -183,72 +107,41 @@ inline bool Target::idleExceeds(const ChronoDuration auto limit) const {
 	return timeSinceLastSeen() > limit;
 }
 
-inline const PositionVector Target::interceptPosition() const {
-	const PositionVector       proj_pos = PositionVector(0, 0, 1.5);
-	const PositionVector       target_pos = position;
-	const VelocityVector       target_velocity = velocity;
-	const fixed_24_8           proj_speed = 20;
-	const Vector3D<fixed_24_8> Gv(0, 0, 9.814);
-	const fixed_24_8           G = Gv.magnitude();
-
-	const fixed_24_8 P = target_velocity.X_coord;
-	const fixed_24_8 Q = target_velocity.Z_coord;
-	const fixed_24_8 R = target_velocity.Y_coord;
-
-	const auto       diff = target_pos - proj_pos;
-	const fixed_24_8 H = diff.X_coord;
-	const fixed_24_8 J = diff.Z_coord;
-	const fixed_24_8 K = diff.Y_coord;
-
-	const fixed_24_8 L = fixed_24_8(-0.5) * G;
-	const fixed_24_8 S = proj_speed;
-
-	// Quartic Coefficients
-	const fixed_24_8 c0 = L * L;
-	const fixed_24_8 c1 = -2 * Q * L;
-	const fixed_24_8 c2 = -2 * J * L + fixed_24_8(target_velocity.dot(target_velocity)) - pow(S, 2);
-	const fixed_24_8 c3 = 2 * (diff.dot(target_velocity));
-	const fixed_24_8 c4 = diff.dot(diff);
-
-	const std::function<fixed_24_8(const fixed_24_8)> movingTargetInterceptQuartic =
-		[=](const fixed_24_8 t) -> fixed_24_8 {
-		return c0 * pow(t, 4) + c1 * pow(t, 3) + c2 * pow(t, 2) + c3 * t + c4;
-	};
-
-	const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
-
-	if (intercept == 0) {
-		return PositionVector(H, K, J);
-	}
-
-	auto pos = diff + target_velocity * intercept;
-	pos.Z_coord = fixed_24_8(pos.Z_coord) - L * pow(intercept, 2);
-
-	return PositionVector(
-		(H + P * intercept) / intercept,
-		(K + R * intercept) / intercept,
-		(J + Q * intercept - L * pow(intercept, 2)) / intercept
-	);
-};
-
-// ======================================================================================
-// --- Operator Overloads ---
-// ======================================================================================
-
-constexpr const VelocityVector operator/(const DistanceVector& D, const ChronoDuration auto& interval) {
-	auto scale = interval.count();
-	return VelocityVector(D.X_coord / scale, D.Y_coord / scale, D.Z_coord / scale);
+/**
+ * @brief Gets the velocity of the target.
+ * @return The velocity vector.
+ */
+inline const VelocityVector Target::Velocity() const {
+	return velocity;
 }
 
-constexpr const DistanceVector operator*(const VelocityVector& V, const ChronoDuration auto& interval) {
-	auto scale = static_cast<fixed>(interval.count());
-	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
+/**
+ * @brief Gets the position of the target.
+ * @return The position vector.
+ */
+inline const PositionVector Target::Position() const {
+	return position;
 }
 
-constexpr const PositionVector operator+(const PositionVector& A, const DistanceVector& B) {
-	return PositionVector(A.X_coord + B.X_coord, A.Y_coord + B.Y_coord, A.Z_coord + B.Z_coord);
+/**
+ * @brief Calculates the time elapsed since the last action was performed on this target.
+ * @return The time interval since the last action.
+ */
+inline TimeInterval Target::timeSinceLastAction() const {
+	return TimeInterval(Clock::now() - last_action);
 }
 
-constexpr const DistanceVector operator-(const PositionVector& A, const PositionVector& B) {
-	return DistanceVector(A.X_coord - B.X_coord, A.Y_coord - B.Y_coord, A.Z_coord - B.Z_coord);
+/**
+ * @brief Calculates the time elapsed since the target was last seen.
+ * @return The time interval since the last sighting.
+ */
+inline TimeInterval Target::timeSinceLastSeen() const {
+	return TimeInterval(Clock::now() - seen);
+}
+
+/**
+ * @brief Increments the action counter by updating the last action timestamp.
+ */
+inline void Target::IncrementAction() {
+	last_action = Clock::now();
 }

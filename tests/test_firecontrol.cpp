@@ -41,12 +41,7 @@ TEST_CASE("FireControl deactivate") {
 }
 
 // Test case for deactivation timing
-TEST_CASE("FireControl deactivation timing" * doctest::may_fail()) {
-	// This test is currently failing due to a subtle timing issue that needs further investigation.
-	// The test logic appears correct, but the interaction between the mock clock, the command queue,
-	// and the FireControl command is not behaving as expected.
-	// Proposed fix: The FireControl::Execute method should check if the target has been idle
-	// for the duration + the fireActionInterval, not just the duration.
+TEST_CASE("FireControl deactivation timing") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
 	SystemState                         state;
