@@ -7,6 +7,7 @@
  * type-safe and extensible.
  */
 #pragma once
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cassert>
@@ -19,6 +20,7 @@
 #include <memory>
 #include <span>
 #include <tuple>
+#include <algorithm>
 
 #include "shared_types.h"
 #include <stdint.h>
@@ -141,12 +143,39 @@ namespace cerializer {
 	};
 
 	/**
+	 * @brief Safely unpacks a single trivially copyable type from a container of bytes.
+	 *
+	 * This function uses `std::memcpy` to avoid misaligned reads and handles endianness
+	 * conversion for multi-byte types if the native endianness is big-endian.
+	 *
+	 * @tparam T The type of the object to unpack.
+	 * @tparam Cont The container type for the binary data.
+	 * @param data The container holding the bytes.
+	 * @return An object of type `T`.
+	 */
+	template <typename T, typename Cont>
+		requires Container<Cont, char>
+	constexpr inline T unpack_one(const Cont& data) {
+		T value;
+		std::memcpy(&value, data.data(), sizeof(T));
+		if constexpr ((std::endian::native == std::endian::big) && sizeof(T) > 1 && !Indexable<T>) {
+			auto bytes = std::bit_cast<std::array<char, sizeof(T)>>(value);
+			std::reverse(bytes.begin(), bytes.end());
+			return std::bit_cast<T>(bytes);
+		}
+		return value;
+	}
+
+	/**
 	 * @brief Unpacks a character array into a specified destination type or a struct.
 	 *
 	 * This function can operate in two modes:
 	 * 1. If only `Dest` is provided, it unpacks the binary data directly into an object of type `Dest`.
 	 * 2. If `Dest` and `Ts...` are provided, it unpacks the binary data into individual values of types `Ts...`
 	 *    and uses them to construct an object of type `Dest`.
+	 *
+	 * It uses `memcpy` to ensure safe access to potentially misaligned data and handles
+	 * endianness conversion.
 	 *
 	 * @tparam Dest The destination type to create.
 	 * @tparam Ts The types of the fields to unpack for constructing `Dest`.
@@ -158,11 +187,11 @@ namespace cerializer {
 		requires(std::is_trivially_copyable_v<Ts> && ...) && Container<Cont, char>
 	constexpr inline Dest unpack(const Cont& binaryData) {
 		if constexpr (sizeof...(Ts) < 1) {
-			return *reinterpret_cast<Dest*>(binaryData.data());
+			return unpack_one<Dest>(binaryData);
 		} else {
 			auto            offset = 0;
 			std::span<char> dataView(binaryData);
-			return Dest{*reinterpret_cast<Ts*>(dataView.subspan(postfixAdd(offset, sizeof(Ts)), sizeof(Ts)).data())...};
+			return Dest{unpack_one<Ts>(dataView.subspan(postfixAdd(offset, sizeof(Ts)), sizeof(Ts)))...};
 		}
 	};
 
@@ -645,18 +674,46 @@ namespace cerializer {
 	 * @brief Concept to identify types that support I/O operations.
 	 */
 	template <typename T>
-	concept IOAble = requires(T io, char* buf, size_t count) {
+	concept IOAble = requires(T io, char* buf, const char* cbuf, size_t count) {
 		{ io.readsome(buf, count) } -> std::convertible_to<size_t>;
+		{ io.write(cbuf, count) };
 		{ io.good() } -> std::convertible_to<bool>;
 	};
 
 	/**
-	 * DEPRECATE
-	 * This class is not implemented and is not used anywhere in the codebase.
+	 * @brief A class for serializing messages to a generic output stream.
+	 *
+	 * @tparam T The type of the output stream, which must satisfy the `IOAble` concept.
 	 */
+	template <typename T>
+		requires IOAble<T>
 	class Serializer {
+	private:
+		T& output;
+
 	public:
-		void Write();
+		/**
+		 * @brief Constructs a Serializer.
+		 * @param outputStream The output stream to write to.
+		 */
+		Serializer(T& outputStream): output(outputStream) {};
+
+		/**
+		 * @brief Writes a message to the output stream.
+		 *
+		 * This method serializes the given message into its binary format and
+		 * writes the result to the stream.
+		 *
+		 * @tparam M The derived message class.
+		 * @tparam U The unique message type code.
+		 * @tparam Fs The field types of the message.
+		 * @param message The message object to serialize and write.
+		 */
+		template <typename M, uint8_t U, typename... Fs>
+		void Write(const Message<M, U, Fs...>& message) {
+			auto binaryMessage = message.ToBinary();
+			output.write(binaryMessage.data(), binaryMessage.size());
+		}
 	};
 
 	/**
@@ -802,10 +859,43 @@ namespace cerializer {
 	};
 
 	/**
-	 * DEPRECATE
-	 * This class is not implemented and is not used anywhere in the codebase.
+	 * @brief A class for handling both serialization and deserialization on a single stream.
+	 *
+	 * This class provides a convenient wrapper around a Serializer and a Deserializer,
+	 * allowing for easy reading and writing of messages from the same IOAble stream.
+	 *
+	 * @tparam T The type of the stream, which must satisfy the `IOAble` concept.
 	 */
+	template <typename T>
+		requires IOAble<T>
 	class StreamHandler {
+	private:
+		Serializer<T>   serializer;
+		Deserializer<T> deserializer;
+
 	public:
+		/**
+		 * @brief Constructs a StreamHandler.
+		 * @param stream The stream to read from and write to.
+		 */
+		StreamHandler(T& stream): serializer(stream), deserializer(stream) {};
+
+		/**
+		 * @brief Writes a message to the stream.
+		 * @see Serializer::Write
+		 */
+		template <typename M, uint8_t U, typename... Fs>
+		void Write(const Message<M, U, Fs...>& message) {
+			serializer.Write(message);
+		}
+
+		/**
+		 * @brief Parses the input stream and invokes a callback for each complete message found.
+		 * @see Deserializer::ParseStream
+		 */
+		template <std::derived_from<BasePacket> Type>
+		void ParseStream(std::function<void(std::unique_ptr<Type>&)> callback) {
+			deserializer.ParseStream(callback);
+		}
 	};
 } // namespace cerializer
