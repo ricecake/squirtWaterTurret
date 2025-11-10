@@ -42,6 +42,8 @@ struct IOWrapper {
 		return 0;
 	};
 
+	void write(const char* cbuf, size_t count) { io.write(cbuf, count); };
+
 	bool good() { return bool(io); };
 
 	IOWrapper(HardwareSerial& io): io(io) {};
@@ -52,8 +54,8 @@ HardwareSerial testSerial(2);
 
 IOWrapper wrapped(testSerial);
 
-cerializer::Deserializer deserializer(wrapped);
-LD2450                   ld2450;
+cerializer::StreamHandler streamHandler(wrapped);
+LD2450                    ld2450;
 
 SystemState dptState;
 
@@ -95,45 +97,47 @@ void refreshRadarTargets() {
 }
 
 void readSerialCommands() {
-	deserializer.ParseStream(std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
-		if (!thing) {
-			return;
-		}
+	streamHandler.ParseStream<cerializer::BasePacket>(
+		std::function<void(cerializer::BasePointer&)>([](cerializer::BasePointer& thing) {
+			if (!thing) {
+				return;
+			}
 
-		switch (thing->Code()) {
-		case cerializer::Target::Type(): {
-			auto target = static_cast<cerializer::Target*>(thing.get());
-			auto newPositionObservation = PositionVector(
-				fixed(target->x) / 1000,
-				fixed(target->y) / 1000,
-				fixed(target->z) / 1000
-			);
+			switch (thing->Code()) {
+			case cerializer::Target::Type(): {
+				auto target = static_cast<cerializer::Target*>(thing.get());
+				auto newPositionObservation = PositionVector(
+					fixed(target->x) / 1000,
+					fixed(target->y) / 1000,
+					fixed(target->z) / 1000
+				);
 
-			dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
-			break;
-		}
-		case cerializer::Config::Type(): {
-			dptState.updateConfig(static_cast<cerializer::Config*>(thing.get()));
-			break;
-		}
-		case cerializer::SetTargetSourceMessage::Type(): {
-			auto source_msg = static_cast<cerializer::SetTargetSourceMessage*>(thing.get());
-			dptState.target_source = source_msg->source;
-			break;
-		}
-		case cerializer::StaticTargetMessage::Type(): {
-			auto static_target_msg = static_cast<cerializer::StaticTargetMessage*>(thing.get());
-			auto newPosition = PositionVector(
-				fixed(static_target_msg->x) / 1000,
-				fixed(static_target_msg->y) / 1000,
-				fixed(static_target_msg->z) / 1000
-			);
+				dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
+				break;
+			}
+			case cerializer::Config::Type(): {
+				dptState.updateConfig(static_cast<cerializer::Config*>(thing.get()));
+				break;
+			}
+			case cerializer::SetTargetSourceMessage::Type(): {
+				auto source_msg = static_cast<cerializer::SetTargetSourceMessage*>(thing.get());
+				dptState.target_source = source_msg->source;
+				break;
+			}
+			case cerializer::StaticTargetMessage::Type(): {
+				auto static_target_msg = static_cast<cerializer::StaticTargetMessage*>(thing.get());
+				auto newPosition = PositionVector(
+					fixed(static_target_msg->x) / 1000,
+					fixed(static_target_msg->y) / 1000,
+					fixed(static_target_msg->z) / 1000
+				);
 
-			dptState.staticTarget.Update(newPosition);
-			break;
-		}
-		}
-	}));
+				dptState.staticTarget.Update(newPosition);
+				break;
+			}
+			}
+		})
+	);
 }
 
 void selectTarget() {
