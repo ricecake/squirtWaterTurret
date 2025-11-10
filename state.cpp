@@ -114,8 +114,7 @@ void SystemState::queueSelectTarget(TargetSource source, uint8_t index, uint16_t
 void SystemState::updateConfig(cerializer::Config* config) {
 	this->config.projectile_speed = fixed(config->projectile_speed);
 	this->config.turret_height = fixed(config->turret_height);
-	this->config.projectile_max_range =
-		pow(this->config.projectile_speed, 2) / gravity; // V^2 / g
+	this->config.projectile_max_range = pow(this->config.projectile_speed, 2) / gravity; // V^2 / g
 	stepperA.setMaxSpeed(config->max_speed);
 	stepperA.setAcceleration(config->acceleration);
 	stepperB.setMaxSpeed(config->max_speed);

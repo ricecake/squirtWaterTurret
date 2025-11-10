@@ -5,6 +5,29 @@
 
 extern TestClock mock_clock;
 
+TEST_CASE("Target PredictedPosition") {
+	mock_clock.reset();
+	TestClock::ScopedDeterministicClock det_clock;
+
+	PositionVector initial_pos = {10, 20, 30};
+	VelocityVector velocity = {1, 2, 3};
+	Target         target(initial_pos, velocity);
+
+	SUBCASE("Prediction at time of creation") {
+		auto predicted_pos = target.PredictedPositionAtTime(microseconds(0));
+		CHECK(predicted_pos.X_coord == initial_pos.X_coord);
+		CHECK(predicted_pos.Y_coord == initial_pos.Y_coord);
+		CHECK(predicted_pos.Z_coord == initial_pos.Z_coord);
+	}
+
+	SUBCASE("Prediction after time has passed") {
+		auto predicted_pos = target.PredictedPositionAtTime(seconds(1));
+		CHECK(predicted_pos.X_coord == initial_pos.X_coord + velocity.X_coord);
+		CHECK(predicted_pos.Y_coord == initial_pos.Y_coord + velocity.Y_coord);
+		CHECK(predicted_pos.Z_coord == initial_pos.Z_coord + velocity.Z_coord);
+	}
+}
+
 TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
@@ -38,7 +61,7 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		final_proj_pos.X_coord = initial_proj_pos.X_coord + initial_proj_vel.X_coord * time_of_flight;
 		final_proj_pos.Y_coord = initial_proj_pos.Y_coord + initial_proj_vel.Y_coord * time_of_flight;
 		final_proj_pos.Z_coord = initial_proj_pos.Z_coord + initial_proj_vel.Z_coord * time_of_flight -
-		                       fixed(0.5) * g * (time_of_flight * time_of_flight);
+			fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 4. Check if the projectile's final position is close to the target's position.
 		CHECK(is_close(final_proj_pos.X_coord, target_pos.X_coord, fixed(0.1)));
@@ -79,7 +102,7 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		final_proj_pos.X_coord = initial_proj_pos.X_coord + initial_proj_vel.X_coord * time_of_flight;
 		final_proj_pos.Y_coord = initial_proj_pos.Y_coord + initial_proj_vel.Y_coord * time_of_flight;
 		final_proj_pos.Z_coord = initial_proj_pos.Z_coord + initial_proj_vel.Z_coord * time_of_flight -
-		                       fixed(0.5) * g * (time_of_flight * time_of_flight);
+			fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 5. Check if the positions are close.
 		CHECK(is_close(final_proj_pos.X_coord, final_target_pos.X_coord, fixed(0.1)));
