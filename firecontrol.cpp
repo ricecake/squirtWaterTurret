@@ -37,7 +37,7 @@ void FireControl::Execute(SystemState* state) {
 		state->queueCeaseFire(duration);
 	}
 	// Deactivate firing after the specified duration and increment the action counter
-	else if (!active && target.actionIdleExceeds(milliseconds(duration, fireActionInterval))) {
+	else if (!active && target.actionIdleExceeds(milliseconds(duration))) {
 		state->setFire(active);
 		target.IncrementAction();
 	}

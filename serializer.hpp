@@ -7,6 +7,7 @@
  * type-safe and extensible.
  */
 #pragma once
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cassert>
