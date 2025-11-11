@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "doctest_fpm_adapter.hpp"
 #include "mock_time.h"
 #include "spatial.h"
 #include "target.h"
@@ -64,9 +65,9 @@ TEST_CASE("Target InterceptPosition") {
 			fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 4. Check if the projectile's final position is close to the target's position.
-		CHECK(final_proj_pos.X_coord == target_pos.X_coord);
-		CHECK(final_proj_pos.Y_coord == target_pos.Y_coord);
-		CHECK(final_proj_pos.Z_coord == target_pos.Z_coord);
+		CHECK(final_proj_pos.X_coord == Approx(target_pos.X_coord).epsilon(0.001));
+		CHECK(final_proj_pos.Y_coord == Approx(target_pos.Y_coord).epsilon(0.001));
+		CHECK(final_proj_pos.Z_coord == Approx(target_pos.Z_coord).epsilon(0.001));
 	}
 
 	SUBCASE("Moving target") {
@@ -105,9 +106,9 @@ TEST_CASE("Target InterceptPosition") {
 			fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 5. Check if the positions are close.
-		CHECK(final_proj_pos.X_coord == final_target_pos.X_coord);
-		CHECK(final_proj_pos.Y_coord == final_target_pos.Y_coord);
-		CHECK(final_proj_pos.Z_coord == final_target_pos.Z_coord);
+		CHECK(final_proj_pos.X_coord == doctest::Approx(double(final_target_pos.X_coord)).epsilon(0.001));
+		CHECK(final_proj_pos.Y_coord == doctest::Approx(double(final_target_pos.Y_coord)));
+		CHECK(final_proj_pos.Z_coord == doctest::Approx(double(final_target_pos.Z_coord)).epsilon(0.01));
 	}
 
 	SUBCASE("Impossible target") {

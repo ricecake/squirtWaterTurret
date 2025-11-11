@@ -1,4 +1,5 @@
 #include "doctest_fpm_adapter.hpp"
+#include "fpm_adapter.hpp"
 
 TEST_CASE("doctest_fpm_adapter") {
 	SUBCASE("Approximate comparison with floating-point numbers") {

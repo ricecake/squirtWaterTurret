@@ -3,14 +3,17 @@
 #include <sstream> // For StringMaker
 
 #include "doctest/doctest.h"
-#include "fpm_adapter.hpp"
+#include "fpm/fixed.hpp"
+
+template <class FixedType>
+concept FixedNumber = requires { fpm::is_fixed_v<FixedType> || std::is_floating_point_v<FixedType>; };
 
 // The doctest StringMaker needs to be in the doctest namespace
 namespace doctest {
 	// This allows doctest to print the value of our fixed-point numbers
-	template <typename B, typename I, unsigned int F, bool E>
-	struct StringMaker<FixedAdapter<B, I, F, E>> {
-		static String convert(const FixedAdapter<B, I, F, E>& value) {
+	template <>
+	struct StringMaker<class FixedType> {
+		static String convert(const FixedNumber auto& value) {
 			std::stringstream ss;
 			ss << value;
 			return ss.str().c_str();
@@ -18,39 +21,27 @@ namespace doctest {
 	};
 } // namespace doctest
 
-// To avoid ambiguous overload errors with the operators in fpm_adapter.hpp,
-// we provide explicit overloads for float and double comparisons for each
-// of our fixed-point types. These will be selected over the more generic
-// templates in fpm_adapter.hpp when dealing with float/double literals in tests.
+template <FixedNumber FixedType>
+doctest::Approx Approx(const FixedType& val) {
+	return doctest::Approx(double(val));
+}
 
-#define FIXED_POINT_DOCTEST_ADAPTER_IMPL(FIXED_TYPE)                                                                   \
-	inline bool operator==(const FIXED_TYPE& lhs, const double& rhs) {                                                 \
-		return static_cast<double>(lhs) == doctest::Approx(rhs);                                                       \
-	}                                                                                                                  \
-	inline bool operator==(const double& lhs, const FIXED_TYPE& rhs) {                                                 \
-		return doctest::Approx(lhs) == static_cast<double>(rhs);                                                       \
-	}                                                                                                                  \
-	inline bool operator==(const FIXED_TYPE& lhs, const float& rhs) {                                                  \
-		return static_cast<double>(lhs) == doctest::Approx(static_cast<double>(rhs));                                  \
-	}                                                                                                                  \
-	inline bool operator==(const float& lhs, const FIXED_TYPE& rhs) {                                                  \
-		return doctest::Approx(static_cast<double>(lhs)) == static_cast<double>(rhs);                                  \
-	}                                                                                                                  \
-	inline bool operator!=(const FIXED_TYPE& lhs, const double& rhs) {                                                 \
-		return static_cast<double>(lhs) != doctest::Approx(rhs);                                                       \
-	}                                                                                                                  \
-	inline bool operator!=(const double& lhs, const FIXED_TYPE& rhs) {                                                 \
-		return doctest::Approx(lhs) != static_cast<double>(rhs);                                                       \
-	}                                                                                                                  \
-	inline bool operator!=(const FIXED_TYPE& lhs, const float& rhs) {                                                  \
-		return static_cast<double>(lhs) != doctest::Approx(static_cast<double>(rhs));                                  \
-	}                                                                                                                  \
-	inline bool operator!=(const float& lhs, const FIXED_TYPE& rhs) {                                                  \
-		return doctest::Approx(static_cast<double>(lhs)) != static_cast<double>(rhs);                                  \
-	}
+template <FixedNumber FixedType>
+inline bool operator==(const FixedType& lhs, const doctest::Approx& rhs) {
+	return static_cast<double>(lhs) == rhs;
+}
 
-FIXED_POINT_DOCTEST_ADAPTER_IMPL(fixed_16_16)
-FIXED_POINT_DOCTEST_ADAPTER_IMPL(fixed_24_8)
-FIXED_POINT_DOCTEST_ADAPTER_IMPL(fixed_8_24)
+template <FixedNumber FixedType>
+inline bool operator==(const doctest::Approx& lhs, const FixedType& rhs) {
+	return lhs == static_cast<double>(rhs);
+}
 
-#undef FIXED_POINT_DOCTEST_ADAPTER_IMPL
+template <FixedNumber FixedType>
+inline bool operator!=(const FixedType& lhs, const doctest::Approx& rhs) {
+	return static_cast<double>(lhs) != rhs;
+}
+
+template <FixedNumber FixedType>
+inline bool operator!=(const doctest::Approx& lhs, const FixedType& rhs) {
+	return lhs != static_cast<double>(rhs);
+}
