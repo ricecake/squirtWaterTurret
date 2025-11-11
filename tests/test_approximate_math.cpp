@@ -15,7 +15,7 @@ TEST_CASE("small_root") {
 
 	auto result = Approximate::small_root(linear_func);
 
-	CHECK(result.converged);
+	REQUIRE(result.converged);
 	// Check if the result is close to 5, allowing for some error
 	CHECK(fpm::abs(result.result - fixed(5)) < fixed(0.01));
 }

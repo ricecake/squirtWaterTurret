@@ -47,8 +47,10 @@ concept SafeNumericType = !std::is_same_v<T, bool> && (std::is_arithmetic_v<T> |
  * overflow or underflow conditions before performing the operation,
  * throwing an exception if one would occur.
  */
+class EmptyClass {};
+
 template <SafeNumericType T>
-class SafeAdapter {
+class SafeAdapter : public std::conditional_t<std::is_class_v<T>, T, EmptyClass> {
 	T m_wrapped;
 
 public:
@@ -72,10 +74,17 @@ public:
 	 */
 	[[nodiscard]] T value() const noexcept { return m_wrapped; }
 
+	[[nodiscard]] std::conditional_t<std::is_class_v<T>, SafeAdapter<T>, T> maybeSafeValue() const noexcept {
+		if constexpr (std::is_class_v<T>) {
+			return *this;
+		}
+		return value();
+	}
+
 	/**
 	 * @brief Explicit conversion back to the underlying type.
 	 */
-	operator T() const noexcept { return T(m_wrapped); }
+	explicit operator T() const noexcept { return T(m_wrapped); }
 
 	// --- Compound Assignment Operators (with checks) ---
 
