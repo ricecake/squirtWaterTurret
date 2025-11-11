@@ -60,8 +60,8 @@ const PositionVector Target::interceptPosition() const {
 	const localFixed c3 = 2 * (diff.dot(target_velocity));
 	const localFixed c4 = diff.dot(diff);
 
-	const std::function<localFixed(const localFixed)> movingTargetInterceptQuartic =
-		[=](const localFixed t) -> localFixed {
+	const std::function<localFixed(const localFixed&)> movingTargetInterceptQuartic =
+		[=](const localFixed& t) -> localFixed {
 		auto t2 = t * t;
 		return c0 * (t2 * t2) + c1 * (t2 * t) + c2 * t2 + c3 * t + c4;
 	};

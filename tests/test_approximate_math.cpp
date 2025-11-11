@@ -6,10 +6,12 @@
 #include "doctest/doctest.h"
 #include "fpm_adapter.hpp"
 
+using fixed = fixed_16_16;
+
 // Test for the small_root function
 TEST_CASE("small_root") {
 	// Test with a simple linear function f(x) = x - 5
-	std::function<fixed(const fixed)> linear_func = [](const fixed x) -> fixed { return x - fixed(5); };
+	std::function<fixed(const fixed&)> linear_func = [](const fixed& x) -> fixed { return x - fixed(5); };
 
 	auto result = Approximate::small_root(linear_func);
 
@@ -22,7 +24,7 @@ TEST_CASE("small_root") {
 TEST_CASE("n_roots") {
 	// Test with a sine wave function f(x) = sin(x), which has roots at n*pi
 	// Note: The built-in sin function takes a double, so we will use that for this test.
-	std::function<double(const double)> sin_func = [](const double x) -> double { return std::sin(x); };
+	std::function<double(const double&)> sin_func = [](const double& x) -> double { return std::sin(x); };
 
 	// Find the first two roots (pi and 2*pi)
 	auto result = Approximate::n_roots(sin_func, 2);
