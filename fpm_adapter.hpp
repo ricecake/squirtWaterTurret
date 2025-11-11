@@ -7,6 +7,12 @@
  * and helper functions to make fixed-point arithmetic more seamless.
  */
 #pragma once
+#include <compare>     // For std::strong_ordering (operator<=>)
+#include <concepts>    // For std::integral
+#include <iostream>    // For the std::ostream operator
+#include <limits>      // For std::numeric_limits
+#include <stdexcept>   // For std::overflow_error, std::underflow_error
+#include <type_traits> // For std::is_same_v, std::is_signed_v
 
 #include "fpm/fixed.hpp"
 #include "fpm/ios.hpp"
@@ -20,27 +26,222 @@
  */
 template <typename B, typename I, unsigned int F, bool E = true>
 class FixedAdapter: public fpm::fixed<B, I, F, E> {
-	using b = B;
-	using i = I;
-
-	static const unsigned int f = F;
-	static const bool         e = E;
-
 public:
 	inline FixedAdapter() noexcept = default;
 
 	template <typename NonFixedType>
 	constexpr inline FixedAdapter(NonFixedType val) noexcept: fpm::fixed<B, I, F, E>(val) {}
+
+	[[nodiscard]] auto operator<=>(const auto& other) const noexcept { return this->raw_value() <=> other.raw_value(); }
 };
 
-template <class T>
-concept FixedCompat = requires {
-	fpm::is_fixed_v<T>;
+// C++20 Concept to ensure T is an integral type but not a bool
+template <typename T>
+concept SafeNumericType = !std::is_same_v<T, bool> && (std::is_arithmetic_v<T> || fpm::is_fixed_v<T>);
+
+/**
+ * @brief A wrapper for integral types to detect overflow/underflow.
+ *
+ * This class wraps a standard integral type (int, long, unsigned, etc.)
+ * and provides overloaded operators that check for potential
+ * overflow or underflow conditions before performing the operation,
+ * throwing an exception if one would occur.
+ */
+template <SafeNumericType T>
+class SafeAdapter {
+	T m_wrapped;
+
+public:
+	// --- Constructors ---
+
+	/**
+	 * @brief Default constructor, initializes to 0.
+	 */
+	SafeAdapter() noexcept: m_wrapped(0) {}
+
+	/**
+	 * @brief Value constructor.
+	 * @param value The initial value to wrap.
+	 */
+	SafeAdapter(T value) noexcept: m_wrapped(value) {}
+
+	// --- Accessor ---
+
+	/**
+	 * @brief Get the raw wrapped value.
+	 */
+	[[nodiscard]] T value() const noexcept { return m_wrapped; }
+
+	/**
+	 * @brief Explicit conversion back to the underlying type.
+	 */
+	operator T() const noexcept { return T(m_wrapped); }
+
+	// --- Compound Assignment Operators (with checks) ---
+
+	inline SafeAdapter& operator+=(const T& y) {
+		if (y > 0) {
+			// Check for overflow (e.g., MAX + 1)
+			if (m_wrapped > std::numeric_limits<T>::max() - y) {
+				throw std::overflow_error("SafeAdapter overflow on addition");
+			}
+		} else if (y < 0) {
+			// Check for underflow (e.g., MIN + -1)
+			if (m_wrapped < std::numeric_limits<T>::min() - y) {
+				throw std::underflow_error("SafeAdapter underflow on addition");
+			}
+		}
+		m_wrapped += y;
+		return *this;
+	}
+
+	inline SafeAdapter& operator-=(const T& y) {
+		if (y > 0) {
+			// Check for underflow (e.g., MIN - 1)
+			if (m_wrapped < std::numeric_limits<T>::min() + y) {
+				throw std::underflow_error("SafeAdapter underflow on subtraction");
+			}
+		} else if (y < 0) {
+			// Check for overflow (e.g., MAX - (-1))
+			if (m_wrapped > std::numeric_limits<T>::max() + y) {
+				throw std::overflow_error("SafeAdapter overflow on subtraction");
+			}
+		}
+		m_wrapped -= y;
+		return *this;
+	}
+
+	inline SafeAdapter& operator*=(const T& y) {
+		if (m_wrapped == 0 || y == 0) {
+			m_wrapped = 0;
+			return *this;
+		}
+
+		// Handle the special case: signed_min * -1 (which overflows)
+		if constexpr (std::is_signed_v<T>) {
+			if (m_wrapped == std::numeric_limits<T>::min() && y == -1) {
+				throw std::overflow_error("SafeAdapter overflow on multiplication (min * -1)");
+			}
+		}
+
+		// Post-check: (a * b) / b == a, unless overflow occurred.
+		// This is generally more reliable than complex pre-checks.
+		T result = m_wrapped * y;
+		if (result / y != m_wrapped) {
+			throw std::overflow_error("SafeAdapter overflow on multiplication");
+		}
+
+		m_wrapped = result;
+		return *this;
+	}
+
+	inline SafeAdapter& operator/=(const T& y) {
+		if (y == 0) {
+			throw std::runtime_error("SafeAdapter division by zero"); // Or std::domain_error
+		}
+
+		// Handle the special case: signed_min / -1 (which overflows)
+		if constexpr (std::is_signed_v<T>) {
+			if (m_wrapped == std::numeric_limits<T>::min() && y == -1) {
+				throw std::overflow_error("SafeAdapter overflow on division (min / -1)");
+			}
+		}
+
+		m_wrapped /= y;
+		return *this;
+	}
+
+	// --- Increment/Decrement (reuse safe operators) ---
+
+	inline SafeAdapter& operator++() { // Pre-increment
+		return *this += 1;
+	}
+
+	inline SafeAdapter operator++(int) { // Post-increment
+		SafeAdapter temp = *this;
+		++(*this);
+		return temp;
+	}
+
+	inline SafeAdapter& operator--() { // Pre-decrement
+		return *this -= 1;
+	}
+
+	inline SafeAdapter operator--(int) { // Post-decrement
+		SafeAdapter temp = *this;
+		--(*this);
+		return temp;
+	}
+
+	// --- Unary Operators ---
+
+	[[nodiscard]] inline SafeAdapter operator+() const noexcept {
+		return *this; // Unary plus is a no-op
+	}
+
+	[[nodiscard]] inline SafeAdapter operator-() const { // Unary minus (negation)
+		if constexpr (std::is_signed_v<T>) {
+			if (m_wrapped == std::numeric_limits<T>::min()) {
+				throw std::overflow_error("SafeAdapter overflow on negation (min)");
+			}
+		}
+		return SafeAdapter(-m_wrapped);
+	}
+
+	// --- Bitwise & Comparison (shown as examples) ---
+	// Bitwise ops (<<=, >>=, &=, |=, ^=) would also need checks,
+	// especially left-shift.
+
+	// C++20 three-way comparison operator
+	[[nodiscard]] auto operator<=>(const SafeAdapter& other) const noexcept { return m_wrapped <=> other.m_wrapped; }
+
+	// Allow comparison with raw values
+	[[nodiscard]] auto operator<=>(const T& other) const noexcept { return m_wrapped <=> other; }
+
+	[[nodiscard]] bool operator==(const T& other) const noexcept { return m_wrapped == other; }
+
+	// --- Friend Functions ---
+
+	friend std::ostream& operator<<(std::ostream& os, const SafeAdapter& s) {
+		os << s.m_wrapped;
+		return os;
+	}
 };
+
+// --- Binary Operators (implemented as non-member functions) ---
+
+// Helper macro to define binary operators from compound assignments
+#define DEFINE_BINARY_OPERATOR(OP)                                                                                     \
+	template <SafeNumericType T, typename O>                                                                           \
+		requires requires(T l, O r) { l OP## = r; }                                                                    \
+	[[nodiscard]] inline SafeAdapter<T> operator OP(SafeAdapter<T> lhs, const O& rhs) {                                \
+		lhs OP## = rhs;                                                                                                \
+		return lhs;                                                                                                    \
+	}                                                                                                                  \
+	template <SafeNumericType T, typename O>                                                                           \
+		requires requires(O l, T r) { l OP## = r; }                                                                    \
+	[[nodiscard]] inline SafeAdapter<T> operator OP(const O& lhs, const SafeAdapter<T>& rhs) {                         \
+		SafeAdapter<T> temp(lhs);                                                                                      \
+		temp           OP## = rhs.value();                                                                             \
+		return temp;                                                                                                   \
+	}                                                                                                                  \
+	template <SafeNumericType T>                                                                                       \
+	[[nodiscard]] inline SafeAdapter<T> operator OP(SafeAdapter<T> lhs, const SafeAdapter<T>& rhs) {                   \
+		lhs OP## = rhs.value();                                                                                        \
+		return lhs;                                                                                                    \
+	}
+
+DEFINE_BINARY_OPERATOR(+)
+DEFINE_BINARY_OPERATOR(-)
+DEFINE_BINARY_OPERATOR(*)
+DEFINE_BINARY_OPERATOR(/)
+
+// Note: You would continue this for %, &, |, ^, <<, >> as needed.
+
 template <class T>
-concept NonFixedCompat = requires {
-	!fpm::is_fixed_v<T>;
-};
+concept FixedCompat = requires { fpm::is_fixed_v<T>; };
+template <class T>
+concept NonFixedCompat = requires { !fpm::is_fixed_v<T>; };
 
 /**
  * @brief Overloads for standard library functions to support fixed-point types.

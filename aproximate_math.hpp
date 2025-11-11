@@ -41,60 +41,64 @@ namespace Approximate {
 	template <typename T>
 	constexpr ApproximateResult<T>
 	small_root(const std::function<T(const T&)> func, const T error = T(0.001), const uint8_t rounds = 16) {
-		T leftInput = 0;
-		T rightInput = 0.01;
-		T midInput;
+		try {
+			SafeAdapter<T> leftInput = SafeAdapter<T>(0);
+			SafeAdapter<T> rightInput = SafeAdapter<T>(0.01);
+			SafeAdapter<T> midInput;
 
-		T leftValue = func(leftInput);
-		T rightValue = func(rightInput);
-		T midValue;
+			SafeAdapter<T> leftValue = func(leftInput);
+			SafeAdapter<T> rightValue = func(rightInput);
+			SafeAdapter<T> midValue;
 
-		uint8_t round = 0;
+			uint8_t round = 0;
 
-		auto sign_bit = [](auto val) {
-			if constexpr (fpm::is_fixed<T>::value) {
-				return fpm::signbit(val);
-			} else {
-				return std::signbit(val);
+			auto sign_bit = [](auto val) {
+				if constexpr (fpm::is_fixed<T>::value) {
+					return fpm::signbit(val.value());
+				} else {
+					return std::signbit(val.value());
+				}
+			};
+
+			// Find an interval containing the first root by expanding the search window.
+			while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds)) {
+				leftInput = rightInput;
+				leftValue = rightValue;
+				rightInput *= 4;
+				rightValue = func(rightInput);
+				// round++; -- TODO: evaluate the impact of this check.
 			}
-		};
 
-		// Find an interval containing the first root by expanding the search window.
-		while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds)) {
-			leftInput = rightInput;
-			leftValue = rightValue;
-			rightInput *= 4;
-			rightValue = func(rightInput);
-			// round++; -- TODO: evaluate the impact of this check.
+			round = 0; // Reset round counter for the refinement loop
+			do {
+				// Secant method - zero of secant of function at best guess
+				midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
+				// If secant intersects outside our boundary, pick next best guess to be midpoint between edges instead.
+				if (midInput <= leftInput || midInput >= rightInput) {
+					midInput = leftInput + (rightInput - leftInput) / 2;
+				}
+				midValue = func(midInput);
+
+				// Narrow the search interval based on the sign of the function value.
+				if (sign_bit(leftValue) == sign_bit(midValue)) {
+					leftInput = midInput;
+					leftValue = midValue;
+				} else {
+					rightInput = midInput;
+					rightValue = midValue;
+				}
+
+				// This should check if proportional error is less than the threshold
+				if ((rightInput - leftInput) / rightInput <= error) {
+					return ApproximateResult<T>(true, midInput);
+				}
+				// TODO: Add a check for convergence rate to exit early if progress stalls.
+
+			} while (round++ < rounds);
+			return ApproximateResult<T>(false, midInput);
+		} catch (std::runtime_error& e) {
+			return ApproximateResult<T>(false, 0);
 		}
-
-		round = 0; // Reset round counter for the refinement loop
-		do {
-			// Secant method - zero of secant of function at best guess
-			midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
-			// If secant intersects outside our boundary, pick next best guess to be midpoint between edges instead.
-			if (midInput <= leftInput || midInput >= rightInput) {
-				midInput = leftInput + (rightInput - leftInput) / 2;
-			}
-			midValue = func(midInput);
-
-			// Narrow the search interval based on the sign of the function value.
-			if (sign_bit(leftValue) == sign_bit(midValue)) {
-				leftInput = midInput;
-				leftValue = midValue;
-			} else {
-				rightInput = midInput;
-				rightValue = midValue;
-			}
-
-			// This should check if proportional error is less than the threshold
-			if ((rightInput - leftInput) / rightInput <= error) {
-				return ApproximateResult<T>(true, midInput);
-			}
-			// TODO: Add a check for convergence rate to exit early if progress stalls.
-
-		} while (round++ < rounds);
-		return ApproximateResult<T>(false, midInput);
 	}
 
 	/**

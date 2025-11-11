@@ -29,7 +29,7 @@ TEST_CASE("n_roots") {
 	// Find the first two roots (pi and 2*pi)
 	auto result = Approximate::n_roots(sin_func, 2);
 
-	CHECK(result.converged);
+	REQUIRE(result.converged);
 	CHECK(result.result.size() == 2);
 
 	// Check if the found roots are close to pi and 2*pi
