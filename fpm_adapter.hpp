@@ -33,6 +33,15 @@ public:
 	constexpr inline FixedAdapter(NonFixedType val) noexcept: fpm::fixed<B, I, F, E>(val) {}
 };
 
+template <class T>
+concept FixedCompat = requires {
+	fpm::is_fixed_v<T>;
+};
+template <class T>
+concept NonFixedCompat = requires {
+	!fpm::is_fixed_v<T>;
+};
+
 /**
  * @brief Overloads for standard library functions to support fixed-point types.
  */
