@@ -37,25 +37,3 @@ TEST_CASE("n_roots") {
 	CHECK(std::abs(result.result[0] - pi) < 0.01);
 	CHECK(std::abs(result.result[1] - (2 * pi)) < 0.01);
 }
-
-// Placeholder tests for trigonometric functions
-// These will be properly implemented once the function definitions are available.
-TEST_CASE("sin") {
-	// CHECK(Approximate::sin(fixed(0)) == fixed(0));
-}
-
-TEST_CASE("cos") {
-	// CHECK(Approximate::cos(fixed(0)) == fixed(1));
-}
-
-TEST_CASE("tan") {
-	// CHECK(Approximate::tan(fixed(0)) == fixed(0));
-}
-
-TEST_CASE("atan") {
-	// CHECK(Approximate::atan(fixed(0)) == fixed(0));
-}
-
-TEST_CASE("sqrt") {
-	// CHECK(Approximate::sqrt(fixed(4)) == fixed(2));
-}
