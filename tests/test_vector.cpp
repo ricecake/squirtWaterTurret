@@ -61,16 +61,16 @@ TEST_CASE("Vector cross product") {
 TEST_CASE("Vector magnitude") {
 	Vector3D<fixed> v{3, 4, 0};
 	fixed           result = v.magnitude(); // sqrt(9 + 16) = 5
-	CHECK(is_close(result, fixed(5)));
+	CHECK(result == fixed(5));
 }
 
 TEST_CASE("Vector normalization") {
 	Vector3D<fixed> v{3, 4, 0};
 	auto            result = v.normalize();
 	// magnitude should be 1
-	CHECK(is_close(result.magnitude(), fixed(1)));
+	CHECK(result.magnitude() == fixed(1));
 	// direction should be the same
-	CHECK(is_close(result.X_coord, fixed(0.6)));
-	CHECK(is_close(result.Y_coord, fixed(0.8)));
-	CHECK(is_close(result.Z_coord, fixed(0)));
+	CHECK(result.X_coord == fixed(0.6));
+	CHECK(result.Y_coord == fixed(0.8));
+	CHECK(result.Z_coord == fixed(0));
 }

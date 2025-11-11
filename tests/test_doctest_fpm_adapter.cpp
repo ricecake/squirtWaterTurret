@@ -13,7 +13,7 @@ TEST_CASE("doctest_fpm_adapter") {
 	}
 
 	SUBCASE("String conversion for fixed-point numbers") {
-		fixed_16_16      a = 3.14159;
+		fixed_16_16       a = 3.14159;
 		std::stringstream ss;
 		ss << a;
 		std::string s = ss.str();

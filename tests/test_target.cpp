@@ -28,7 +28,7 @@ TEST_CASE("Target PredictedPosition") {
 	}
 }
 
-TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
+TEST_CASE("Target InterceptPosition") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
 
@@ -64,9 +64,9 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 			fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 4. Check if the projectile's final position is close to the target's position.
-		CHECK(is_close(final_proj_pos.X_coord, target_pos.X_coord, fixed(0.1)));
-		CHECK(is_close(final_proj_pos.Y_coord, target_pos.Y_coord, fixed(0.1)));
-		CHECK(is_close(final_proj_pos.Z_coord, target_pos.Z_coord, fixed(0.1)));
+		CHECK(final_proj_pos.X_coord == target_pos.X_coord);
+		CHECK(final_proj_pos.Y_coord == target_pos.Y_coord);
+		CHECK(final_proj_pos.Z_coord == target_pos.Z_coord);
 	}
 
 	SUBCASE("Moving target") {
@@ -105,9 +105,9 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 			fixed(0.5) * g * (time_of_flight * time_of_flight);
 
 		// 5. Check if the positions are close.
-		CHECK(is_close(final_proj_pos.X_coord, final_target_pos.X_coord, fixed(0.1)));
-		CHECK(is_close(final_proj_pos.Y_coord, final_target_pos.Y_coord, fixed(0.1)));
-		CHECK(is_close(final_proj_pos.Z_coord, final_target_pos.Z_coord, fixed(0.1)));
+		CHECK(final_proj_pos.X_coord == final_target_pos.X_coord);
+		CHECK(final_proj_pos.Y_coord == final_target_pos.Y_coord);
+		CHECK(final_proj_pos.Z_coord == final_target_pos.Z_coord);
 	}
 
 	SUBCASE("Impossible target") {
@@ -122,8 +122,8 @@ TEST_CASE("Target InterceptPosition" * doctest::may_fail()) {
 		// as the root-finding should fail and return this as a fallback.
 		const PositionVector initial_proj_pos(0, 0, 1.5);
 		DistanceVector       diff = target_pos - initial_proj_pos;
-		CHECK(is_close(aiming_position.X_coord, diff.X_coord, fixed(0.1)));
-		CHECK(is_close(aiming_position.Y_coord, diff.Y_coord, fixed(0.1)));
-		CHECK(is_close(aiming_position.Z_coord, diff.Z_coord, fixed(0.1)));
+		CHECK(aiming_position.X_coord == diff.X_coord);
+		CHECK(aiming_position.Y_coord == diff.Y_coord);
+		CHECK(aiming_position.Z_coord == diff.Z_coord);
 	}
 }

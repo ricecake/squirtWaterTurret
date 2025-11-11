@@ -14,11 +14,6 @@ class PositionVector;
 class DistanceVector;
 class VelocityVector;
 
-// Helper to check for approximate equality of fixed-point numbers
-inline bool is_close(fixed a, fixed b, fixed tolerance = fixed(0.001)) {
-	return fpm::abs(a - b) < tolerance;
-}
-
 /**
  * @brief Represents a 3D distance vector.
  *

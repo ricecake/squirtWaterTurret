@@ -1,20 +1,21 @@
 #pragma once
 
+#include <sstream> // For StringMaker
+
 #include "doctest/doctest.h"
 #include "fpm_adapter.hpp"
-#include <sstream> // For StringMaker
 
 // The doctest StringMaker needs to be in the doctest namespace
 namespace doctest {
-// This allows doctest to print the value of our fixed-point numbers
-template <typename B, typename I, unsigned int F, bool E>
-struct StringMaker<FixedAdapter<B, I, F, E>> {
-	static String convert(const FixedAdapter<B, I, F, E>& value) {
-		std::stringstream ss;
-		ss << value;
-		return ss.str().c_str();
-	}
-};
+	// This allows doctest to print the value of our fixed-point numbers
+	template <typename B, typename I, unsigned int F, bool E>
+	struct StringMaker<FixedAdapter<B, I, F, E>> {
+		static String convert(const FixedAdapter<B, I, F, E>& value) {
+			std::stringstream ss;
+			ss << value;
+			return ss.str().c_str();
+		}
+	};
 } // namespace doctest
 
 // To avoid ambiguous overload errors with the operators in fpm_adapter.hpp,
