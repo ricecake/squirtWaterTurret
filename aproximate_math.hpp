@@ -42,21 +42,21 @@ namespace Approximate {
 	constexpr ApproximateResult<T>
 	small_root(const std::function<T(const T&)> func, const T error = T(0.001), const uint8_t rounds = 16) {
 		try {
-			SafeAdapter<T> leftInput = SafeAdapter<T>(T(0));
-			SafeAdapter<T> rightInput = SafeAdapter<T>(T(0.01));
-			SafeAdapter<T> midInput;
+			T leftInput = T(0);
+			T rightInput = T(0.01);
+			T midInput;
 
-			SafeAdapter<T> leftValue = func(leftInput.maybeSafeValue());
-			SafeAdapter<T> rightValue = func(rightInput.maybeSafeValue());
-			SafeAdapter<T> midValue;
+			T leftValue = func(leftInput);
+			T rightValue = func(rightInput);
+			T midValue;
 
 			uint8_t round = 0;
 
 			auto sign_bit = [](auto val) {
 				if constexpr (fpm::is_fixed<T>::value) {
-					return fpm::signbit(val.value());
+					return fpm::signbit(val);
 				} else {
-					return std::signbit(val.value());
+					return std::signbit(val);
 				}
 			};
 
@@ -65,7 +65,7 @@ namespace Approximate {
 				leftInput = rightInput;
 				leftValue = rightValue;
 				rightInput *= 4;
-				rightValue = func(rightInput.maybeSafeValue());
+				rightValue = func(rightInput);
 				// round++; -- TODO: evaluate the impact of this check.
 			}
 
@@ -77,7 +77,7 @@ namespace Approximate {
 				if (midInput <= leftInput || midInput >= rightInput) {
 					midInput = leftInput + (rightInput - leftInput) / 2;
 				}
-				midValue = func(midInput.maybeSafeValue());
+				midValue = func(midInput);
 
 				// Narrow the search interval based on the sign of the function value.
 				if (sign_bit(leftValue) == sign_bit(midValue)) {
@@ -90,12 +90,12 @@ namespace Approximate {
 
 				// This should check if proportional error is less than the threshold
 				if ((rightInput - leftInput) / rightInput <= error) {
-					return ApproximateResult<T>(true, midInput.value());
+					return ApproximateResult<T>(true, midInput);
 				}
 				// TODO: Add a check for convergence rate to exit early if progress stalls.
 
 			} while (round++ < rounds);
-			return ApproximateResult<T>(false, midInput.value());
+			return ApproximateResult<T>(false, midInput);
 		} catch (std::runtime_error& e) {
 			return ApproximateResult<T>(false, 0);
 		}

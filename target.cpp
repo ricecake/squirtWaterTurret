@@ -47,6 +47,10 @@ const PositionVector Target::interceptPosition() const {
 	const Vector3D<localFixed> Gv(0, 0, 9.814);
 	const localFixed           G = Gv.magnitude();
 
+	if (position.magnitude() > pow(proj_speed, 2) / G) {
+		return position;
+	}
+
 	const localFixed P = target_velocity.X_coord;
 	const localFixed Q = target_velocity.Z_coord;
 	const localFixed R = target_velocity.Y_coord;

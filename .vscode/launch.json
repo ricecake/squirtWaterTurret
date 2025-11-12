@@ -33,6 +33,36 @@
 					"ignoreFailures": true
 				}
 			]
+		},
+		{
+			"name": "(gdb) Test-y",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/build/test_runner",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${fileDirname}",
+			"environment": [],
+			"externalConsole": false,
+			"MIMode": "gdb",
+			"preLaunchTask": "pre_test",
+			"setupCommands": [
+				{
+					"description": "Enable pretty-printing for gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				},
+				{
+					"description": "Set Disassembly Flavor to Intel",
+					"text": "-gdb-set disassembly-flavor intel",
+					"ignoreFailures": true
+				},
+				{
+					"description": "View derived object fields",
+					"text": "set print object on",
+					"ignoreFailures": true
+				}
+			]
 		}
 	]
 }

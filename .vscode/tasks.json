@@ -13,6 +13,18 @@
 			]
 		},
 		{
+			"label": "pre_test",
+			"type": "shell",
+			"command": "make testbin",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [
+				"$gcc"
+			]
+		},
+		{
 			"type": "cppbuild",
 			"label": "C/C++: g++ build active file",
 			"command": "/usr/bin/g++",

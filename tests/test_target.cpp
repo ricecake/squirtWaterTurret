@@ -119,12 +119,10 @@ TEST_CASE("Target InterceptPosition") {
 		// Execution: Get the calculated aiming position.
 		PositionVector aiming_position = target.interceptPosition();
 
-		// Verification: The aiming position should be the vector difference,
+		// Verification: The aiming position should be the target position,
 		// as the root-finding should fail and return this as a fallback.
-		const PositionVector initial_proj_pos(0, 0, 1.5);
-		DistanceVector       diff = target_pos - initial_proj_pos;
-		CHECK(aiming_position.X_coord == diff.X_coord);
-		CHECK(aiming_position.Y_coord == diff.Y_coord);
-		CHECK(aiming_position.Z_coord == diff.Z_coord);
+		CHECK(aiming_position.X_coord == target_pos.X_coord);
+		CHECK(aiming_position.Y_coord == target_pos.Y_coord);
+		CHECK(aiming_position.Z_coord == target_pos.Z_coord);
 	}
 }

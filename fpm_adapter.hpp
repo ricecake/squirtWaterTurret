@@ -50,7 +50,7 @@ concept SafeNumericType = !std::is_same_v<T, bool> && (std::is_arithmetic_v<T> |
 class EmptyClass {};
 
 template <SafeNumericType T>
-class SafeAdapter : public std::conditional_t<std::is_class_v<T>, T, EmptyClass> {
+class SafeAdapter: public std::conditional_t<std::is_class_v<T>, T, EmptyClass> {
 	T m_wrapped;
 
 public:
