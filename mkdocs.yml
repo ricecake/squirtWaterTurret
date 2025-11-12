@@ -1,0 +1,90 @@
+# Project configuration
+site_name: Squirt Water Turret Documentation
+site_url: https://ricecake.github.io/squirtWaterTurret/
+repo_url: https://github.com/ricecake/squirtWaterTurret
+docs_dir: documentation
+
+# Theme
+theme:
+  name: material
+  palette:
+    # Palette toggle for light vs dark mode
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+  features:
+    - navigation.indexes
+    - navigation.tabs
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+
+# Navigation
+nav:
+  - 'Home': 'index.md'
+  - 'Core Concepts': 'Core_Concepts.md'
+  - 'Architecture': 'Architecture.md'
+  - 'Firmware':
+    - 'Firmware Classes': 'Firmware_Classes.md'
+    - 'Communication Protocol': 'Communication_Protocol.md'
+  - 'Computer Vision': 'CV_System.md'
+  - 'Algorithms and Math': 'Algorithms_and_Math.md'
+  # - Code Reference: 'squirt-water-turret/'
+  - Code Reference:
+      - "Classes":
+          - "Class List": "squirt-water-turret/annotated.md"
+          - "Class Index": "squirt-water-turret/classes.md"
+          - "Class Hierarchy": "squirt-water-turret/hierarchy.md"
+          - "Class Members": "squirt-water-turret/class_members.md"
+          - "Class Member Functions": "squirt-water-turret/class_member_functions.md"
+          - "Class Member Variables": "squirt-water-turret/class_member_variables.md"
+          - "Class Member Typedefs": "squirt-water-turret/class_member_typedefs.md"
+          - "Class Member Enumerations": "squirt-water-turret/class_member_enums.md"
+          - "All Classes": squirt-water-turret/class*.md
+          - "All Structs": squirt-water-turret/struct*.md
+      - "Namespaces":
+          - "Namespace List": "squirt-water-turret/namespaces.md"
+          - "Namespace Members": "squirt-water-turret/namespace_members.md"
+          - "Namespace Member Functions": "squirt-water-turret/namespace_member_functions.md"
+          - "Namespace Member Variables": "squirt-water-turret/namespace_member_variables.md"
+          - "Namespace Member Typedefs": "squirt-water-turret/namespace_member_typedefs.md"
+          - "Namespace Member Enumerations": "squirt-water-turret/namespace_member_enums.md"
+          - "All Namespaces": squirt-water-turret/namespace*.md
+      - "Functions": "squirt-water-turret/functions.md"
+      - "Variables": "squirt-water-turret/variables.md"
+      - "Macros": "squirt-water-turret/macros.md"
+      - "Files": "squirt-water-turret/files.md"
+      - "Sources": "squirt-water-turret/*_source.md"
+      - "Docs": "squirt-water-turret/*_8*.md"
+      - squirt-water-turret/*
+
+# Plugins
+plugins:
+  - search
+  - literate-nav:
+  - mkdoxy:
+      projects:
+        'squirt-water-turret':
+          src-dirs: '.'
+          full-doc: True
+          doxy-cfg:
+            PROJECT_NAME: 'Squirt Water Turret'
+            INPUT: '.'
+            FILE_PATTERNS: "*.cpp *.h* *.ino" # specify file patterns to filter out
+            RECURSIVE: True
+            EXCLUDE: './fpm ./tests ./documentation ./gh-pages ./site ./git ./vscode ./external LD2450.cpp LD2450.h'
+            GENERATE_LATEX: False
+            GENERATE_HTML: False
+            GENERATE_XML: True
+            XML_OUTPUT: 'xml'
+            EXTENSION_MAPPING: ino=C++
