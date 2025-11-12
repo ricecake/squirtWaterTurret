@@ -30,6 +30,7 @@ theme:
 
 # Navigation
 nav:
+  - 'Home': 'index.md'
   - 'Core Concepts': 'Core_Concepts.md'
   - 'Architecture': 'Architecture.md'
   - 'Firmware':
@@ -37,3 +38,21 @@ nav:
     - 'Communication Protocol': 'Communication_Protocol.md'
   - 'Computer Vision': 'CV_System.md'
   - 'Algorithms and Math': 'Algorithms_and_Math.md'
+
+# Plugins
+plugins:
+  - search
+  - mkdoxy:
+      projects:
+        'squirt-water-turret':
+          src-dirs: '.'
+          full-doc: True
+          doxy-cfg:
+            PROJECT_NAME: 'Squirt Water Turret'
+            INPUT: '.'
+            RECURSIVE: True
+            EXCLUDE: './fpm ./tests ./documentation ./gh-pages ./site ./git ./vscode ./external'
+            GENERATE_LATEX: False
+            GENERATE_HTML: False
+            GENERATE_XML: True
+            XML_OUTPUT: 'xml'
