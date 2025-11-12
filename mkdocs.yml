@@ -38,10 +38,12 @@ nav:
     - 'Communication Protocol': 'Communication_Protocol.md'
   - 'Computer Vision': 'CV_System.md'
   - 'Algorithms and Math': 'Algorithms_and_Math.md'
+  - Code Reference: 'squirt-water-turret/'
 
 # Plugins
 plugins:
   - search
+  - literate-nav:
   - mkdoxy:
       projects:
         'squirt-water-turret':
@@ -50,8 +52,9 @@ plugins:
           doxy-cfg:
             PROJECT_NAME: 'Squirt Water Turret'
             INPUT: '.'
+            FILE_PATTERNS: "*.cpp *.h*" # specify file patterns to filter out
             RECURSIVE: True
-            EXCLUDE: './fpm ./tests ./documentation ./gh-pages ./site ./git ./vscode ./external'
+            EXCLUDE: './fpm ./tests ./documentation ./gh-pages ./site ./git ./vscode ./external LD2450.cpp LD2450.h'
             GENERATE_LATEX: False
             GENERATE_HTML: False
             GENERATE_XML: True
