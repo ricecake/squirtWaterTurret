@@ -3,7 +3,6 @@
 #include <ostream>
 
 #include "doctest/doctest.h"
-#include "doctest_fpm_adapter.hpp"
 #include "mock_time.h"
 
 TestClock mock_clock;

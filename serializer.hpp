@@ -12,6 +12,7 @@
 #include <bit>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <functional>
 #include <iomanip>
@@ -20,10 +21,8 @@
 #include <memory>
 #include <span>
 #include <tuple>
-#include <algorithm>
 
 #include "shared_types.h"
-#include <stdint.h>
 
 /**
  * @brief The main namespace for the serialization library.

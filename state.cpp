@@ -14,6 +14,8 @@
 #include "target_selection.h"
 #include "utilities.h"
 
+constexpr fixed gravity = 9.814;
+
 SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
@@ -112,6 +114,7 @@ void SystemState::queueSelectTarget(TargetSource source, uint8_t index, uint16_t
 void SystemState::updateConfig(cerializer::Config* config) {
 	this->config.projectile_speed = fixed(config->projectile_speed);
 	this->config.turret_height = fixed(config->turret_height);
+	this->config.projectile_max_range = pow(this->config.projectile_speed, 2) / gravity; // V^2 / g
 	stepperA.setMaxSpeed(config->max_speed);
 	stepperA.setAcceleration(config->acceleration);
 	stepperB.setMaxSpeed(config->max_speed);
@@ -151,6 +154,9 @@ void SystemState::actualizePosition() {
 	auto target = currentTarget();
 	if (needTrackingUpdate && target.valid) {
 		// Calculate the aimpoint using the target's intercept position
+		if (target.Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
+			return;
+		}
 		auto aimpoint = target.interceptPosition();
 		auto pitch = long(std::min(std::max(aimpoint.Pitch(), fixed(-60)), fixed(60)) / angleToStep);
 		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
@@ -180,11 +186,10 @@ void SystemState::actualizePosition() {
 }
 
 fixed SystemState::targetTravelDistance() {
-	auto target = currentTarget();
-	if (!target.valid) {
+	auto aimpoint = getAimpoint();
+	if (aimpoint.magnitude() == 0) {
 		return INT_MAX;
 	}
-	auto aimpoint = target.interceptPosition();
 
 	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
 	auto pitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
@@ -197,6 +202,13 @@ fixed SystemState::targetTravelDistance() {
 }
 
 PositionVector SystemState::targetAimpoint() {
-	const auto target = currentTarget();
+	return getAimpoint();
+}
+
+PositionVector SystemState::getAimpoint() {
+	auto target = currentTarget();
+	if (!target.valid || (target.Position().magnitude() > config.projectile_max_range * fixed(1.1))) {
+		return PositionVector(0, 0, 0);
+	}
 	return target.interceptPosition();
 }

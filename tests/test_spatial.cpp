@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "doctest_fpm_adapter.hpp"
 #include "mock_time.h"
 #include "spatial.h"
 
@@ -35,8 +36,8 @@ TEST_CASE("PositionVector") {
 	SUBCASE("Methods") {
 		PositionVector v(3, 4, 5);
 		CHECK(v.Distance() == 5);
-		CHECK(is_close(v.Pitch(), fixed(45)));
-		CHECK(is_close(v.Yaw(), fixed(36.8698), fixed(0.01)));
+		CHECK(v.Pitch() == Approx(45.0));
+		CHECK(v.Yaw() == Approx(36.8698).epsilon(0.01));
 	}
 }
 
