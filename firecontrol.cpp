@@ -11,8 +11,8 @@
  * @param duration The duration for the firing state.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-FireControl::FireControl(bool active, uint16_t duration, int64_t run_after):
-	Command(run_after), active(active), duration(duration) {}
+FireControl::FireControl(bool active, uint16_t duration, int64_t run_after, uint64_t fireActionInterval):
+	Command(run_after), active(active), duration(duration), fireActionInterval(fireActionInterval) {}
 
 /**
  * @brief Executes the fire control command, setting the firing state.
@@ -32,7 +32,7 @@ void FireControl::Execute(SystemState* state) {
 	Target& target = state->currentTarget();
 
 	// Activate firing if the target has been idle longer than the action interval
-	if (active && target.actionIdleExceeds(fireActionInterval)) {
+	if (active && target.actionIdleExceeds(microseconds(state->config.fireActionInterval))) {
 		state->setFire(active);
 		state->queueCeaseFire(duration);
 	}

@@ -140,4 +140,20 @@ TEST_CASE("CommandQueue tests") {
 		queue.process(&state);
 		CHECK(MockCommand::execution_count == 2);
 	}
+
+	SUBCASE("Serialization and null pointer handling") {
+		queue.runCommandIn<MockCommand>(10000, 0);
+		queue.runCommandIn<MockCommand>(5000, 0);
+		// Manually insert a null pointer
+		queue.addNullCommandForTesting();
+
+		std::string serialized_queue = queue.serialize();
+		CHECK(serialized_queue.find("Time:") != std::string::npos);
+		CHECK(serialized_queue.find("Command ID:") != std::string::npos);
+
+		// Process the queue with the null pointer
+		mock_clock.set(10001);
+		queue.process(&state);
+		CHECK(MockCommand::execution_count == 2);
+	}
 }

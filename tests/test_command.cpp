@@ -45,3 +45,39 @@ TEST_CASE("Command Constructor") {
 		CHECK(cmd2.id > cmd.id);
 	}
 }
+
+TEST_CASE("SetStrategyCommand") {
+	SystemState state;
+	SetStrategyCommand cmd(TurretStrategy::CLOSEST, 0);
+
+	cmd.Execute(&state);
+
+	CHECK(state.getStrategy() == TurretStrategy::CLOSEST);
+}
+
+TEST_CASE("SetStanceCommand") {
+	SystemState state;
+	SetStanceCommand cmd(TurretStance::PASSIVE, 0);
+
+	cmd.Execute(&state);
+
+	CHECK(state.getStance() == TurretStance::PASSIVE);
+}
+
+TEST_CASE("SetStrategyCommand") {
+	SystemState state;
+	SetStrategyCommand cmd(TurretStrategy::CLOSEST, 0);
+
+	cmd.Execute(&state);
+
+	CHECK(state.getStrategy() == TurretStrategy::CLOSEST);
+}
+
+TEST_CASE("SetStanceCommand") {
+	SystemState state;
+	SetStanceCommand cmd(TurretStance::PASSIVE, 0);
+
+	cmd.Execute(&state);
+
+	CHECK(state.getStance() == TurretStance::PASSIVE);
+}

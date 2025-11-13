@@ -22,6 +22,7 @@ void CommandQueue::process(SystemState* state) {
 				continue;
 			}
 
+			std::cout << "now: " << now << " run_after: " << commandQueue.top()->run_after << std::endl;
 			if (now < commandQueue.top()->run_after) {
 				// The queue is sorted by time, so we can stop here.
 				break;

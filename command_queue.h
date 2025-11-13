@@ -55,6 +55,7 @@ public:
 	}
 
 	std::string serialize();
+	void addNullCommandForTesting() { commandQueue.push(nullptr); }
 
 private:
 	uint64_t max_run_after = 0;
