@@ -98,6 +98,18 @@ bool SystemState::getMoveState() {
 	return moveState;
 }
 
+TurretStrategy SystemState::getStrategy() {
+	return strategy;
+}
+
+TurretStance SystemState::getStance() {
+	return stance;
+}
+
+ConfigParameters SystemState::getConfig() {
+	return config;
+}
+
 void SystemState::queueFire(uint16_t fireDuration) {
 	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
 }

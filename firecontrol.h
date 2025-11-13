@@ -25,4 +25,5 @@ private:
 	// -- Private Attributes --
 	bool     active;   ///< The desired state of the firing pin (true for active, false for inactive).
 	uint16_t duration; ///< The duration for which the firing state should be maintained.
+	uint64_t fireActionInterval;
 };

@@ -37,6 +37,7 @@ struct ConfigParameters {
 	fixed projectile_speed = projectileSpeed; ///< The initial speed of the projectile in meters/second.
 	fixed turret_height = altitude;           ///< The height of the turret from the ground in meters.
 	fixed projectile_max_range = 40.0;        ///< The maximum effective range of the projectile in meters.
+	uint64_t fireActionInterval = 1000000;    ///< The minimum interval between firing actions in microseconds.
 };
 
 /**
@@ -79,6 +80,9 @@ public:
 	void    setStance(TurretStance stance);
 	bool    getFireState();
 	bool    getMoveState();
+	TurretStrategy getStrategy();
+	TurretStance   getStance();
+	ConfigParameters getConfig();
 	void    queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds);
 	void    queueFire(uint16_t milliseconds);
 	void    queueCeaseFire(uint16_t milliseconds);
