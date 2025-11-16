@@ -159,9 +159,12 @@ constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z
  */
 inline VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval) {
 	if (interval.count()) {
-		X_coord = dist.X_coord / interval.count();
-		Y_coord = dist.Y_coord / interval.count();
-		Z_coord = dist.Z_coord / interval.count();
+		auto interval_s = static_cast<fixed>(interval.count()) / 1000;
+		if (interval_s > 0) {
+			X_coord = dist.X_coord / interval_s;
+			Y_coord = dist.Y_coord / interval_s;
+			Z_coord = dist.Z_coord / interval_s;
+		}
 	}
 }
 
@@ -170,12 +173,14 @@ inline VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval
 // ======================================================================================
 
 constexpr const VelocityVector operator/(const DistanceVector& D, const ChronoDuration auto& interval) {
-	auto scale = interval.count();
+	auto interval_ms = interval.template as<uint64_t, std::milli>();
+	auto scale = static_cast<fixed>(interval_ms.count()) / 1000;
 	return VelocityVector(D.X_coord / scale, D.Y_coord / scale, D.Z_coord / scale);
 }
 
 constexpr const DistanceVector operator*(const VelocityVector& V, const ChronoDuration auto& interval) {
-	auto scale = static_cast<fixed>(interval.count());
+	auto interval_ms = interval.template as<uint64_t, std::milli>();
+	auto scale = static_cast<fixed>(interval_ms.count()) / 1000;
 	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
 }
 
