@@ -56,6 +56,7 @@ public:
 	bool      valid = false;
 	uint8_t   index;
 	uint8_t   id;
+	uint32_t  action_count = 0;
 	TimePoint seen;
 	TimePoint last_action;
 
@@ -144,4 +145,5 @@ inline TimeInterval Target::timeSinceLastSeen() const {
  */
 inline void Target::IncrementAction() {
 	last_action = Clock::now();
+	action_count++;
 }

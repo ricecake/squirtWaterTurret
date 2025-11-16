@@ -27,6 +27,7 @@
 
 using fixed = fixed_16_16;
 class Command;
+class Target;
 
 /**
  * @brief A struct to hold tunable configuration parameters for the system.
@@ -54,6 +55,8 @@ public:
 	// -- Public Methods --
 	Target&           currentTarget();
 	std::span<Target> currentTargetArray();
+	Target*           findBestTarget();
+	fixed             calculateTravelDistance(const Target& t);
 	inline size_t     size();
 
 	void updateTarget(
