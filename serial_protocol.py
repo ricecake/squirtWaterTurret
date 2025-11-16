@@ -127,6 +127,61 @@ class StaticTargetMessage(SerialMessage):
         """Returns the payload data for the StaticTargetMessage."""
         return (self.x, self.y, self.z)
 
+class TurretStance(IntEnum):
+    AGGRESSIVE = 0
+    DEFENSIVE = 1
+
+class TurretStrategy(IntEnum):
+    CLOSEST = 0
+    WEAKEST = 1
+    RANDOM = 2
+
+class TelemetryTarget:
+    def __init__(self, target_id: int, is_valid: bool, x: float, y: float, z: float):
+        self.target_id = target_id
+        self.is_valid = is_valid
+        self.x = x
+        self.y = y
+        self.z = z
+
+class TelemetryMessage(SerialMessage):
+    """
+    Message to receive telemetry data from the turret.
+    """
+    format = '<HB Q B B B f f 3(I?fff) H' # <H=start, B=code, Q=cmd_id, B=cmd_type, B=stance, B=source, f=pan, f=tilt, 3(I?fff)=radar_targets, H=end>
+    code = 6
+
+    def __init__(self, command_id: int, command_type: int, stance: int, source: int, pan: float, tilt: float, radar_targets: list[TelemetryTarget]):
+        self.command_id = command_id
+        self.command_type = command_type
+        self.stance = TurretStance(stance)
+        self.source = TargetSource(source)
+        self.pan = pan
+        self.tilt = tilt
+        self.radar_targets = radar_targets
+
+    @classmethod
+    def parse(cls, buffer: bytes) -> "TelemetryMessage":
+        """
+        Parses a byte buffer into a message object.
+        """
+        if cls.format is not None:
+            try:
+                fields = struct.unpack(cls.format, buffer)
+                if fields[0] != 0xCAFE or fields[-1] != 0xFACE or fields[1] != cls.code:
+                    raise ValueError('Bad buffer: Invalid markers or message code.')
+
+                # Unpack the radar targets
+                radar_targets_flat = fields[7:-1]
+                radar_targets = []
+                for i in range(0, len(radar_targets_flat), 5):
+                    radar_targets.append(TelemetryTarget(*radar_targets_flat[i:i+5]))
+
+                return cls(*fields[2:7], radar_targets)
+            except struct.error as e:
+                raise ValueError(f'Bad buffer: Struct unpacking failed. {e}')
+        raise NotImplementedError("Message format is not defined.")
+
 class ParseState(Enum):
     WAITING_FOR_HEADER = 1
     READING_PAYLOAD = 2
@@ -189,5 +244,5 @@ class MessageParser:
                     self.buffer = self.buffer[2:]
                     self.state = ParseState.WAITING_FOR_HEADER
 
-MESSAGE_CLASSES = [TargetMessage, SetTargetSourceMessage, StaticTargetMessage]
+MESSAGE_CLASSES = [TargetMessage, SetTargetSourceMessage, StaticTargetMessage, TelemetryMessage]
 MESSAGE_FACTORY = {msg.code: (msg, struct.calcsize(msg.format)) for msg in MESSAGE_CLASSES if msg.code is not None}

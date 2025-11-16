@@ -6,7 +6,9 @@
 // Test case for the TargetSelection command
 TEST_CASE("TargetSelection execute") {
 	// Create a SystemState and a TargetSelection command
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.target_source = TargetSource::CV;
 	TargetSelection cmd(state.target_source, 5, 0xFF, 0);
 
@@ -21,7 +23,9 @@ TEST_CASE("TargetSelection execute") {
 
 // Test that the next target selection is queued
 TEST_CASE("TargetSelection queues next") {
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.target_source = TargetSource::CV;
 	// Ensure target is invalid so the timeout is 0
 	state.fetchTarget(1).valid = false;
@@ -43,7 +47,9 @@ TEST_CASE("TargetSelection queues next") {
 
 // Test that a valid target queues the next selection with a timeout
 TEST_CASE("TargetSelection queues next with timeout for valid target") {
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.target_source = TargetSource::CV;
 	mock_clock.reset();
 
@@ -78,7 +84,9 @@ TEST_CASE("TargetSelection queues next with timeout for valid target") {
 TEST_CASE("TargetSelection invalidates idle target") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
-	SystemState                         state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState                         state(streamHandler);
 	state.target_source = TargetSource::CV;
 
 	// Make the target valid, but leave its last_action time at epoch

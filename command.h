@@ -22,7 +22,8 @@ public:
 	virtual ~Command() = default;
 
 	// -- Public Methods --
-	virtual void Execute(SystemState* state) = 0;
+	virtual void      Execute(SystemState* state) = 0;
+	virtual uint8_t Code() = 0;
 
 	// -- Public Attributes --
 	uint64_t id = 0;        ///< Unique identifier for the command, typically based on a timestamp.
@@ -52,7 +53,8 @@ constexpr auto operator<=>(const Command& left, const Command& right) {
 class SetStrategyCommand: public Command {
 public:
 	SetStrategyCommand(TurretStrategy strategy, uint64_t run_after);
-	void Execute(SystemState* state) override;
+	void    Execute(SystemState* state) override;
+	uint8_t Code() override { return 4; };
 
 private:
 	TurretStrategy strategy;
@@ -61,8 +63,19 @@ private:
 class SetStanceCommand: public Command {
 public:
 	SetStanceCommand(TurretStance stance, uint64_t run_after);
-	void Execute(SystemState* state) override;
+	void    Execute(SystemState* state) override;
+	uint8_t Code() override { return 5; };
 
 private:
 	TurretStance stance;
+};
+
+class SetTargetSourceCommand: public Command {
+public:
+	SetTargetSourceCommand(TargetSource source, uint64_t run_after);
+	void    Execute(SystemState* state) override;
+	uint8_t Code() override { return 2; };
+
+private:
+	TargetSource source;
 };

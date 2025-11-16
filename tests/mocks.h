@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "mock_time.h"
+#include "serializer.hpp"
 
 // Mock implementations for non-Arduino environments
 
@@ -71,6 +72,17 @@ public:
 		std::cout.write(reinterpret_cast<const char*>(buffer), size);
 		return size;
 	}
+
+	size_t readsome(char* buf, size_t count) {
+		if (available() > 0) {
+			return readBytes(buf, count);
+		}
+		return 0;
+	}
+
+	void write(const char* cbuf, size_t count) { write(reinterpret_cast<const uint8_t*>(cbuf), count); }
+
+	bool good() { return true; }
 
 	void print(auto message) { std::cout << message; }
 

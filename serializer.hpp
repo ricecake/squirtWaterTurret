@@ -670,6 +670,75 @@ namespace cerializer {
 	};
 
 	/**
+	 * @brief A simplified target representation for telemetry messages.
+	 */
+	struct TelemetryTarget {
+		uint32_t id;    ///< The unique ID of the target.
+		bool     valid; ///< Whether the target's data is valid.
+		float    x;     ///< The x-coordinate of the target.
+		float    y;     ///< The y-coordinate of the target.
+		float    z;     ///< The z-coordinate of the target.
+	};
+
+	/**
+	 * @brief A message to send telemetry data from the firmware to the host.
+	 *
+	 * This message is sent after a command is executed and includes details about the
+	 * command, the turret's state, and information about radar targets.
+	 */
+	class TelemetryMessage:
+		public Message<
+			TelemetryMessage,
+			6,
+			uint64_t,
+			uint8_t,
+			TurretStance,
+			TargetSource,
+			float,
+			float,
+			std::array<TelemetryTarget, 3>> {
+	public:
+		const uint64_t                       command_id;    ///< The ID of the command that was executed.
+		const uint8_t                        command_type;  ///< The type code of the command that was executed.
+		const TurretStance                   stance;        ///< The current firing stance of the turret.
+		const TargetSource                   source;        ///< The current target source (e.g., CV, Radar).
+		const float                          pan;           ///< The current pan angle of the turret.
+		const float                          tilt;          ///< The current tilt angle of the turret.
+		const std::array<TelemetryTarget, 3> radar_targets; ///< The state of the radar targets.
+
+	public:
+		/**
+		 * @brief Constructs a new TelemetryMessage.
+		 */
+		constexpr inline TelemetryMessage(
+			uint64_t                       command_id,
+			uint8_t                        command_type,
+			TurretStance                   stance,
+			TargetSource                   source,
+			float                          pan,
+			float                          tilt,
+			std::array<TelemetryTarget, 3> radar_targets
+		) noexcept:
+			command_id(command_id),
+			command_type(command_type),
+			stance(stance),
+			source(source),
+			pan(pan),
+			tilt(tilt),
+			radar_targets(radar_targets) {
+			assert(registered);
+		}
+
+		/**
+		 * @brief Encodes the message fields into a character array.
+		 * @return A std::array<char, Size()> containing the serialized payload.
+		 */
+		constexpr std::array<char, Size()> encode() const {
+			return pack(command_id, command_type, stance, source, pan, tilt, radar_targets);
+		}
+	};
+
+	/**
 	 * @brief Concept to identify types that support I/O operations.
 	 */
 	template <typename T>

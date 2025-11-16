@@ -8,7 +8,9 @@
 
 // Test case for activating the firing mechanism
 TEST_CASE("FireControl activate") {
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.setFire(false); // Ensure initial state is off
 	// Target& target = state.currentTarget(); // Unused but kept for clarity
 
@@ -25,7 +27,9 @@ TEST_CASE("FireControl activate") {
 
 // Test case for deactivating the firing mechanism
 TEST_CASE("FireControl deactivate") {
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.setFire(true); // Ensure initial state is on
 	// Target& target = state.currentTarget(); // Unused.
 	// By not calling IncrementAction(), the target's last_action remains in the
@@ -44,7 +48,9 @@ TEST_CASE("FireControl deactivate") {
 TEST_CASE("FireControl deactivation timing") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
-	SystemState                         state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState                         state(streamHandler);
 	state.setFire(true);
 	Target& target = state.currentTarget();
 	target.IncrementAction(); // Mark an action to check against
@@ -69,7 +75,9 @@ TEST_CASE("FireControl deactivation timing") {
 
 // Test case to ensure firing doesn't happen if already active
 TEST_CASE("FireControl already active") {
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.setFire(true);
 
 	FireControl cmd(true, 10, 0);
@@ -80,7 +88,9 @@ TEST_CASE("FireControl already active") {
 
 // Test case to ensure no change if already inactive
 TEST_CASE("FireControl already inactive") {
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.setFire(false);
 
 	FireControl cmd(false, 10, 0);
@@ -91,7 +101,9 @@ TEST_CASE("FireControl already inactive") {
 
 // Test case for when action idle time has not been exceeded
 TEST_CASE("FireControl activation too soon") {
-	SystemState state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState state(streamHandler);
 	state.setFire(false);
 	Target& target = state.currentTarget();
 	target.IncrementAction(); // Set last action time to now

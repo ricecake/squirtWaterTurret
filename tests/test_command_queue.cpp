@@ -11,7 +11,8 @@ class MockCommand: public Command {
 public:
 	MockCommand(int payload, uint64_t run_after): Command(run_after), payload(payload) {}
 
-	void Execute(SystemState*) override { execution_count++; }
+	void    Execute(SystemState*) override { execution_count++; }
+	uint8_t Code() override { return 0; }
 
 	int        payload;
 	static int execution_count;
@@ -30,7 +31,9 @@ TEST_CASE("CommandQueue tests") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
 	CommandQueue                        queue;
-	SystemState                         state;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState                         state(streamHandler);
 	INFO(queue.serialize());
 
 	SUBCASE("Commands are processed in order") {
