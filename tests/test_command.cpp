@@ -9,12 +9,17 @@ class TestCommand: public Command {
 public:
 	TestCommand(uint64_t run_after_delay): Command(run_after_delay) {}
 
-	void Execute(SystemState*) override { /* Do nothing */ }
+	void    Execute(SystemState*) override { /* Do nothing */
+	}
+	uint8_t Code() override { return 0; }
 };
 
 TEST_CASE("Command Constructor") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
+	HardwareSerial                      serial(0);
+	cerializer::StreamHandler<HardwareSerial> streamHandler(serial);
+	SystemState                         state(streamHandler);
 
 	SUBCASE("run_after is calculated correctly") {
 		uint64_t delay = 1000; // 1000 microseconds

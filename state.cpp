@@ -14,9 +14,13 @@
 #include "target_selection.h"
 #include "utilities.h"
 
+#include "command.h"
+#include <iostream>
+#include <ostream>
 constexpr fixed gravity = 9.814;
 
-SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
+SystemState::SystemState(cerializer::StreamHandler<HardwareSerial>& streamHandler):
+	staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)), streamHandler(streamHandler) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -211,4 +215,40 @@ PositionVector SystemState::getAimpoint() {
 		return PositionVector(0, 0, 0);
 	}
 	return target.interceptPosition();
+}
+
+/**
+ * @brief Sends a telemetry message to the host.
+ *
+ * This method is called after a command is executed. It gathers the current state of the
+ * turret, including its position, the state of radar targets, and details about the
+ * command that was just executed, and sends this information to the host computer.
+ *
+ * @param command The command that was just executed.
+ */
+void SystemState::sendCommand(Command& command) {
+	std::array<cerializer::TelemetryTarget, 3> radar_targets;
+	for (size_t i = 0; i < radarTarget.size(); ++i) {
+		radar_targets[i] = {
+			.id = radarTarget[i].id,
+			.valid = radarTarget[i].valid,
+			.x = static_cast<float>(radarTarget[i].Position().X_coord),
+			.y = static_cast<float>(radarTarget[i].Position().Y_coord),
+			.z = static_cast<float>(radarTarget[i].Position().Z_coord),
+		};
+	}
+
+	auto yaw = float(angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2);
+	auto pitch = float(angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2);
+
+	cerializer::TelemetryMessage message(
+		command.id,
+		command.Code(),
+		stance,
+		target_source,
+		yaw,
+		pitch,
+		radar_targets
+	);
+	streamHandler.Write(message);
 }

@@ -57,7 +57,7 @@ IOWrapper wrapped(testSerial);
 cerializer::StreamHandler streamHandler(wrapped);
 LD2450                    ld2450;
 
-SystemState dptState;
+SystemState dptState(streamHandler);
 
 TaskHandle_t targeting;
 TaskHandle_t systemControl;

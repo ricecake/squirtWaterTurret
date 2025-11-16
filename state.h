@@ -49,7 +49,7 @@ struct ConfigParameters {
 class SystemState {
 public:
 	// -- Constructors --
-	SystemState();
+	SystemState(cerializer::StreamHandler<HardwareSerial>& streamHandler);
 
 	// -- Public Methods --
 	Target&           currentTarget();
@@ -85,6 +85,7 @@ public:
 	void    updateConfig(cerializer::Config* config);
 	void    processCommandQueue();
 	void    actualizeState();
+	void    sendCommand(Command& command);
 	Target& fetchTarget(const uint8_t idx);
 	uint8_t fetchNearestTargetIdx(const PositionVector& point);
 	uint8_t fetchNearestTarget2dIdx(const PositionVector& point);
@@ -130,7 +131,8 @@ private:
 	TurretStrategy strategy;
 	TurretStance   stance;
 
-	CommandQueue commandQueue; ///< Priority queue for pending commands.
+	CommandQueue                                    commandQueue; ///< Priority queue for pending commands.
+	cerializer::StreamHandler<HardwareSerial>& streamHandler;
 };
 
 // ======================================================================================

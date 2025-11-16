@@ -16,7 +16,8 @@ public:
 	TargetSelection(TargetSource, uint8_t, int, int64_t);
 
 	// -- Public Methods --
-	void Execute(SystemState* state) override;
+	void    Execute(SystemState* state) override;
+	uint8_t Code() override { return 0; };
 
 private:
 	// -- Private Attributes --

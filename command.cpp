@@ -25,10 +25,20 @@ SetStrategyCommand::SetStrategyCommand(TurretStrategy strategy, uint64_t run_aft
 
 void SetStrategyCommand::Execute(SystemState* state) {
 	state->setStrategy(strategy);
+	state->sendCommand(*this);
 }
 
 SetStanceCommand::SetStanceCommand(TurretStance stance, uint64_t run_after): Command(run_after), stance(stance) {}
 
 void SetStanceCommand::Execute(SystemState* state) {
 	state->setStance(stance);
+	state->sendCommand(*this);
+}
+
+SetTargetSourceCommand::SetTargetSourceCommand(TargetSource source, uint64_t run_after):
+	Command(run_after), source(source) {}
+
+void SetTargetSourceCommand::Execute(SystemState* state) {
+	state->target_source = source;
+	state->sendCommand(*this);
 }
