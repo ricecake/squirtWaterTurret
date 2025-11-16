@@ -29,6 +29,25 @@ To hit a target at a distance, you can't just point and shoot. You have to accou
 *   **The Problem:** Calculating the correct launch angle to hit a target at a given distance and height involves solving a rather nasty quartic equation, which is computationally expensive for a microcontroller.
 *   **The Solution:** Instead of solving it directly, we use a numerical approximation method. This approach finds a "good enough" solution in a fixed, predictable amount of time, making it suitable for real-time applications. The result is a system that can arc a stream of water with surprising accuracy.
 
+## Web Interface
+
+The project includes a web-based interface for visualizing the camera feed, managing identified users, viewing logs, and configuring the system.
+
+### Running the Web Interface
+
+1.  **Build the frontend:**
+    ```bash
+    cd frontend
+    npm install
+    npm run build
+    cd ..
+    ```
+2.  **Run the main script with the web UI flag:**
+    ```bash
+    python3 cvTargetAssist.py --web-ui
+    ```
+    The web interface will be available at `http://localhost:5000`.
+
 ## Frequently Asked Questions
 
 ### Isn't this massively too complicated for a squirt gun?
@@ -59,12 +78,14 @@ Unsuspecting.
 *   `depthai`
 *   `sqlite-vec`
 *   `AccelStepper`
+*   React
+*   Flask
 
 ## Getting Started
 
 1.  Assemble the hardware. You're on your own here.
 2.  Flash the firmware in `dualStepperDPTStartWithRadar.ino` to the ESP32 using your preferred tool (e.g., Arduino IDE, PlatformIO).
-3.  Run the `cvTargetAssist.py` script on a machine connected to the OAK-D camera.
+3.  Set up and run the web interface (see "Web Interface" section above).
 4.  Ensure the Python script can communicate with the ESP32 over a serial port.
 5.  Add water. Power on.
 6.  Try not to make a mess.
