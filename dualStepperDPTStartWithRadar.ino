@@ -122,6 +122,7 @@ void readSerialCommands() {
 			case cerializer::SetTargetSourceMessage::Type(): {
 				auto source_msg = static_cast<cerializer::SetTargetSourceMessage*>(thing.get());
 				dptState.target_source = source_msg->source;
+				dptState.queueSelectTarget(TargetSource::STATIC, 0);
 				break;
 			}
 			case cerializer::StaticTargetMessage::Type(): {
@@ -140,7 +141,7 @@ void readSerialCommands() {
 	);
 }
 
-void selectTarget() {
+bool selectTarget() {
 	/*
 	    // Should find the nearest target not acted upon recently
 	    Then the distance should be calculated in the fire action
@@ -152,17 +153,18 @@ void selectTarget() {
 	*/
 	switch (dptState.target_source) {
 	case TargetSource::STATIC:
-		break;
-	// Set current target to static target
+		// If we're on static target, we stay on static target
+		return false;
 	case TargetSource::RADAR:
-		break;
-	// Check if the current target matches our criteria.
-	// If not, set target to closest target that does.  Distance should factor in action time.
+		// Check if the current target matches our criteria.
+		// If not, set target to closest target that does.  Distance should factor in action time.
+		return true;
 	case TargetSource::CV:
-		break;
 		// Check if the current target matches our criteria.
 		// If not, set target to closest target that does.
+		return true;
 	}
+	return false;
 	// Target switch commands should use the queue back method, so they come after any commands to stop firing.
 
 	/*
@@ -197,6 +199,101 @@ void systemControlLoop(void*) {
 	}
 }
 
+template <typename T, typename C>
+struct TargetEvalCache {
+	Target* target;
+	T       metric;
+
+	bool checkUpdate(Target* candidate, T value, C cmp = C{}) {
+		if (target == nullptr || cmp(value, metric)) {
+			metric = value;
+			target = candidate;
+			return true;
+		}
+		return false;
+	}
+};
+
+template <typename C>
+struct TargetDistanceEval: public TargetEvalCache<fixed, C> {};
+
+template <typename C>
+struct TargetTimeEval: public TargetEvalCache<TimePoint, C> {};
+
+template <typename C>
+struct TargetSeekEval: public TargetEvalCache<fixed, C> {};
+
+struct TargetEvaluationState {
+	Target* currentTarget;
+	Target* newTarget;
+
+	bool currentTargetActionable;
+	bool newTargetActionable;
+
+	TargetDistanceEval<std::less<>>    leastDistance;
+	TargetDistanceEval<std::greater<>> mostDistance;
+
+	TargetTimeEval<std::less<>>    leastRecent;
+	TargetTimeEval<std::greater<>> mostRecent;
+
+	TargetSeekEval<std::less<>> leastSeek;
+	TargetSeekEval<std::less<>> mostSeek;
+
+	TargetSource   source;
+	TurretStrategy strategy;
+	TurretStance   stance;
+
+	TargetEvaluationState(SystemState& state) {
+		if (source == TargetSource::STATIC) {
+			// short circuit for no change.
+		}
+		if (strategy == TurretStrategy::RANDOM) {
+			// short circuit for selecting a random target
+		}
+		currentTarget = state.selectedTarget;
+		source = state.target_source;
+		// strategy = state.getStrategy();
+		// stance = state.getStance();
+		for (auto target : state.currentTargetArray()) {
+			if (target.actionable() && state.config.projectile_max_range > target.Position().magnitude()) {
+				auto distance = target.Position().magnitude();
+				auto interval = target.last_action;
+
+				leastDistance.checkUpdate(&target, distance);
+				mostDistance.checkUpdate(&target, distance);
+				leastRecent.checkUpdate(&target, interval);
+				mostRecent.checkUpdate(&target, interval);
+			}
+		}
+
+		switch (strategy) {
+		case TurretStrategy::LEAST_HIT: {
+		}
+		case TurretStrategy::MOST_HIT: {
+		}
+		case TurretStrategy::CLOSEST: {
+		}
+		case TurretStrategy::FURTHEST: {
+		}
+		case TurretStrategy::LEAST_RECENT: {
+		}
+		case TurretStrategy::MOST_RECENT: {
+		}
+		case TurretStrategy::SMALLEST_TRAVEL: {
+		}
+		case TurretStrategy::LONGEST_TRAVEL: {
+		}
+		case TurretStrategy::RANDOM: {
+		}
+		}
+	}
+
+	// Basically, run a loop builiding this state.
+	// Then it can serve as a sort of "per round cache" to avoid needing to recalculate things so aggressively.
+	// then at the end it can say what action to  take and then emit the right one, rather than calling function with a
+	// complicated check.
+};
+
 void targetingLoop(void*) {
 	for (;;) {
 		try {
@@ -212,16 +309,18 @@ void targetingLoop(void*) {
 		}
 
 		try {
-			selectTarget();
+			// auto evalState = TargetEvaluationState(dptState);
+			bool tryFire = true;
+			if (dptState.shouldCheckTargetValidity()) {
+				tryFire = !selectTarget();
+			}
+			if (tryFire) {
+				generateFireActions();
+			}
 		} catch (const std::exception& e) {
 			std::cerr << "Caught exception: " << e.what() << std::endl;
 		}
 
-		try {
-			generateFireActions();
-		} catch (const std::exception& e) {
-			std::cerr << "Caught exception: " << e.what() << std::endl;
-		}
 		vTaskDelay(10 / portTICK_PERIOD_MS);
 	}
 }
@@ -245,7 +344,7 @@ void setup() {
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);
 	randomSeed(analogRead(0));
 
-	dptState.queueSelectTarget(TargetSource::RADAR, 1, 3 * 1000);
+	dptState.queueSelectTarget(TargetSource::RADAR, 1);
 
 	Serial.println("SETUP_FINISHED");
 

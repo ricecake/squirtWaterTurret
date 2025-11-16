@@ -72,10 +72,12 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 
 	trackingSpeed = speed;
 	needTrackingUpdate = true;
+	targetChangeProcessing = false;
 }
 
 void SystemState::setFire(bool active) {
 	fireState = active;
+	fireOrderProcessing = false;
 }
 
 void SystemState::setMove(bool active) {
@@ -98,7 +100,12 @@ bool SystemState::getMoveState() {
 	return moveState;
 }
 
+bool SystemState::shouldCheckTargetValidity() {
+	return !targetChangeProcessing;
+}
+
 void SystemState::queueFire(uint16_t fireDuration) {
+	fireOrderProcessing = true;
 	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
 }
 
@@ -107,8 +114,9 @@ void SystemState::queueCeaseFire(uint16_t fireDuration) {
 	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 
-void SystemState::queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds) {
-	commandQueue.addCommand<TargetSelection>(source, index, 0xFF, milliseconds * 1000);
+void SystemState::queueSelectTarget(TargetSource source, uint8_t index) {
+	targetChangeProcessing = true;
+	commandQueue.addCommandAfter<TargetSelection>(source, index, 0xFF);
 }
 
 void SystemState::updateConfig(cerializer::Config* config) {
@@ -201,13 +209,9 @@ fixed SystemState::targetTravelDistance() {
 	return acos(cos_alpha);
 }
 
-PositionVector SystemState::targetAimpoint() {
-	return getAimpoint();
-}
-
 PositionVector SystemState::getAimpoint() {
 	auto target = currentTarget();
-	if (!target.valid || (target.Position().magnitude() > config.projectile_max_range * fixed(1.1))) {
+	if (!targetIsPotentiallyValid()) {
 		return PositionVector(0, 0, 0);
 	}
 	return target.interceptPosition();

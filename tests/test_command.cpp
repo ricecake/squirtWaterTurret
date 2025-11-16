@@ -1,8 +1,6 @@
 #include "command.h"
-#include "doctest/doctest.h"
-#include "mock_time.h"
+#include "common.h"
 #include "state.h"
-#include "utilities.h"
 
 // A concrete command for testing purposes
 class TestCommand: public Command {

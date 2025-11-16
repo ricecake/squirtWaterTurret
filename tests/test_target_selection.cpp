@@ -1,7 +1,6 @@
-#include "doctest/doctest.h"
+#include "common.h"
 #include "state.h"
 #include "target_selection.h"
-#include "tests/mocks.h"
 
 // Test case for the TargetSelection command
 TEST_CASE("TargetSelection execute") {

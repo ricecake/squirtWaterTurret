@@ -48,6 +48,7 @@ public:
 	TimeInterval         timeSinceLastSeen() const;
 	bool                 actionIdleExceeds(const ChronoDuration auto limit) const;
 	bool                 idleExceeds(const ChronoDuration auto limit) const;
+	bool                 actionable() const;
 	void                 IncrementAction();
 	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval);
 	const PositionVector interceptPosition() const;
@@ -144,4 +145,8 @@ inline TimeInterval Target::timeSinceLastSeen() const {
  */
 inline void Target::IncrementAction() {
 	last_action = Clock::now();
+}
+
+inline bool Target::actionable() const {
+	return valid && actionIdleExceeds(fireActionInterval);
 }

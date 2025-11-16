@@ -1,10 +1,8 @@
 #include <iostream>
 
 #include "command_queue.h"
-#include "doctest/doctest.h"
-#include "mock_time.h"
+#include "common.h"
 #include "state.h"
-#include "utilities.h"
 
 // Mock command for testing
 class MockCommand: public Command {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -15,6 +16,8 @@
 // From state.h
 struct AccelStepper {
 	static const int FULL4WIRE = 4;
+	long             target = 0;
+	long             position = 0;
 
 	AccelStepper(int = 0, int = 0, int = 0, int = 0, int = 0, bool = true) {}
 
@@ -22,13 +25,17 @@ struct AccelStepper {
 
 	void setMaxSpeed(double) {}
 
-	void moveTo(long) {}
+	void moveTo(long s) { target = s; }
 
-	long distanceToGo() { return 0; }
+	long distanceToGo() { return abs(target - position); }
 
-	void run() {}
+	void run() {
+		if (position != target) {
+			position += std::signbit(target - position) * std::max(1, abs(target / 5));
+		}
+	}
 
-	long currentPosition() { return 0; }
+	long currentPosition() { return position; }
 };
 
 using SemaphoreHandle_t = int;

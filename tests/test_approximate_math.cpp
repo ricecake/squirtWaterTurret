@@ -3,8 +3,7 @@
 #include <ostream>
 
 #include "aproximate_math.hpp"
-#include "doctest/doctest.h"
-#include "fpm_adapter.hpp"
+#include "common.h"
 
 using fixed = fixed_16_16;
 

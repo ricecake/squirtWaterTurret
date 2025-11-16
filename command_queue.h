@@ -42,10 +42,11 @@ public:
 
 	template <typename T, typename... Args>
 	void addCommandAfter(Args&&... args) {
-		auto                        now = microSinceEpoch();
-		auto                        last_run_after = (max_run_after - now) + 1;
-		auto                        newCommand = std::make_shared<T>(std::forward<Args>(args)..., last_run_after);
+		auto run_time = max_run_after + 1;
+		auto newCommand = std::make_shared<T>(std::forward<Args>(args)..., 0);
+		newCommand->run_after = run_time;
 		std::lock_guard<std::mutex> lock(xMutex);
+		max_run_after = run_time;
 		commandQueue.push(std::move(newCommand));
 	}
 

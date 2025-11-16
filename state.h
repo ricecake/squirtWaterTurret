@@ -79,7 +79,9 @@ public:
 	void    setStance(TurretStance stance);
 	bool    getFireState();
 	bool    getMoveState();
-	void    queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds);
+	bool    shouldCheckTargetValidity();
+	bool    targetIsPotentiallyValid();
+	void    queueSelectTarget(TargetSource source, uint8_t index);
 	void    queueFire(uint16_t milliseconds);
 	void    queueCeaseFire(uint16_t milliseconds);
 	void    updateConfig(cerializer::Config* config);
@@ -107,6 +109,11 @@ public:
 	std::array<Target, 3>  radarTarget;
 	Target                 staticTarget;
 
+	Target* selectedTarget = &staticTarget; //< A reference to the currently selected target
+
+	const fixed currentYaw();
+	const fixed currentPitch();
+
 private:
 	// -- Private Methods --
 	void           actualizePosition();
@@ -122,11 +129,13 @@ private:
 	const int dirPinB = 26;           ///< Direction pin for stepper motor B.
 	const int firePin = 2;            ///< Pin for the firing mechanism.
 
-	bool           moveState = true;               ///< Flag indicating if movement is enabled.
-	bool           fireState = false;              ///< Flag indicating the current firing state.
-	bool           needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
-	uint8_t        trackingSpeed = 255;            ///< The speed for tracking movements.
-	Target*        selectedTarget = &staticTarget; //< A reference to the currently selected target
+	bool moveState = true;           ///< Flag indicating if movement is enabled.
+	bool fireState = false;          ///< Flag indicating the current firing state.
+	bool needTrackingUpdate = false; ///< Flag indicating if a tracking update is required.
+	bool targetChangeProcessing = true;
+	bool fireOrderProcessing = true;
+
+	uint8_t        trackingSpeed = 255; ///< The speed for tracking movements.
 	TurretStrategy strategy;
 	TurretStance   stance;
 
@@ -212,4 +221,17 @@ inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point)
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
 	return std::ranges::distance(currentTargetArray().begin(), res);
+}
+
+inline bool SystemState::targetIsPotentiallyValid() {
+	auto target = currentTarget();
+	return target.valid && (target.Position().magnitude() <= config.projectile_max_range * fixed(1.1));
+}
+
+inline const fixed SystemState::currentYaw() {
+	return angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
+}
+
+inline const fixed SystemState::currentPitch() {
+	return angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
 }

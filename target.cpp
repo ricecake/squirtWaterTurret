@@ -34,11 +34,6 @@ void Target::Update(PositionVector P) {
 
 const PositionVector Target::interceptPosition() const {
 	using localFixed = fixed_16_16;
-	// using localFixed = FixedAdapter<
-	// 	SafeAdapter<std::int32_t>,
-	// 	SafeAdapter<std::int64_t>,
-	// 	16
-	// >;
 
 	const PositionVector       proj_pos = PositionVector(0, 0, 1.5);
 	const PositionVector       target_pos = position;

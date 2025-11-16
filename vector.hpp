@@ -66,8 +66,17 @@ public:
 
 	constexpr explicit Vector3D(): X_coord(0), Y_coord(0), Z_coord(0) {}
 
-	constexpr explicit Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord):
+	constexpr Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord):
 		X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
+
+	constexpr ClassType FromPolarDegrees(NumericType Pitch, NumericType Yaw, NumericType Radius) {
+		return Vector3D(Pitch, Yaw, Radius);
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const ClassType& obj) {
+		os << "Vec<" << obj.X_coord << ", " << obj.Y_coord << ", " << obj.Z_coord << ">";
+		return os;
+	}
 
 	/**
 	 * @brief Checks if the vector is non-zero.
@@ -170,6 +179,13 @@ public:
 	 * @brief Computes the angle to another vector.
 	 */
 	NumericType angleTo(const VectorCompatible<NumericType> auto& other) const {
-		return atan2(cross(other).magnitude(), dot(other)) * rad2DegFactor;
+		if (!(*this && other)) {
+			return NumericType(0);
+		}
+		auto normalThis = normalize();
+		auto normalOther = other.normalize();
+
+		auto dotted = normalThis.dot(normalOther);
+		return acos(dotted) * rad2DegFactor;
 	}
 };

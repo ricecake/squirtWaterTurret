@@ -2,7 +2,7 @@
 #include <sstream>
 #include <vector>
 
-#include "doctest/doctest.h"
+#include "common.h"
 #include "serializer.hpp"
 
 // Helper function to assert that two Target messages are equal.

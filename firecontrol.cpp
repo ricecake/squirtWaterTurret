@@ -30,9 +30,10 @@ void FireControl::Execute(SystemState* state) {
 	}
 
 	Target& target = state->currentTarget();
+	auto    actionable = target.actionable();
 
 	// Activate firing if the target has been idle longer than the action interval
-	if (active && target.actionIdleExceeds(fireActionInterval)) {
+	if (active && actionable) {
 		state->setFire(active);
 		state->queueCeaseFire(duration);
 	}

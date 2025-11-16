@@ -13,7 +13,7 @@ CXXFLAGS = \
 	-fsanitize=signed-integer-overflow \
 	-fsanitize=bounds \
 	-fprofile-arcs \
-	-pg
+# 	-pg
 # 	-O3
 
 # Directories

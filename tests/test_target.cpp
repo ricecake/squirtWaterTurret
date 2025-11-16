@@ -1,6 +1,4 @@
-#include "doctest/doctest.h"
-#include "doctest_fpm_adapter.hpp"
-#include "mock_time.h"
+#include "common.h"
 #include "spatial.h"
 #include "target.h"
 

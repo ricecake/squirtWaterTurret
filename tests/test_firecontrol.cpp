@@ -1,10 +1,8 @@
 #include <chrono>
 
-#include "doctest/doctest.h"
+#include "common.h"
 #include "firecontrol.h"
 #include "state.h"
-#include "tests/mocks.h"
-#include "utilities.h"
 
 // Test case for activating the firing mechanism
 TEST_CASE("FireControl activate") {
