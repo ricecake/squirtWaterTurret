@@ -37,6 +37,8 @@ struct ConfigParameters {
 	fixed projectile_speed = projectileSpeed; ///< The initial speed of the projectile in meters/second.
 	fixed turret_height = altitude;           ///< The height of the turret from the ground in meters.
 	fixed projectile_max_range = 40.0;        ///< The maximum effective range of the projectile in meters.
+	uint16_t fire_duration = 100;             ///< The duration of a single firing action in milliseconds.
+	uint16_t fire_interval = 3000;            ///< The interval between firing actions in milliseconds.
 };
 
 /**

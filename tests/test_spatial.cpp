@@ -27,7 +27,7 @@ TEST_CASE("PositionVector") {
 		CHECK(v3.Z_coord == 9);
 
 		VelocityVector vel(1, 1, 1);
-		PositionVector v4(v1, vel, seconds(1));
+		PositionVector v4(v1, vel, milliseconds(1000));
 		CHECK(v4.X_coord == 2);
 		CHECK(v4.Y_coord == 3);
 		CHECK(v4.Z_coord == 4);
@@ -52,7 +52,7 @@ TEST_CASE("DistanceVector") {
 		CHECK(v1.Z_coord == 3);
 
 		VelocityVector vel(1, 2, 3);
-		DistanceVector v2(vel, seconds(2));
+		DistanceVector v2(vel, milliseconds(2000));
 		CHECK(v2.X_coord == 2);
 		CHECK(v2.Y_coord == 4);
 		CHECK(v2.Z_coord == 6);
@@ -70,7 +70,7 @@ TEST_CASE("VelocityVector") {
 		CHECK(v1.Z_coord == 3);
 
 		DistanceVector d(2, 4, 6);
-		VelocityVector v2(d, seconds(2));
+		VelocityVector v2(d, milliseconds(2000));
 		CHECK(v2.X_coord == 1);
 		CHECK(v2.Y_coord == 2);
 		CHECK(v2.Z_coord == 3);
@@ -83,7 +83,7 @@ TEST_CASE("Spatial Operator Overloads") {
 
 	SUBCASE("VelocityVector = DistanceVector / TimeInterval") {
 		DistanceVector d(10, 20, 30);
-		VelocityVector v = d / seconds(2);
+		VelocityVector v = d / milliseconds(2000);
 		CHECK(v.X_coord == 5);
 		CHECK(v.Y_coord == 10);
 		CHECK(v.Z_coord == 15);
@@ -91,7 +91,7 @@ TEST_CASE("Spatial Operator Overloads") {
 
 	SUBCASE("DistanceVector = VelocityVector * TimeInterval") {
 		VelocityVector v(1, 2, 3);
-		DistanceVector d = v * seconds(3);
+		DistanceVector d = v * milliseconds(3000);
 		CHECK(d.X_coord == 3);
 		CHECK(d.Y_coord == 6);
 		CHECK(d.Z_coord == 9);

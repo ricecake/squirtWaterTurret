@@ -88,6 +88,21 @@ void SystemState::setStrategy(TurretStrategy strategy) {
 
 void SystemState::setStance(TurretStance stance) {
 	this->stance = stance;
+	switch (stance) {
+	case TurretStance::AGGRESSIVE:
+		config.fire_duration = 500;
+		config.fire_interval = 1000;
+		break;
+	case TurretStance::PASSIVE:
+		config.fire_duration = 100;
+		config.fire_interval = 5000;
+		break;
+	case TurretStance::NEUTRAL:
+	default:
+		config.fire_duration = 250;
+		config.fire_interval = 3000;
+		break;
+	}
 }
 
 bool SystemState::getFireState() {
@@ -98,8 +113,8 @@ bool SystemState::getMoveState() {
 	return moveState;
 }
 
-void SystemState::queueFire(uint16_t fireDuration) {
-	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
+void SystemState::queueFire(uint16_t) {
+	commandQueue.addCommand<FireControl>(true, config.fire_duration, 0);
 }
 
 void SystemState::queueCeaseFire(uint16_t fireDuration) {

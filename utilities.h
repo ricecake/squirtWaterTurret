@@ -14,7 +14,7 @@ using DefaultClock = std::chrono::high_resolution_clock;
 using TimePoint = DefaultClock::time_point;
 using Duration = DefaultClock::duration;
 
-using TimeInterval = DynamicTimeInterval<uint64_t, std::ratio<1>>;
+using TimeInterval = DynamicTimeInterval<uint64_t, std::milli>;
 
 template <typename T>
 concept ChronoDuration = requires(T obj) {
@@ -202,5 +202,3 @@ const fixed_16_16            Gz = -9.80665;                              ///< Ac
 const int                    altitude = 1320;                            ///< Default altitude for calculations.
 const fixed_16_16            projectileSpeed = 20;                       ///< Speed of the projectile.
 
-/// @brief The interval after which a fire action can be repeated.
-const auto fireActionInterval = seconds(3);
