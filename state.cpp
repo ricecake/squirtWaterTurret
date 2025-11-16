@@ -157,7 +157,7 @@ void SystemState::actualizePosition() {
 		if (target.Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
 			return;
 		}
-		auto aimpoint = target.interceptPosition();
+		auto aimpoint = target.interceptPosition(config.projectile_speed, config.turret_height);
 		auto pitch = long(std::min(std::max(aimpoint.Pitch(), fixed(-60)), fixed(60)) / angleToStep);
 		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
 
@@ -210,5 +210,5 @@ PositionVector SystemState::getAimpoint() {
 	if (!target.valid || (target.Position().magnitude() > config.projectile_max_range * fixed(1.1))) {
 		return PositionVector(0, 0, 0);
 	}
-	return target.interceptPosition();
+	return target.interceptPosition(config.projectile_speed, config.turret_height);
 }
