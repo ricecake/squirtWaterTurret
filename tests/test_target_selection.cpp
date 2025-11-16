@@ -2,6 +2,7 @@
 #include "state.h"
 #include "target_selection.h"
 #include "tests/mocks.h"
+#include <ranges>
 
 // Test case for the TargetSelection command
 TEST_CASE("TargetSelection execute") {
@@ -98,4 +99,78 @@ TEST_CASE("TargetSelection invalidates idle target") {
 	mock_clock += microseconds(2000).get_duration();
 	state.processCommandQueue();
 	CHECK(&state.currentTarget() == &state.fetchTarget(8));
+}
+
+TEST_CASE("findBestTarget selects correct target for each strategy") {
+	SystemState state;
+	state.target_source = TargetSource::CV;
+
+	// Set up targets with varying properties
+	state.fetchTarget(1).valid = true;
+	state.fetchTarget(1).last_action = TimePoint(microseconds(100).get_duration());
+	state.fetchTarget(1).action_count = 5;
+	state.fetchTarget(1).Update(PositionVector(10, 5, 0)); // Off-axis
+
+	state.fetchTarget(2).valid = true;
+	state.fetchTarget(2).last_action = TimePoint(microseconds(200).get_duration());
+	state.fetchTarget(2).action_count = 2;
+	state.fetchTarget(2).Update(PositionVector(20, 2, 0)); // Off-axis
+
+	state.fetchTarget(3).valid = true;
+	state.fetchTarget(3).last_action = TimePoint(microseconds(50).get_duration());
+	state.fetchTarget(3).action_count = 10;
+	state.fetchTarget(3).Update(PositionVector(5, 10, 0));  // Off-axis
+
+	// --- Test each strategy ---
+
+	state.setStrategy(TurretStrategy::LEAST_HIT);
+	CHECK(state.findBestTarget() == &state.fetchTarget(2));
+
+	state.setStrategy(TurretStrategy::MOST_HIT);
+	CHECK(state.findBestTarget() == &state.fetchTarget(3));
+
+	state.setStrategy(TurretStrategy::CLOSEST);
+	CHECK(state.findBestTarget() == &state.fetchTarget(1));
+
+	state.setStrategy(TurretStrategy::FURTHEST);
+	CHECK(state.findBestTarget() == &state.fetchTarget(2));
+
+	state.setStrategy(TurretStrategy::LEAST_RECENT);
+	CHECK(state.findBestTarget() == &state.fetchTarget(3));
+
+	state.setStrategy(TurretStrategy::MOST_RECENT);
+	CHECK(state.findBestTarget() == &state.fetchTarget(2));
+
+	// For travel-based strategies, we need to set the current position
+	state.stepperA.moveTo(0);
+	state.stepperA.run();
+	state.stepperB.moveTo(0);
+	state.stepperB.run();
+
+	// Programmatically find the best target for travel-based strategies
+	auto targets = state.currentTargetArray() | std::views::filter([](const Target& t) { return t.valid; });
+	auto smallest_travel_target = &(*std::ranges::min_element(
+		targets,
+		[&](const Target& a, const Target& b) {
+			return state.calculateTravelDistance(a) < state.calculateTravelDistance(b);
+		}
+	));
+	auto longest_travel_target = &(*std::ranges::max_element(
+		targets,
+		[&](const Target& a, const Target& b) {
+			return state.calculateTravelDistance(a) < state.calculateTravelDistance(b);
+		}
+	));
+
+	state.setStrategy(TurretStrategy::SMALLEST_TRAVEL);
+	CHECK(state.findBestTarget() == smallest_travel_target);
+
+	state.setStrategy(TurretStrategy::LONGEST_TRAVEL);
+	CHECK(state.findBestTarget() == longest_travel_target);
+
+	state.setStrategy(TurretStrategy::RANDOM);
+	auto random_target = state.findBestTarget();
+	CHECK(random_target->valid);
+	CHECK((random_target == &state.fetchTarget(1) || random_target == &state.fetchTarget(2) ||
+	       random_target == &state.fetchTarget(3)));
 }

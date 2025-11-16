@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <chrono>
 #include <ratio>
+#include <ranges>
+#include <random>
 
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
@@ -17,6 +19,13 @@
 constexpr fixed gravity = 9.814;
 
 SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
+	for (size_t i = 0; i < cvTarget.size(); ++i) {
+		cvTarget[i].index = i;
+	}
+	for (size_t i = 0; i < radarTarget.size(); ++i) {
+		radarTarget[i].index = i;
+	}
+
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -151,6 +160,10 @@ void SystemState::actualizePosition() {
 		return;
 	}
 
+	if (target_source != TargetSource::STATIC && !selectedTarget->valid) {
+		selectedTarget = findBestTarget();
+	}
+
 	auto target = currentTarget();
 	if (needTrackingUpdate && target.valid) {
 		// Calculate the aimpoint using the target's intercept position
@@ -201,6 +214,22 @@ fixed SystemState::targetTravelDistance() {
 	return acos(cos_alpha);
 }
 
+fixed SystemState::calculateTravelDistance(const Target& t) {
+	auto aimpoint = t.interceptPosition();
+	if (aimpoint.magnitude() == 0) {
+		return INT_MAX;
+	}
+
+	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
+	auto pitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
+
+	auto delta_yaw = aimpoint.Yaw() - yaw;
+
+	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
+
+	return acos(cos_alpha);
+}
+
 PositionVector SystemState::targetAimpoint() {
 	return getAimpoint();
 }
@@ -211,4 +240,49 @@ PositionVector SystemState::getAimpoint() {
 		return PositionVector(0, 0, 0);
 	}
 	return target.interceptPosition();
+}
+
+Target* SystemState::findBestTarget() {
+	auto targets = currentTargetArray() | std::views::filter([](const Target& t) { return t.valid; });
+	if (targets.empty()) {
+		return &staticTarget;
+	}
+
+	// A helper lambda to find the best target using a custom projection
+	auto find_best = [&](auto projection, bool find_max = false) {
+		if (find_max) {
+			return &(*std::ranges::max_element(targets, std::less<>{}, projection));
+		}
+		return &(*std::ranges::min_element(targets, std::less<>{}, projection));
+	};
+
+	switch (strategy) {
+	case TurretStrategy::LEAST_HIT:
+		return find_best(&Target::action_count);
+	case TurretStrategy::MOST_HIT:
+		return find_best(&Target::action_count, true);
+	case TurretStrategy::CLOSEST:
+		return find_best(&Target::Distance);
+	case TurretStrategy::FURTHEST:
+		return find_best(&Target::Distance, true);
+	case TurretStrategy::LEAST_RECENT:
+		return find_best(&Target::last_action);
+	case TurretStrategy::MOST_RECENT:
+		return find_best(&Target::last_action, true);
+	case TurretStrategy::RANDOM: {
+		// This is a bit more complex, so we'll handle it separately.
+		std::random_device                      rd;
+		std::mt19937                            gen(rd());
+		std::uniform_int_distribution<size_t>   dist(0, std::ranges::distance(targets) - 1);
+		auto                                    it = targets.begin();
+		std::advance(it, dist(gen));
+		return &(*it);
+	}
+	case TurretStrategy::SMALLEST_TRAVEL:
+		return find_best([&](const Target& t) { return calculateTravelDistance(t); });
+	case TurretStrategy::LONGEST_TRAVEL:
+		return find_best([&](const Target& t) { return calculateTravelDistance(t); }, true);
+	default:
+		return &(*targets.begin());
+	}
 }

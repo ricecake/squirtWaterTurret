@@ -91,3 +91,28 @@ const PositionVector Target::interceptPosition() const {
 		(J + Q * intercept - L * pow(intercept, 2)) / intercept
 	);
 };
+
+
+/**
+ * @brief Calculates the pitch of the target relative to the origin.
+ * @return The pitch in fixed-point representation.
+ */
+fixed Target::Pitch() {
+	return position.Pitch();
+}
+
+/**
+ * @brief Calculates the yaw of the target relative to the origin.
+ * @return The yaw in fixed-point representation.
+ */
+fixed Target::Yaw() {
+	return position.Yaw();
+}
+
+/**
+ * @brief Calculates the distance of the target from the origin.
+ * @return The distance in meters.
+ */
+fixed Target::Distance() {
+	return position.magnitude();
+}
