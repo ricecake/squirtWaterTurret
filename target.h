@@ -50,7 +50,7 @@ public:
 	bool                 idleExceeds(const ChronoDuration auto limit) const;
 	void                 IncrementAction();
 	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval);
-	const PositionVector interceptPosition() const;
+	const PositionVector interceptPosition(const fixed&, const fixed&) const;
 
 	// -- Public Attributes --
 	bool      valid = false;

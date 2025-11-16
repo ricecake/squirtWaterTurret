@@ -32,7 +32,7 @@ void Target::Update(PositionVector P) {
 	seen = new_seen;
 }
 
-const PositionVector Target::interceptPosition() const {
+const PositionVector Target::interceptPosition(const fixed& proj_speed, const fixed& turret_height) const {
 	using localFixed = fixed_16_16;
 	// using localFixed = FixedAdapter<
 	// 	SafeAdapter<std::int32_t>,
@@ -40,14 +40,13 @@ const PositionVector Target::interceptPosition() const {
 	// 	16
 	// >;
 
-	const PositionVector       proj_pos = PositionVector(0, 0, 1.5);
+	const PositionVector       proj_pos = PositionVector(0, 0, turret_height);
 	const PositionVector       target_pos = position;
 	const VelocityVector       target_velocity = velocity;
-	const localFixed           proj_speed = 20;
 	const Vector3D<localFixed> Gv(0, 0, 9.814);
 	const localFixed           G = Gv.magnitude();
 
-	if (position.magnitude() > pow(proj_speed, 2) / G) {
+	if (position.magnitude() > pow(localFixed(proj_speed), 2) / G) {
 		return position;
 	}
 
@@ -61,7 +60,7 @@ const PositionVector Target::interceptPosition() const {
 	const localFixed K = diff.Y_coord;
 
 	const localFixed L = localFixed(-0.5) * G;
-	const localFixed S = proj_speed;
+	const localFixed S = localFixed(proj_speed);
 
 	// Quartic Coefficients
 	const localFixed c0 = L * L;

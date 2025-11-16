@@ -39,10 +39,11 @@ TEST_CASE("Target InterceptPosition") {
 		Target         target(target_pos, VelocityVector(0, 0, 0));
 
 		// Execution: Get the calculated aiming position from the target.
-		PositionVector aiming_position = target.interceptPosition();
+		const fixed          projectile_speed = 20.0;
+		const fixed          turret_height = 1.5;
+		PositionVector       aiming_position = target.interceptPosition(projectile_speed, turret_height);
 
 		// Verification: Simulate the projectile's flight and check for an intercept.
-		const fixed          projectile_speed = 20.0;
 		const PositionVector initial_proj_pos(0, 0, 1.5);
 		const fixed          g = 9.814;
 
@@ -77,10 +78,11 @@ TEST_CASE("Target InterceptPosition") {
 		Target         target(initial_target_pos, target_vel);
 
 		// Execution: Get the calculated aiming position.
-		PositionVector aiming_position = target.interceptPosition();
+		const fixed          projectile_speed = 20.0;
+		const fixed          turret_height = 1.5;
+		PositionVector       aiming_position = target.interceptPosition(projectile_speed, turret_height);
 
 		// Verification: Simulate and check for intercept.
-		const fixed          projectile_speed = 20.0;
 		const PositionVector initial_proj_pos(0, 0, 1.5);
 		const fixed          g = 9.814;
 
@@ -117,7 +119,9 @@ TEST_CASE("Target InterceptPosition") {
 		Target         target(target_pos, VelocityVector(0, 0, 0));
 
 		// Execution: Get the calculated aiming position.
-		PositionVector aiming_position = target.interceptPosition();
+		const fixed    projectile_speed = 20.0;
+		const fixed    turret_height = 1.5;
+		PositionVector aiming_position = target.interceptPosition(projectile_speed, turret_height);
 
 		// Verification: The aiming position should be the target position,
 		// as the root-finding should fail and return this as a fallback.
