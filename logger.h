@@ -9,7 +9,7 @@ using namespace std::literals; // required for ""sv
 namespace logger {
 	enum class LogLevel : uint8_t { INFO, WARN, DEBUG };
 
-	constexpr inline static std::string_view levelString(const LogLevel& level) {
+	inline static std::string levelString(const LogLevel& level) {
 		switch (level) {
 		case LogLevel::INFO:
 			return "INFO";
@@ -18,35 +18,33 @@ namespace logger {
 		case LogLevel::DEBUG:
 			return "DEBUG";
 		}
+		return "INFO";
 	}
 
 	struct LogMessage {
-		LogLevel         level = LogLevel::INFO;
-		std::string_view message;
+		const LogLevel     level = LogLevel::INFO;
+		const std::string  message;
+		const std::string  file_name;
+		const std::string  function_name;
+		const unsigned int line_number;
 	};
+
+	const std::string format(const LogMessage& msg) {
+		std::stringstream str;
+		str << "[" << std::string(levelString(msg.level)) << "] " << msg.message << " (" << msg.file_name << ": "
+			<< msg.line_number << " :: " << msg.function_name;
+
+		return str.str();
+	}
 
 	class Backend { // abstract base class for backend
 	protected:
 		virtual ~Backend() = default;
-		virtual constexpr const std::string_view format(const LogMessage& msg, std::source_location loc) = 0;
-		virtual bool                             render(const std::string& str) = 0;
+		virtual bool render(const std::string& str) = 0;
 	};
 
 	class ConsoleBackend: public Backend {
-		constexpr const std::string_view format(const LogMessage& msg, std::source_location loc) override {
-			// std::string str;
-			// str
-			// + "[" + levelString(msg.level) + "] "
-			// + msg.message + " "
-			// + loc.file_name + "::"
-			// + loc.function_name + "::"
-			// + loc.line << "::";
-
-			std::string_view str{"["sv + levelString(msg.level)};
-
-			return str;
-		}
-
+	public:
 		bool render(const std::string& str) override {
 			std::cout << str << std::endl;
 			return true;
@@ -58,37 +56,43 @@ namespace logger {
 	class Logger {
 		B backend;
 
-		void doLogging(LogLevel level, const std::string& msg, const auto& loc) {
-			LogMessage log{level, msg};
-			auto       logStr = backend.format(log, loc);
+		void doLogging(const LogLevel level, const std::string& msg, const std::source_location& loc) {
+			LogMessage log{
+				.level = level,
+				.message = msg,
+				.file_name = loc.file_name(),
+				.function_name = loc.function_name(),
+				.line_number = loc.line(),
+			};
+			std::string logStr = format(log);
 			backend.render(logStr);
 		}
 
 	public:
-		void INFO(const std::string& msg, const auto& loc = std::source_location::current()) {
+		void INFO(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
 			doLogging(LogLevel::INFO, msg, loc);
 		};
 
-		void WARN(const std::string& msg, const auto& loc = std::source_location::current()) {
+		void WARN(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
 			doLogging(LogLevel::WARN, msg, loc);
 		};
 
-		void DEBUG(const std::string& msg, const auto& loc = std::source_location::current()) {
+		void DEBUG(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
 			doLogging(LogLevel::DEBUG, msg, loc);
 		};
 	};
 
 	inline static Logger<ConsoleBackend> defaultLogger;
 
-	void INFO(const std::string& msg, const auto& loc = std::source_location::current()) {
+	void INFO(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
 		defaultLogger.INFO(msg, loc);
 	};
 
-	void WARN(const std::string& msg, const auto& loc = std::source_location::current()) {
+	void WARN(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
 		defaultLogger.WARN(msg, loc);
 	};
 
-	void DEBUG(const std::string& msg, const auto& loc = std::source_location::current()) {
+	void DEBUG(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
 		defaultLogger.DEBUG(msg, loc);
 	};
 
