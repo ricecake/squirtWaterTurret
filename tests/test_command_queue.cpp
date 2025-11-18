@@ -5,7 +5,7 @@
 #include "state.h"
 
 // Mock command for testing
-class MockCommand: public Command {
+class MockCommand: virtual public Command, public AutoCommand<MockCommand> {
 public:
 	MockCommand(int payload, uint64_t run_after): Command(run_after), payload(payload) {}
 

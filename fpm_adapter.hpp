@@ -34,28 +34,11 @@ public:
 
 	[[nodiscard]] auto operator<=>(const auto& other) const noexcept { return this->raw_value() <=> other.raw_value(); }
 
-	constexpr inline operator bool() const {
-		return bool(this->raw_value());
-	}
+	constexpr inline operator bool() const { return bool(this->raw_value()); }
 };
 
-namespace detail {
-	template <typename T>
-	struct is_fixed_adapter: std::false_type {};
-
-	template <typename B, typename I, unsigned int F, bool E>
-	struct is_fixed_adapter<fpm::fixed<B, I, F, E>>: std::true_type {};
-
-	template <typename B, typename I, unsigned int F, bool E>
-	struct is_fixed_adapter<FixedAdapter<B, I, F, E>>: std::true_type {};
-} // namespace detail
-
 template <typename T>
-concept IsFixedPoint =
-	detail::is_fixed_adapter<T>::value ||
-	std::is_base_of_v<
-		FixedAdapter<typename T::base_type, typename T::intermediate_type, T::fraction_bits, T::rounding_enabled>,
-		T>;
+concept IsFixedPoint = fpm::is_fixed_v<T>;
 
 /**
  * @brief Overloads for standard library functions to support fixed-point types.

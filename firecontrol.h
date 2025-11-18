@@ -13,7 +13,7 @@
  * This class implements the Command interface to activate or deactivate the firing pin.
  * It is used to schedule firing events at specific times.
  */
-class FireControl: public Command {
+class FireControl: virtual public Command, public AutoCommand<FireControl> {
 public:
 	// -- Constructors --
 	FireControl(bool, uint16_t, int64_t);

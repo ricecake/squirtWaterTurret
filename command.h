@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "shared_types.h"
+#include "utilities.h"
 
 class SystemState;
 
@@ -24,9 +25,20 @@ public:
 	// -- Public Methods --
 	virtual void Execute(SystemState* state) = 0;
 
+	virtual constexpr const std::string_view Type() const = 0;
+
 	// -- Public Attributes --
 	uint64_t id = 0;        ///< Unique identifier for the command, typically based on a timestamp.
 	uint64_t run_after = 0; ///< The time at which the command should be executed.
+};
+
+template <typename Derived>
+class AutoCommand: virtual public Command {
+public:
+	constexpr const std::string_view Type() const override {
+		// The string is generated once at compile time for this type
+		return type_name<Derived>();
+	}
 };
 
 // ======================================================================================
@@ -49,7 +61,7 @@ constexpr auto operator<=>(const Command& left, const Command& right) {
 	}
 }
 
-class SetStrategyCommand: public Command {
+class SetStrategyCommand: virtual public Command, public AutoCommand<SetStrategyCommand> {
 public:
 	SetStrategyCommand(TurretStrategy strategy, uint64_t run_after);
 	void Execute(SystemState* state) override;
@@ -58,7 +70,7 @@ private:
 	TurretStrategy strategy;
 };
 
-class SetStanceCommand: public Command {
+class SetStanceCommand: virtual public Command, public AutoCommand<SetStanceCommand> {
 public:
 	SetStanceCommand(TurretStance stance, uint64_t run_after);
 	void Execute(SystemState* state) override;

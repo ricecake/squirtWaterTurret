@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "logger.h"
 #include "state.h"
 #include "utilities.h"
 
@@ -36,6 +37,7 @@ void CommandQueue::process(SystemState* state) {
 	// command scheduling.
 	for (const auto& comm : runnable_commands) {
 		if (comm) {
+			logger::INFO("Evaluating command", comm->Type(), comm->id, now, comm->run_after);
 			comm->Execute(state);
 		}
 	}

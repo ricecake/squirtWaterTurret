@@ -3,7 +3,7 @@
 #include "state.h"
 
 // A concrete command for testing purposes
-class TestCommand: public Command {
+class TestCommand: virtual public Command, public AutoCommand<TestCommand> {
 public:
 	TestCommand(uint64_t run_after_delay): Command(run_after_delay) {}
 

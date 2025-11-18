@@ -4,51 +4,64 @@
 #include <source_location>
 #include <sstream>
 #include <string>
+#include <string_view>         // Add this
 using namespace std::literals; // required for ""sv
 
 namespace logger {
 	enum class LogLevel : uint8_t { INFO, WARN, DEBUG };
 
-	inline static std::string levelString(const LogLevel& level) {
+	constexpr std::string_view levelString(const LogLevel& level) {
 		switch (level) {
 		case LogLevel::INFO:
-			return "INFO";
+			return "INFO"sv;
 		case LogLevel::WARN:
-			return "WARN";
+			return "WARN"sv;
 		case LogLevel::DEBUG:
-			return "DEBUG";
+			return "DEBUG"sv;
 		}
-		return "INFO";
+		return "INFO"sv;
 	}
 
 	struct LogMessage {
-		const LogLevel     level = LogLevel::INFO;
-		const std::string  message;
-		const std::string  file_name;
-		const std::string  function_name;
-		const unsigned int line_number;
+		const LogLevel         level = LogLevel::INFO;
+		const std::string_view message;       // View of the original message
+		const std::string_view file_name;     // View of the const char*
+		const std::string_view function_name; // View of the const char*
+		const std::string      tags;
+		const unsigned int     line_number;
 	};
 
 	const std::string format(const LogMessage& msg) {
 		std::stringstream str;
-		str << "[" << std::string(levelString(msg.level)) << "] " << msg.message << " (" << msg.file_name << ": "
-			<< msg.line_number << " :: " << msg.function_name;
-
+		str << "[" << levelString(msg.level) << "] " << msg.message;
+		if (!msg.tags.empty()) {
+			str << " " << msg.tags;
+		}
+		str << " (" << msg.file_name << ":" << msg.line_number << " :: " << msg.function_name << ")";
 		return str.str();
 	}
 
 	class Backend { // abstract base class for backend
 	protected:
 		virtual ~Backend() = default;
-		virtual bool render(const std::string& str) = 0;
+		virtual bool render(const std::string_view& str) = 0;
 	};
 
 	class ConsoleBackend: public Backend {
 	public:
-		bool render(const std::string& str) override {
+		bool render(const std::string_view& str) override {
 			std::cout << str << std::endl;
 			return true;
 		}
+	};
+
+	struct LogSource {
+		std::string_view     msg;
+		std::source_location loc;
+
+		template <typename StringType>
+		LogSource(const StringType& m, const std::source_location& l = std::source_location::current()):
+			msg(m), loc(l) {}
 	};
 
 	template <class B>
@@ -56,12 +69,17 @@ namespace logger {
 	class Logger {
 		B backend;
 
-		void doLogging(const LogLevel level, const std::string& msg, const std::source_location& loc) {
+		template <typename... Ts>
+		void
+		doLogging(const LogLevel level, const std::string_view& msg, const std::source_location& loc, Ts&&... flags) {
+			std::stringstream tags;
+			((tags << "[" << flags << "] "), ...);
 			LogMessage log{
 				.level = level,
 				.message = msg,
 				.file_name = loc.file_name(),
 				.function_name = loc.function_name(),
+				.tags = tags.str(),
 				.line_number = loc.line(),
 			};
 			std::string logStr = format(log);
@@ -69,31 +87,37 @@ namespace logger {
 		}
 
 	public:
-		void INFO(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
-			doLogging(LogLevel::INFO, msg, loc);
+		template <typename... Ts>
+		void INFO(LogSource src, Ts&&... flags) {
+			doLogging(LogLevel::INFO, src.msg, src.loc, std::forward<Ts>(flags)...);
 		};
 
-		void WARN(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
-			doLogging(LogLevel::WARN, msg, loc);
+		template <typename... Ts>
+		void WARN(LogSource src, Ts&&... flags) {
+			doLogging(LogLevel::WARN, src.msg, src.loc, std::forward<Ts>(flags)...);
 		};
 
-		void DEBUG(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
-			doLogging(LogLevel::DEBUG, msg, loc);
+		template <typename... Ts>
+		void DEBUG(LogSource src, Ts&&... flags) {
+			doLogging(LogLevel::DEBUG, src.msg, src.loc, std::forward<Ts>(flags)...);
 		};
 	};
 
 	inline static Logger<ConsoleBackend> defaultLogger;
 
-	void INFO(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
-		defaultLogger.INFO(msg, loc);
+	template <typename... Ts>
+	void INFO(LogSource src, Ts&&... flags) {
+		defaultLogger.INFO(src, std::forward<Ts>(flags)...);
 	};
 
-	void WARN(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
-		defaultLogger.WARN(msg, loc);
+	template <typename... Ts>
+	void WARN(LogSource src, Ts&&... flags) {
+		defaultLogger.WARN(src, std::forward<Ts>(flags)...);
 	};
 
-	void DEBUG(const std::string& msg, const std::source_location& loc = std::source_location::current()) {
-		defaultLogger.DEBUG(msg, loc);
+	template <typename... Ts>
+	void DEBUG(LogSource src, Ts&&... flags) {
+		defaultLogger.DEBUG(src, std::forward<Ts>(flags)...);
 	};
 
 }; // namespace logger

@@ -1,7 +1,11 @@
 #pragma once
 
+#include <array> // std::array
 #include <chrono>
 #include <functional>
+#include <string>
+#include <string_view>
+#include <utility> // std::index_sequence
 
 #include "fpm_adapter.hpp"
 
@@ -204,3 +208,39 @@ const fixed_16_16            projectileSpeed = 20;                       ///< Sp
 
 /// @brief The interval after which a fire action can be repeated.
 const auto fireActionInterval = seconds(3);
+
+template <typename T>
+consteval std::string_view type_name() {
+	using namespace std::literals; // required for ""sv
+// Format is usually: "constexpr std::string_view type_name() [with T = Name]"
+// We need to slice it. This logic is compiler specific.
+#if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
+	#if defined(__clang__) || defined(__GNUC__)
+
+	std::string_view name = __PRETTY_FUNCTION__;
+	std::string_view prefix = "T = ";
+	std::string_view suffix = "; ";
+
+	#elif defined(_MSC_VER)
+
+	std::string_view prefix = "type_name<";
+	std::string_view suffix = ", ";
+	std::string_view name = __FUNCSIG__;
+
+	#endif
+
+	auto start = name.find(prefix);
+	auto end = name.find(suffix, start);
+	if (end == std::string_view::npos) {
+		end = name.rfind(">(void)"sv, start);
+	}
+	if (start != std::string_view::npos && end != std::string_view::npos) {
+		start += prefix.size();
+		return name.substr(start, end - start);
+	}
+	return name;
+
+#else
+	return "UnknownType";
+#endif
+}
