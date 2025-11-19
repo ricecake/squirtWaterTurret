@@ -55,8 +55,8 @@ public:
 
 	// -- Public Attributes --
 	bool      valid = false;
-	uint8_t   index;
-	uint8_t   id;
+	uint8_t   index = 0;
+	uint32_t  id = 0;
 	TimePoint seen;
 	TimePoint last_action;
 
@@ -122,6 +122,10 @@ inline const VelocityVector Target::Velocity() const {
  */
 inline const PositionVector Target::Position() const {
 	return position;
+}
+
+inline fixed Target::Distance() {
+	return position.Distance();
 }
 
 /**

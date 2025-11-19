@@ -1,7 +1,9 @@
 #include <climits>
 #include <cstdint>
+#include <ranges>
 #include <vector>
 
+#include "logger.h"
 #include "serializer.hpp"
 #include "state.h"
 #include "utilities.h"
@@ -141,33 +143,33 @@ void readSerialCommands() {
 	);
 }
 
-bool selectTarget() {
-	/*
-	    // Should find the nearest target not acted upon recently
-	    Then the distance should be calculated in the fire action
-	    the fire action should be told about the target, not the duration.
-	    Queue fire should take the number of shots, and then calculate the times to start and stop.
-	    select target will also pay attention to if the position has been overridden, so that it can make smart choices
-	    refresh targets will need to be reworked into "check radar" and "check external comms"
-	    since external comms may include things like position changes, and fire commands.
-	*/
-	switch (dptState.target_source) {
-	case TargetSource::STATIC:
-		// If we're on static target, we stay on static target
-		return false;
-	case TargetSource::RADAR:
-		// Check if the current target matches our criteria.
-		// If not, set target to closest target that does.  Distance should factor in action time.
-		return true;
-	case TargetSource::CV:
-		// Check if the current target matches our criteria.
-		// If not, set target to closest target that does.
-		return true;
-	}
-	return false;
-	// Target switch commands should use the queue back method, so they come after any commands to stop firing.
+// bool selectTarget() {
+// 	/*
+// 	    // Should find the nearest target not acted upon recently
+// 	    Then the distance should be calculated in the fire action
+// 	    the fire action should be told about the target, not the duration.
+// 	    Queue fire should take the number of shots, and then calculate the times to start and stop.
+// 	    select target will also pay attention to if the position has been overridden, so that it can make smart choices
+// 	    refresh targets will need to be reworked into "check radar" and "check external comms"
+// 	    since external comms may include things like position changes, and fire commands.
+// 	*/
+// 	switch (dptState.target_source) {
+// 	case TargetSource::STATIC:
+// 		// If we're on static target, we stay on static target
+// 		return false;
+// 	case TargetSource::RADAR:
+// 		// Check if the current target matches our criteria.
+// 		// If not, set target to closest target that does.  Distance should factor in action time.
+// 		return true;
+// 	case TargetSource::CV:
+// 		// Check if the current target matches our criteria.
+// 		// If not, set target to closest target that does.
+// 		return true;
+// 	}
+// 	return false;
+// 	// Target switch commands should use the queue back method, so they come after any commands to stop firing.
 
-	/*
+/*
 Depending on the source and the mode (persistent, closest, farthest, random, least, most, etc (basically how we pick the
 target from the set of sources)), we pick the new target.  Should have a new target source "scan", that just does an
 idle sentry scan, and a mode for "aggressive" that will have it test fire. Also changes the fire cadenece in other
@@ -175,10 +177,71 @@ modes. Scan will issue a command that moves around and re-queues itself.  It wil
 selected or sources have changed. Select target is now what will be used to actually put a change of target order into
 the queue at the back.  It will change sources and everything
 */
+// }
+
+struct Target* selectTarget() {
+	auto filter = std::views::filter([](Target& t) {
+		if (t.valid && t.idleExceeds(seconds(5))) {
+			t.valid = false;
+		}
+		return t.valid;
+	});
+
+	auto targets = filter(dptState.currentTargetArray());
+
+	if (targets.empty()) {
+		return nullptr;
+	}
+
+	for (auto& targ : targets) {
+		if (targ.idleExceeds(seconds(5))) {
+			targ.valid = false;
+		}
+	}
+
+	// A helper lambda to find the best target using a custom projection
+	auto find_best = [&](auto projection, bool find_max = false) {
+		if (find_max) {
+			return &(*std::ranges::max_element(targets, std::less<>{}, projection));
+		}
+		return &(*std::ranges::min_element(targets, std::less<>{}, projection));
+	};
+
+	switch (dptState.currentStrategey()) {
+	case TurretStrategy::CLOSEST:
+		return find_best(&Target::Distance);
+	case TurretStrategy::FURTHEST:
+		return find_best(&Target::Distance, true);
+	case TurretStrategy::LEAST_RECENT:
+		return find_best(&Target::last_action);
+	case TurretStrategy::MOST_RECENT:
+		return find_best(&Target::last_action, true);
+	// case TurretStrategy::LEAST_HIT:
+	// 	return find_best(&Target::action_count);
+	// case TurretStrategy::MOST_HIT:
+	// 	return find_best(&Target::action_count, true);
+	// case TurretStrategy::SMALLEST_TRAVEL:
+	// There's something to be done to consider calculating most of the distance calc up front, and then solving for
+	// each target indivudually.  Later optimization though.
+	// 	return find_best([&](const Target& t) { return
+	// calculateTravelDistance(t); }); case TurretStrategy::LONGEST_TRAVEL: 	return find_best([&](const Target& t) {
+	// return calculateTravelDistance(t); }, true);
+	case TurretStrategy::RANDOM: {
+		// This is a bit more complex, so we'll handle it separately.
+		std::random_device                    rd;
+		std::mt19937                          gen(rd());
+		std::uniform_int_distribution<size_t> dist(0, std::ranges::distance(targets) - 1);
+		auto                                  it = targets.begin();
+		std::advance(it, dist(gen));
+		return &(*it);
+	}
+	default:
+		return &(*targets.begin());
+	}
 }
 
 void generateFireActions() {
-	if (dptState.targetTravelDistance() <= 2) {
+	if (dptState.currentTarget().valid && dptState.targetTravelDistance() <= 2) {
 		dptState.queueFire(500);
 	}
 }
@@ -199,101 +262,6 @@ void systemControlLoop(void*) {
 	}
 }
 
-template <typename T, typename C>
-struct TargetEvalCache {
-	Target* target;
-	T       metric;
-
-	bool checkUpdate(Target* candidate, T value, C cmp = C{}) {
-		if (target == nullptr || cmp(value, metric)) {
-			metric = value;
-			target = candidate;
-			return true;
-		}
-		return false;
-	}
-};
-
-template <typename C>
-struct TargetDistanceEval: public TargetEvalCache<fixed, C> {};
-
-template <typename C>
-struct TargetTimeEval: public TargetEvalCache<TimePoint, C> {};
-
-template <typename C>
-struct TargetSeekEval: public TargetEvalCache<fixed, C> {};
-
-struct TargetEvaluationState {
-	Target* currentTarget;
-	Target* newTarget;
-
-	bool currentTargetActionable;
-	bool newTargetActionable;
-
-	TargetDistanceEval<std::less<>>    leastDistance;
-	TargetDistanceEval<std::greater<>> mostDistance;
-
-	TargetTimeEval<std::less<>>    leastRecent;
-	TargetTimeEval<std::greater<>> mostRecent;
-
-	TargetSeekEval<std::less<>> leastSeek;
-	TargetSeekEval<std::less<>> mostSeek;
-
-	TargetSource   source;
-	TurretStrategy strategy;
-	TurretStance   stance;
-
-	TargetEvaluationState(SystemState& state) {
-		if (source == TargetSource::STATIC) {
-			// short circuit for no change.
-		}
-		if (strategy == TurretStrategy::RANDOM) {
-			// short circuit for selecting a random target
-		}
-		currentTarget = state.selectedTarget;
-		source = state.target_source;
-		// strategy = state.getStrategy();
-		// stance = state.getStance();
-		for (auto target : state.currentTargetArray()) {
-			if (target.actionable() && state.config.projectile_max_range > target.Position().magnitude()) {
-				auto distance = target.Position().magnitude();
-				auto interval = target.last_action;
-
-				leastDistance.checkUpdate(&target, distance);
-				mostDistance.checkUpdate(&target, distance);
-				leastRecent.checkUpdate(&target, interval);
-				mostRecent.checkUpdate(&target, interval);
-			}
-		}
-
-		switch (strategy) {
-		case TurretStrategy::LEAST_HIT: {
-		}
-		case TurretStrategy::MOST_HIT: {
-		}
-		case TurretStrategy::CLOSEST: {
-		}
-		case TurretStrategy::FURTHEST: {
-		}
-		case TurretStrategy::LEAST_RECENT: {
-		}
-		case TurretStrategy::MOST_RECENT: {
-		}
-		case TurretStrategy::SMALLEST_TRAVEL: {
-		}
-		case TurretStrategy::LONGEST_TRAVEL: {
-		}
-		case TurretStrategy::RANDOM: {
-		}
-		}
-	}
-
-	// Basically, run a loop builiding this state.
-	// Then it can serve as a sort of "per round cache" to avoid needing to recalculate things so aggressively.
-	// then at the end it can say what action to  take and then emit the right one, rather than calling function with a
-	// complicated check.
-};
-
 void targetingLoop(void*) {
 	for (;;) {
 		try {
@@ -309,12 +277,15 @@ void targetingLoop(void*) {
 		}
 
 		try {
-			// auto evalState = TargetEvaluationState(dptState);
 			bool tryFire = true;
 			if (dptState.shouldCheckTargetValidity()) {
-				tryFire = !selectTarget();
+				auto newTarget = selectTarget();
+				if (newTarget != nullptr) {
+					dptState.queueSelectTarget(dptState.target_source, newTarget->index);
+					tryFire = false;
+				}
 			}
-			if (tryFire) {
+			if (tryFire && dptState.shouldCheckFiringConditions()) {
 				generateFireActions();
 			}
 		} catch (const std::exception& e) {
@@ -336,23 +307,23 @@ void setup() {
 	ld2450.begin(RadarSerial, false);
 
 	if (!ld2450.waitForSensorMessage(true)) {
-		Serial.println("SENSOR CONNECTION SEEMS OK");
+		logger::INFO("SENSOR CONNECTION SEEMS OK");
 	} else {
-		Serial.println("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
+		logger::INFO("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
 	}
 
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);
 	randomSeed(analogRead(0));
 
-	dptState.queueSelectTarget(TargetSource::RADAR, 1);
+	// dptState.queueSelectTarget(TargetSource::RADAR, 1);
 
-	Serial.println("SETUP_FINISHED");
+	logger::INFO("SETUP_FINISHED");
 
-	Serial.println("Ready!");
+	logger::INFO("Ready!");
 
 	delay(1000);
 
-	Serial.println("Starting!");
+	logger::INFO("Starting!");
 
 	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
 

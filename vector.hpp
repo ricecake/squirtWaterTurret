@@ -60,9 +60,9 @@ public:
 	constexpr static Vector3D<Numeric> Forward = Vector3D<Numeric>(0, 1, 0);
 	constexpr static Vector3D<Numeric> Backward = Vector3D<Numeric>(0, -1, 0);
 
-	NumericType X_coord; ///< The X-coordinate of the vector.
-	NumericType Y_coord; ///< The Y-coordinate of the vector.
-	NumericType Z_coord; ///< The Z-coordinate of the vector.
+	NumericType X_coord = 0; ///< The X-coordinate of the vector.
+	NumericType Y_coord = 0; ///< The Y-coordinate of the vector.
+	NumericType Z_coord = 0; ///< The Z-coordinate of the vector.
 
 	constexpr explicit Vector3D(): X_coord(0), Y_coord(0), Z_coord(0) {}
 
@@ -183,7 +183,8 @@ public:
 			return NumericType(0);
 		}
 		auto normalThis = normalize();
-		auto normalOther = other.normalize();
+		auto normalOther = other.normalize(); // Need a way to efficiently do this without precision loss.  Need to
+		                                      // change types on the fly?
 
 		auto dotted = normalThis.dot(normalOther);
 		return acos(dotted) * rad2DegFactor;

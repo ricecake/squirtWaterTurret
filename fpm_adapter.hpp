@@ -27,6 +27,9 @@
 template <typename B, typename I, unsigned int F, bool E = true>
 class FixedAdapter: public fpm::fixed<B, I, F, E> {
 public:
+	using IntermediateType = I;
+	static const int FixedBits = F;
+
 	inline FixedAdapter() noexcept = default;
 
 	template <typename NonFixedType>

@@ -19,6 +19,7 @@
 #include "command.h"
 #include "command_queue.h"
 #include "fpm_adapter.hpp"
+#include "logger.h"
 #include "serializer.hpp"
 #include "shared_types.h"
 #include "target.h"
@@ -80,6 +81,7 @@ public:
 	bool    getFireState();
 	bool    getMoveState();
 	bool    shouldCheckTargetValidity();
+	bool    shouldCheckFiringConditions();
 	bool    targetIsPotentiallyValid();
 	void    queueSelectTarget(TargetSource source, uint8_t index);
 	void    queueFire(uint16_t milliseconds);
@@ -114,6 +116,8 @@ public:
 	const fixed currentYaw();
 	const fixed currentPitch();
 
+	TurretStrategy currentStrategey() const { return strategy; }
+
 private:
 	// -- Private Methods --
 	void           actualizePosition();
@@ -132,8 +136,8 @@ private:
 	bool moveState = true;           ///< Flag indicating if movement is enabled.
 	bool fireState = false;          ///< Flag indicating the current firing state.
 	bool needTrackingUpdate = false; ///< Flag indicating if a tracking update is required.
-	bool targetChangeProcessing = true;
-	bool fireOrderProcessing = true;
+	bool targetChangeProcessing = false;
+	bool fireOrderProcessing = false;
 
 	uint8_t        trackingSpeed = 255; ///< The speed for tracking movements.
 	TurretStrategy strategy;
@@ -166,13 +170,17 @@ inline void SystemState::updateTarget(
 			doUpdate = (travelAngle) > indifferenceMargin;
 		}
 	}
+	// logger::DEBUG("Setting needTrackingUpdate", selectedTarget);
 
 	if (doUpdate) {
 		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that
 		// are real
 		targetArray[idx].Update(newPosition);
 		targetArray[idx].valid = valid;
-		needTrackingUpdate = true;
+		if (selectedTarget == &targetArray[idx]) {
+			logger::DEBUG("Setting needTrackingUpdate", selectedTarget, &targetArray[idx]);
+			needTrackingUpdate = true;
+		}
 	}
 }
 

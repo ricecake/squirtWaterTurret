@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstdint>
 #include <iostream>
 #include <source_location>
@@ -31,7 +32,7 @@ namespace logger {
 		const unsigned int     line_number;
 	};
 
-	const std::string format(const LogMessage& msg) {
+	inline const std::string format(const LogMessage& msg) {
 		std::stringstream str;
 		str << "[" << levelString(msg.level) << "] " << msg.message;
 		if (!msg.tags.empty()) {

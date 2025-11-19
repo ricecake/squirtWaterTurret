@@ -5,6 +5,7 @@
 
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"
+#include "logger.h"
 #include "utilities.h"
 #include "vector.hpp"
 
@@ -53,6 +54,56 @@ public:
 	fixed Pitch();
 	fixed Yaw();
 	fixed Distance();
+
+	fixed fixed_integer_sqrt(fixed::IntermediateType n_in) const {
+		uint64_t n_scaled = (uint64_t)(n_in >> (2 * fixed::FixedBits));
+		uint64_t root = 0;
+		uint64_t test_bit_pair = (uint64_t)1 << 62;
+
+		while (test_bit_pair > n_scaled) {
+			test_bit_pair >>= 2;
+		}
+
+		while (test_bit_pair != 0) {
+			uint64_t trial = root + test_bit_pair;
+
+			if (n_scaled >= trial) {
+				n_scaled -= trial;
+				root += test_bit_pair;
+			}
+
+			root >>= 1;
+			test_bit_pair >>= 2;
+		}
+
+		return fixed::from_raw_value((uint32_t)root);
+	}
+
+	fixed angleTo(const PositionVector& other) const {
+		if (!(*this && other)) {
+			return NumericType(0);
+		}
+		int64_t aX = X_coord.raw_value();
+		int64_t aY = Y_coord.raw_value();
+		int64_t aZ = Z_coord.raw_value();
+		int64_t bX = other.X_coord.raw_value();
+		int64_t bY = other.Y_coord.raw_value();
+		int64_t bZ = other.Z_coord.raw_value();
+
+		int64_t dot_product_raw = (int64_t)aX * bX + (int64_t)aY * bY + (int64_t)aZ * bZ;
+
+		int64_t cX_raw = (int64_t)aY * bZ - (int64_t)aZ * bY;
+		int64_t cY_raw = (int64_t)aZ * bX - (int64_t)aX * bZ;
+		int64_t cZ_raw = (int64_t)aX * bY - (int64_t)aY * bX;
+
+		int64_t cross_mag_sq_raw = cX_raw * cX_raw + cY_raw * cY_raw + cZ_raw * cZ_raw;
+
+		fixed dot_product_scaled = fixed::from_raw_value((dot_product_raw >> fixed::FixedBits));
+		fixed cross_magnitude_scaled = fixed_integer_sqrt(cross_mag_sq_raw);
+
+		auto x = atan2(cross_magnitude_scaled, dot_product_scaled);
+		return x* rad2DegFactor;;
+	}
 
 private:
 	// -- Private Attributes --

@@ -10,13 +10,14 @@
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
 #include "fpm_adapter.hpp"
+#include "logger.h"
 #include "target.h"
 #include "target_selection.h"
 #include "utilities.h"
 
 constexpr fixed gravity = 9.814;
 
-SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
+SystemState::SystemState(): staticTarget(0, true, PositionVector(1, 0, 0), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -25,12 +26,21 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.0
 
 	pinMode(firePin, OUTPUT);
 
-	target_source = TargetSource::STATIC;
-	auto p = staticTarget.Position();
-	p.Z_coord = config.turret_height;
-	staticTarget.Update(p);
+	target_source = TargetSource::RADAR;
+	// auto p = staticTarget.Position();
+	// p.Z_coord = config.turret_height;
+	// staticTarget.Update(p);
 
 	selectedTarget = &staticTarget;
+
+	size_t idx = 0;
+	for (auto& t : cvTarget) {
+		t.index = idx;
+	}
+	idx = 0;
+	for (auto& t : radarTarget) {
+		t.index = idx;
+	}
 }
 
 /// @brief Return the current target array, based on which target system is active.
@@ -55,6 +65,7 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	if (source != target_source) {
 		return; // No-op because we've changed sources
 	}
+	auto previousSelectedTarget = selectedTarget;
 
 	switch (target_source) {
 	case TargetSource::CV:
@@ -66,13 +77,14 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	case TargetSource::STATIC:
 		selectedTarget = &staticTarget;
 		break;
-	default:
-		return;
 	}
-
-	trackingSpeed = speed;
-	needTrackingUpdate = true;
 	targetChangeProcessing = false;
+	trackingSpeed = speed;
+
+	if (previousSelectedTarget != selectedTarget) {
+		logger::DEBUG("Setting needTrackingUpdate", selectedTarget);
+		needTrackingUpdate = true;
+	}
 }
 
 void SystemState::setFire(bool active) {
@@ -102,6 +114,10 @@ bool SystemState::getMoveState() {
 
 bool SystemState::shouldCheckTargetValidity() {
 	return !targetChangeProcessing;
+}
+
+bool SystemState::shouldCheckFiringConditions() {
+	return !fireOrderProcessing;
 }
 
 void SystemState::queueFire(uint16_t fireDuration) {
@@ -160,7 +176,10 @@ void SystemState::actualizePosition() {
 	}
 
 	auto target = currentTarget();
+
 	if (needTrackingUpdate && target.valid) {
+		needTrackingUpdate = false;
+		logger::INFO("Adjusting target", target.index + 1);
 		// Calculate the aimpoint using the target's intercept position
 		if (target.Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
 			return;
@@ -182,8 +201,6 @@ void SystemState::actualizePosition() {
 		// Move motors to the new target position
 		stepperA.moveTo(delta_A);
 		stepperB.moveTo(delta_B);
-
-		needTrackingUpdate = false;
 	}
 
 	// Continuously run the motors to move towards the target
