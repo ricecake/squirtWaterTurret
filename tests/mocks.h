@@ -91,6 +91,9 @@ static HardwareSerial Serial(0);
 // Mock for LD2450.h
 class LD2450 {
 public:
+	inline static const int xs[] = {-1000, 0, 500};
+	inline static const int ys[] = {1000, 1100, 1200};
+
 	struct RadarTarget {
 		bool valid;
 		int  x;
@@ -100,14 +103,14 @@ public:
 
 	void begin(HardwareSerial&, bool) {}
 
-	int read() { return 1 + (rand() % 3); } // Return 1 to 3 targets
+	int read() { return 3; } // Return 1 to 3 targets
 
-	RadarTarget getTarget(int) {
+	RadarTarget getTarget(int id) {
 		RadarTarget target;
 		target.valid = true;
-		target.x = rand() % 200 - 100;
-		target.y = rand() % 100;
-		target.id = rand() % 3;
+		target.x = xs[id] + (rand() % 200 - 100); // rand() % 2000 - 1000;
+		target.y = ys[id] + (rand() % 200 - 100); // rand() % 1000;
+		target.id = id;
 		return target;
 	}
 
@@ -127,7 +130,7 @@ static inline int analogRead(int) {
 static inline void delay(int) {}
 
 static inline void vTaskDelay(int d) {
-	std::this_thread::sleep_for(std::chrono::milliseconds(d));
+	std::this_thread::sleep_for(std::chrono::milliseconds(50 * d));
 }
 
 static std::vector<std::thread> threads;

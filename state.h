@@ -140,7 +140,7 @@ private:
 	bool fireOrderProcessing = false;
 
 	uint8_t        trackingSpeed = 255; ///< The speed for tracking movements.
-	TurretStrategy strategy;
+	TurretStrategy strategy = TurretStrategy::CLOSEST;
 	TurretStance   stance;
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
@@ -162,7 +162,11 @@ inline void SystemState::updateTarget(
 	const uint16_t  indifferenceMargin
 ) {
 	bool doUpdate = true;
-	if (indifferenceMargin > 0) {
+	bool activeTarget = true;
+	if (selectedTarget == &targetArray[idx]) {
+		activeTarget = true;
+	}
+	if (activeTarget && indifferenceMargin > 0) {
 		auto oldTarget = targetArray[idx];
 		auto oldTargetPos = oldTarget.Position();
 		if (oldTarget.valid && oldTargetPos) {
@@ -177,8 +181,7 @@ inline void SystemState::updateTarget(
 		// are real
 		targetArray[idx].Update(newPosition);
 		targetArray[idx].valid = valid;
-		if (selectedTarget == &targetArray[idx]) {
-			logger::DEBUG("Setting needTrackingUpdate", selectedTarget, &targetArray[idx]);
+		if (activeTarget) {
 			needTrackingUpdate = true;
 		}
 	}

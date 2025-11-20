@@ -76,6 +76,7 @@ TEST_CASE("Target InterceptPosition") {
 
 		// Execution: Get the calculated aiming position.
 		PositionVector aiming_position = target.interceptPosition();
+		logger::LOG("Aimpoint in test: ", aiming_position);
 
 		// Verification: Simulate and check for intercept.
 		const fixed          projectile_speed = 20.0;

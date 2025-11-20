@@ -9,22 +9,22 @@
 using namespace std::literals; // required for ""sv
 
 namespace logger {
-	enum class LogLevel : uint8_t { INFO, WARN, DEBUG };
+	enum class LogLevel : uint8_t { LOG, ERROR, DEBUG };
 
 	constexpr std::string_view levelString(const LogLevel& level) {
 		switch (level) {
-		case LogLevel::INFO:
-			return "INFO"sv;
-		case LogLevel::WARN:
-			return "WARN"sv;
+		case LogLevel::LOG:
+			return "LOG"sv;
+		case LogLevel::ERROR:
+			return "ERROR"sv;
 		case LogLevel::DEBUG:
 			return "DEBUG"sv;
 		}
-		return "INFO"sv;
+		return "LOG"sv;
 	}
 
 	struct LogMessage {
-		const LogLevel         level = LogLevel::INFO;
+		const LogLevel         level = LogLevel::LOG;
 		const std::string_view message;       // View of the original message
 		const std::string_view file_name;     // View of the const char*
 		const std::string_view function_name; // View of the const char*
@@ -89,13 +89,13 @@ namespace logger {
 
 	public:
 		template <typename... Ts>
-		void INFO(LogSource src, Ts&&... flags) {
-			doLogging(LogLevel::INFO, src.msg, src.loc, std::forward<Ts>(flags)...);
+		void LOG(LogSource src, Ts&&... flags) {
+			doLogging(LogLevel::LOG, src.msg, src.loc, std::forward<Ts>(flags)...);
 		};
 
 		template <typename... Ts>
-		void WARN(LogSource src, Ts&&... flags) {
-			doLogging(LogLevel::WARN, src.msg, src.loc, std::forward<Ts>(flags)...);
+		void ERROR(LogSource src, Ts&&... flags) {
+			doLogging(LogLevel::ERROR, src.msg, src.loc, std::forward<Ts>(flags)...);
 		};
 
 		template <typename... Ts>
@@ -107,13 +107,13 @@ namespace logger {
 	inline static Logger<ConsoleBackend> defaultLogger;
 
 	template <typename... Ts>
-	void INFO(LogSource src, Ts&&... flags) {
-		defaultLogger.INFO(src, std::forward<Ts>(flags)...);
+	void LOG(LogSource src, Ts&&... flags) {
+		defaultLogger.LOG(src, std::forward<Ts>(flags)...);
 	};
 
 	template <typename... Ts>
-	void WARN(LogSource src, Ts&&... flags) {
-		defaultLogger.WARN(src, std::forward<Ts>(flags)...);
+	void ERROR(LogSource src, Ts&&... flags) {
+		defaultLogger.ERROR(src, std::forward<Ts>(flags)...);
 	};
 
 	template <typename... Ts>

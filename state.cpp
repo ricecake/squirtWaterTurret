@@ -82,7 +82,6 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	trackingSpeed = speed;
 
 	if (previousSelectedTarget != selectedTarget) {
-		logger::DEBUG("Setting needTrackingUpdate", selectedTarget);
 		needTrackingUpdate = true;
 	}
 }
@@ -179,7 +178,7 @@ void SystemState::actualizePosition() {
 
 	if (needTrackingUpdate && target.valid) {
 		needTrackingUpdate = false;
-		logger::INFO("Adjusting target", target.index + 1);
+		logger::LOG("Adjusting target", target.index);
 		// Calculate the aimpoint using the target's intercept position
 		if (target.Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
 			return;
@@ -201,6 +200,8 @@ void SystemState::actualizePosition() {
 		// Move motors to the new target position
 		stepperA.moveTo(delta_A);
 		stepperB.moveTo(delta_B);
+
+		logger::DEBUG("POSITION DETAIL", target.Position(), aimpoint, pitch, yaw);
 	}
 
 	// Continuously run the motors to move towards the target

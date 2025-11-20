@@ -180,6 +180,10 @@ the queue at the back.  It will change sources and everything
 // }
 
 struct Target* selectTarget() {
+	if (dptState.currentTarget().actionable()) {
+		return nullptr;
+	}
+
 	auto filter = std::views::filter([](Target& t) {
 		if (t.valid && t.idleExceeds(seconds(5))) {
 			t.valid = false;
@@ -226,15 +230,15 @@ struct Target* selectTarget() {
 	// 	return find_best([&](const Target& t) { return
 	// calculateTravelDistance(t); }); case TurretStrategy::LONGEST_TRAVEL: 	return find_best([&](const Target& t) {
 	// return calculateTravelDistance(t); }, true);
-	case TurretStrategy::RANDOM: {
-		// This is a bit more complex, so we'll handle it separately.
-		std::random_device                    rd;
-		std::mt19937                          gen(rd());
-		std::uniform_int_distribution<size_t> dist(0, std::ranges::distance(targets) - 1);
-		auto                                  it = targets.begin();
-		std::advance(it, dist(gen));
-		return &(*it);
-	}
+	// case TurretStrategy::RANDOM: {
+	// 	// This is a bit more complex, so we'll handle it separately.
+	// 	std::random_device                    rd;
+	// 	std::mt19937                          gen(rd());
+	// 	std::uniform_int_distribution<size_t> dist(0, std::ranges::distance(targets) - 1);
+	// 	auto                                  it = targets.begin();
+	// 	std::advance(it, dist(gen));
+	// 	return &(*it);
+	// }
 	default:
 		return &(*targets.begin());
 	}
@@ -307,9 +311,9 @@ void setup() {
 	ld2450.begin(RadarSerial, false);
 
 	if (!ld2450.waitForSensorMessage(true)) {
-		logger::INFO("SENSOR CONNECTION SEEMS OK");
+		logger::LOG("SENSOR CONNECTION SEEMS OK");
 	} else {
-		logger::INFO("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
+		logger::LOG("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
 	}
 
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);
@@ -317,13 +321,13 @@ void setup() {
 
 	// dptState.queueSelectTarget(TargetSource::RADAR, 1);
 
-	logger::INFO("SETUP_FINISHED");
+	logger::LOG("SETUP_FINISHED");
 
-	logger::INFO("Ready!");
+	logger::LOG("Ready!");
 
 	delay(1000);
 
-	logger::INFO("Starting!");
+	logger::LOG("Starting!");
 
 	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
 

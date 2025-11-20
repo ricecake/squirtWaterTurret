@@ -35,7 +35,9 @@ public:
 	template <typename NonFixedType>
 	constexpr inline FixedAdapter(NonFixedType val) noexcept: fpm::fixed<B, I, F, E>(val) {}
 
-	[[nodiscard]] auto operator<=>(const auto& other) const noexcept { return this->raw_value() <=> other.raw_value(); }
+	[[nodiscard]] auto operator<=>(const auto& other) const noexcept {
+		return this->raw_value() <=> static_cast<decltype(*this)>(other).raw_value();
+	}
 
 	constexpr inline operator bool() const { return bool(this->raw_value()); }
 };
