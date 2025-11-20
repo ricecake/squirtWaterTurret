@@ -124,4 +124,47 @@ TEST_CASE("Target InterceptPosition") {
 		CHECK(aiming_position.Y_coord == target_pos.Y_coord);
 		CHECK(aiming_position.Z_coord == target_pos.Z_coord);
 	}
+
+	SUBCASE("Moving target at an angle") {
+		// Setup: A target moving at an angle to the turret.
+		PositionVector initial_target_pos(10, 5, 1.5);
+		VelocityVector target_vel(-2, -1, 0);
+		Target         target(initial_target_pos, target_vel);
+
+		// Execution: Get the calculated aiming position.
+		PositionVector aiming_position = target.interceptPosition();
+		logger::LOG("Aimpoint in test: ", aiming_position);
+
+		// Verification: Simulate and check for intercept.
+		const fixed          projectile_speed = 20.0;
+		const PositionVector initial_proj_pos(0, 0, 1.5);
+		const fixed          g = 9.814;
+
+		// 1. Calculate the initial velocity vector of the projectile.
+		PositionVector initial_proj_vel_pos = aiming_position.normalize() * projectile_speed;
+		VelocityVector initial_proj_vel(
+			initial_proj_vel_pos.X_coord,
+			initial_proj_vel_pos.Y_coord,
+			initial_proj_vel_pos.Z_coord
+		);
+
+		// 2. Calculate the time of flight based on the relative speed in the X direction.
+		fixed time_of_flight =
+			initial_target_pos.X_coord / (initial_proj_vel.X_coord - target_vel.X_coord);
+
+		// 3. Calculate the target's position at the time of flight.
+		PositionVector final_target_pos = initial_target_pos + target_vel * time_of_flight;
+
+		// 4. Calculate the projectile's position at the time of flight.
+		PositionVector final_proj_pos;
+		final_proj_pos.X_coord = initial_proj_pos.X_coord + initial_proj_vel.X_coord * time_of_flight;
+		final_proj_pos.Y_coord = initial_proj_pos.Y_coord + initial_proj_vel.Y_coord * time_of_flight;
+		final_proj_pos.Z_coord = initial_proj_pos.Z_coord + initial_proj_vel.Z_coord * time_of_flight -
+			fixed(0.5) * g * (time_of_flight * time_of_flight);
+
+		// 5. Check if the positions are close.
+		CHECK(final_proj_pos.X_coord == doctest::Approx(double(final_target_pos.X_coord)).epsilon(0.01));
+		CHECK(final_proj_pos.Y_coord == doctest::Approx(double(final_target_pos.Y_coord)).epsilon(0.01));
+		CHECK(final_proj_pos.Z_coord == doctest::Approx(double(final_target_pos.Z_coord)).epsilon(0.01));
+	}
 }
