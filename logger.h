@@ -61,7 +61,7 @@ namespace logger {
 		std::source_location loc;
 
 		template <typename StringType>
-		LogSource(const StringType& m, const std::source_location& l = std::source_location::current()):
+		constexpr LogSource(const StringType& m, const std::source_location& l = std::source_location::current()):
 			msg(m), loc(l) {}
 	};
 

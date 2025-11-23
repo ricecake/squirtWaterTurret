@@ -180,7 +180,7 @@ the queue at the back.  It will change sources and everything
 // }
 
 struct Target* selectTarget() {
-	if (dptState.currentTarget().actionable()) {
+	if (dptState.currentTarget()->actionable()) {
 		return nullptr;
 	}
 
@@ -245,7 +245,7 @@ struct Target* selectTarget() {
 }
 
 void generateFireActions() {
-	if (dptState.currentTarget().valid && dptState.targetTravelDistance() <= 2) {
+	if (dptState.targetTravelDistance() <= 2) {
 		dptState.queueFire(500);
 	}
 }
@@ -318,8 +318,6 @@ void setup() {
 
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);
 	randomSeed(analogRead(0));
-
-	// dptState.queueSelectTarget(TargetSource::RADAR, 1);
 
 	logger::LOG("SETUP_FINISHED");
 

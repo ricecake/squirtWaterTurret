@@ -53,7 +53,7 @@ public:
 	SystemState();
 
 	// -- Public Methods --
-	Target&           currentTarget();
+	Target*           currentTarget();
 	std::span<Target> currentTargetArray();
 	inline size_t     size();
 
@@ -75,6 +75,7 @@ public:
 	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void    setTarget(TargetSource source, uint8_t index, uint8_t speed = 0xFF);
 	void    setFire(bool active);
+	void    clearFire(bool active);
 	void    setMove(bool active);
 	void    setStrategy(TurretStrategy strategy);
 	void    setStance(TurretStance stance);
@@ -159,22 +160,25 @@ inline void SystemState::updateTarget(
 	const uint8_t   idx,
 	const bool      valid,
 	PositionVector& newPosition,
-	const uint16_t  indifferenceMargin
+	const uint16_t//  indifferenceMargin
 ) {
 	bool doUpdate = true;
-	bool activeTarget = true;
+	bool activeTarget = false;
 	if (selectedTarget == &targetArray[idx]) {
+		// logger::DEBUG("UPDATING ACTIVE TARGET");
 		activeTarget = true;
 	}
-	if (activeTarget && indifferenceMargin > 0) {
-		auto oldTarget = targetArray[idx];
-		auto oldTargetPos = oldTarget.Position();
-		if (oldTarget.valid && oldTargetPos) {
-			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
-			doUpdate = (travelAngle) > indifferenceMargin;
-		}
-	}
-	// logger::DEBUG("Setting needTrackingUpdate", selectedTarget);
+
+	// if (activeTarget && indifferenceMargin > 0) {
+	// 	logger::DEBUG("Checking indifference");
+	// 	auto oldTarget = targetArray[idx];
+	// 	auto oldTargetPos = oldTarget.Position();
+	// 	if (oldTarget.valid && oldTargetPos) {
+	// 		auto travelAngle = oldTargetPos.angleTo(newPosition);// / angleToStep;
+	// 		doUpdate = (travelAngle) > indifferenceMargin;
+	// 		logger::DEBUG("TRAVEL STEPs", travelAngle);
+	// 	}
+	// }
 
 	if (doUpdate) {
 		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that
@@ -182,6 +186,7 @@ inline void SystemState::updateTarget(
 		targetArray[idx].Update(newPosition);
 		targetArray[idx].valid = valid;
 		if (activeTarget) {
+			// logger::DEBUG("SETTING TRACKING FOR ACTIVE TARGET");
 			needTrackingUpdate = true;
 		}
 	}
@@ -236,7 +241,7 @@ inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point)
 
 inline bool SystemState::targetIsPotentiallyValid() {
 	auto target = currentTarget();
-	return target.valid && (target.Position().magnitude() <= config.projectile_max_range * fixed(1.1));
+	return target->valid && (target->Position().magnitude() <= config.projectile_max_range * fixed(1.1));
 }
 
 inline const fixed SystemState::currentYaw() {

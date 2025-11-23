@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <iostream>
 #include <mutex>
@@ -90,31 +91,131 @@ static HardwareSerial Serial(0);
 
 // Mock for LD2450.h
 class LD2450 {
+	// Constants for mock behavior
+	static constexpr double MAX_RADIUS = 10000.0;
+	static constexpr double CONE_ANGLE = M_PI / 3.0;
+	static constexpr double WALK_PAUSE_SPEED = 100.0;
+	static constexpr double PATROL_SPEED = 200.0;
+	static constexpr double BOUNDARY_REDIRECT_SPEED = 150.0;
+
+	struct MockTarget {
+		int       id;
+		double    x, y;
+		double    dest_x, dest_y;
+		TimePoint pause_until;
+		TimePoint last_updated;
+	};
+
+	std::mt19937                  rng;
+	std::uniform_real_distribution<double> angle_dist;
+	std::uniform_real_distribution<double> radius_dist;
+	std::uniform_int_distribution<int>     walk_dist;
+	std::uniform_int_distribution<int>     pause_dist;
+
 public:
-	inline static const int xs[] = {-1000, 0, 500};
-	inline static const int ys[] = {1000, 1100, 1200};
+	bool                    mock_enabled = true;
+	std::vector<MockTarget> mock_targets;
 
 	struct RadarTarget {
-		bool valid;
-		int  x;
-		int  y;
-		int  id;
+		bool     valid;
+		int16_t  x;
+		int16_t  y;
+		uint16_t id;
 	};
+
+	LD2450() : LD2450(std::random_device{}()) {} // Default to a random seed
+
+	explicit LD2450(unsigned int seed) :
+		rng(seed),
+		angle_dist(-CONE_ANGLE, CONE_ANGLE),
+		radius_dist(0, MAX_RADIUS),
+		walk_dist(-100, 100),
+		pause_dist(2, 7) {
+		mock_targets.emplace_back(MockTarget{0, 0, 1000, 0, 1000, Clock::now(), Clock::now()});
+		mock_targets.emplace_back(MockTarget{1, -1000, 2000, -1000, 2000, Clock::now(), Clock::now()});
+		mock_targets.emplace_back(MockTarget{2, 1000, 2000, -5000, 5000, Clock::now(), Clock::now()});
+	}
 
 	void begin(HardwareSerial&, bool) {}
 
 	int read() { return 3; } // Return 1 to 3 targets
 
 	RadarTarget getTarget(int id) {
+		if (mock_enabled) {
+			update_target(mock_targets[id]);
+		}
 		RadarTarget target;
 		target.valid = true;
-		target.x = xs[id] + (rand() % 200 - 100); // rand() % 2000 - 1000;
-		target.y = ys[id] + (rand() % 200 - 100); // rand() % 1000;
+		target.x = mock_targets[id].x;
+		target.y = mock_targets[id].y;
 		target.id = id;
 		return target;
 	}
 
 	bool waitForSensorMessage(bool) { return false; }
+
+private:
+	void random_point_in_cone(double& x, double& y) {
+		double r = radius_dist(rng);
+		double angle = angle_dist(rng);
+		x = r * sin(angle);
+		y = r * cos(angle);
+	}
+
+	void update_target(MockTarget& target) {
+		auto now = Clock::now();
+		auto time_delta = std::chrono::duration_cast<std::chrono::microseconds>(now - target.last_updated).count();
+		target.last_updated = now;
+		double delta_t = time_delta / 1000000.0; // Convert to seconds
+
+		switch (target.id) {
+		case 0: {
+			// Simple random walk
+			target.x += walk_dist(rng) * 2 * delta_t;
+			target.y += walk_dist(rng) * 2 * delta_t;
+			break;
+		}
+		case 1: {
+			// Walk to a random point, then pause
+			if (now < target.pause_until)
+				break;
+			double dist = std::hypot(target.dest_x - target.x, target.dest_y - target.y);
+			if (dist < 100) {
+				target.pause_until = now + std::chrono::seconds(pause_dist(rng));
+				random_point_in_cone(target.dest_x, target.dest_y);
+			} else if (dist > 1e-6) {
+				target.x += (target.dest_x - target.x) / dist * WALK_PAUSE_SPEED * delta_t;
+				target.y += (target.dest_y - target.y) / dist * WALK_PAUSE_SPEED * delta_t;
+			}
+			break;
+		}
+		case 2: {
+			// Move continuously to random points in a wide area
+			double dist = std::hypot(target.dest_x - target.x, target.dest_y - target.y);
+			if (dist < 500) {
+				random_point_in_cone(target.dest_x, target.dest_y);
+			}
+			if (dist > 1e-6) {
+				target.x += (target.dest_x - target.x) / dist * PATROL_SPEED * delta_t;
+				target.y += (target.dest_y - target.y) / dist * PATROL_SPEED * delta_t;
+			}
+			break;
+		}
+		}
+
+		// Constrain all targets to the cone
+		double r = std::hypot(target.x, target.y);
+		double angle = atan2(target.x, target.y);
+		if (r > MAX_RADIUS || abs(angle) > CONE_ANGLE) {
+			random_point_in_cone(target.dest_x, target.dest_y);
+			// Move towards the new destination immediately
+			double dist = std::hypot(target.dest_x - target.x, target.dest_y - target.y);
+			if (dist > 1e-6) {
+				target.x += (target.dest_x - target.x) / dist * BOUNDARY_REDIRECT_SPEED * delta_t;
+				target.y += (target.dest_y - target.y) / dist * BOUNDARY_REDIRECT_SPEED * delta_t;
+			}
+		}
+	}
 };
 
 // Mock for Arduino.h

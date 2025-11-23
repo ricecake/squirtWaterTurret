@@ -57,8 +57,8 @@ std::span<Target> SystemState::currentTargetArray() {
 	}
 }
 
-Target& SystemState::currentTarget() {
-	return *selectedTarget;
+Target* SystemState::currentTarget() {
+	return selectedTarget;
 }
 
 void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
@@ -87,8 +87,15 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 }
 
 void SystemState::setFire(bool active) {
-	fireState = active;
+	fireState = true;
+	// fireOrderProcessing = false;
+	logger::LOG("Changing fire status on", active);
+}
+
+void SystemState::clearFire(bool active) {
+	fireState = false;
 	fireOrderProcessing = false;
+	logger::LOG("Changing fire status off", active);
 }
 
 void SystemState::setMove(bool active) {
@@ -176,14 +183,14 @@ void SystemState::actualizePosition() {
 
 	auto target = currentTarget();
 
-	if (needTrackingUpdate && target.valid) {
+	if (needTrackingUpdate){//} && target.valid) {
 		needTrackingUpdate = false;
-		logger::LOG("Adjusting target", target.index);
+		logger::LOG("Adjusting target", target->index);
 		// Calculate the aimpoint using the target's intercept position
-		if (target.Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
+		if (target->Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
 			return;
 		}
-		auto aimpoint = target.interceptPosition();
+		auto aimpoint = target->InterceptAimpoint();
 		auto pitch = long(std::min(std::max(aimpoint.Pitch(), fixed(-60)), fixed(60)) / angleToStep);
 		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
 
@@ -232,5 +239,5 @@ PositionVector SystemState::getAimpoint() {
 	if (!targetIsPotentiallyValid()) {
 		return PositionVector(0, 0, 0);
 	}
-	return target.interceptPosition();
+	return target->InterceptAimpoint();
 }

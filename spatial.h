@@ -169,11 +169,38 @@ public:
 		return integer_sqrt(dot_product_raw);
 	}
 
-	fixed magnitudeXY() const { return sqrt(X_coord * X_coord + Y_coord * Y_coord); }
+	fixed magnitudeXY() const {
+		if (!(*this)) {
+			return NumericType(0);
+		}
+		int64_t aX = X_coord.raw_value();
+		int64_t aY = Y_coord.raw_value();
 
-	fixed magnitudeXZ() const { return sqrt(X_coord * X_coord + Z_coord * Z_coord); }
+		int64_t dot_product_raw = aX * aX + aY * aY;
+		return integer_sqrt(dot_product_raw);
+	}
 
-	fixed magnitudeYZ() const { return sqrt(Y_coord * Y_coord + Z_coord * Z_coord); }
+	fixed magnitudeXZ() const {
+		if (!(*this)) {
+			return NumericType(0);
+		}
+		int64_t aX = X_coord.raw_value();
+		int64_t aZ = Z_coord.raw_value();
+
+		int64_t dot_product_raw = aX * aX + aZ * aZ;
+		return integer_sqrt(dot_product_raw);
+	}
+
+	fixed magnitudeYZ() const {
+		if (!(*this)) {
+			return NumericType(0);
+		}
+		int64_t aY = Y_coord.raw_value();
+		int64_t aZ = Z_coord.raw_value();
+
+		int64_t dot_product_raw = aY * aY + aZ * aZ;
+		return integer_sqrt(dot_product_raw);
+	}
 
 	PositionVector normalize() const {
 		fixed mag = magnitude();
@@ -182,6 +209,21 @@ public:
 		}
 		return PositionVector(X_coord, Y_coord, Z_coord);
 	}
+
+	NumericType pitch() const {
+		auto mag = magnitudeXY();
+		if (!(Z_coord || mag)) {
+			return 0;
+		}
+		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor; }
+
+	NumericType yaw() const {
+		if (!(X_coord || Y_coord)) {
+			return 0;
+		}
+		return atan2(X_coord, Y_coord) * rad2DegFactor;
+	}
+
 
 private:
 	// -- Private Attributes --

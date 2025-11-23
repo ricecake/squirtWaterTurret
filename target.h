@@ -12,6 +12,7 @@
 #include "spatial.h"
 #include "utilities.h"
 #include "vector.hpp"
+#include <memory>
 
 using fixed = fixed_16_16;
 
@@ -51,7 +52,7 @@ public:
 	bool                 actionable() const;
 	void                 IncrementAction();
 	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval);
-	const PositionVector interceptPosition() const;
+	const PositionVector InterceptAimpoint();
 
 	// -- Public Attributes --
 	bool      valid = false;
@@ -61,6 +62,9 @@ public:
 	TimePoint last_action;
 
 private:
+	std::shared_ptr<const PositionVector> interceptPosition() const;
+
+	std::shared_ptr<const PositionVector> last_aimpoint = nullptr;
 	// -- Private Attributes --
 	TimePoint      last_seen;
 	PositionVector position;
@@ -73,6 +77,14 @@ private:
 // ======================================================================================
 
 // -- Target --
+
+inline const PositionVector Target::InterceptAimpoint() {
+	if (last_aimpoint == nullptr) {
+		last_aimpoint = interceptPosition();
+	}
+	return *last_aimpoint;
+}
+
 
 /**
  * @brief Constructs a Target with a given position and velocity.
