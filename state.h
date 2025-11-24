@@ -47,6 +47,9 @@ struct ConfigParameters {
  * the system's behavior.
  */
 class SystemState {
+	// Befriend the test fixture so it can access private members.
+	friend struct IntegrationTestFixture;
+
 public:
 	// -- Constructors --
 	SystemState();
@@ -109,6 +112,9 @@ public:
 
 private:
 	// -- Private Methods --
+	void           triggerTrackingUpdate() {
+		needTrackingUpdate = true;
+	}
 	void           actualizePosition();
 	void           actualizeFiring();
 	PositionVector targetAimpoint();

@@ -15,20 +15,38 @@
 // From state.h
 struct AccelStepper {
 	static const int FULL4WIRE = 4;
+	long             _currentPos;
+	long             _targetPos;
+	double           _maxSpeed;
+	int              _acceleration;
 
-	AccelStepper(int = 0, int = 0, int = 0, int = 0, int = 0, bool = true) {}
+	AccelStepper(int = 0, int = 0, int = 0, int = 0, int = 0, bool = true):
+		_currentPos(0), _targetPos(0), _maxSpeed(0), _acceleration(0) {}
 
-	void setAcceleration(int) {}
+	void setAcceleration(int acceleration) {
+		_acceleration = acceleration;
+	}
 
-	void setMaxSpeed(double) {}
+	void setMaxSpeed(double maxSpeed) {
+		_maxSpeed = maxSpeed;
+	}
 
-	void moveTo(long) {}
+	void moveTo(long target) {
+		_targetPos = target;
+	}
 
-	long distanceToGo() { return 0; }
+	long distanceToGo() {
+		return _targetPos - _currentPos;
+	}
 
-	void run() {}
+	void run() {
+		// A simple mock that moves the motor directly to the target.
+		_currentPos = _targetPos;
+	}
 
-	long currentPosition() { return 0; }
+	long currentPosition() {
+		return _currentPos;
+	}
 };
 
 using SemaphoreHandle_t = int;
