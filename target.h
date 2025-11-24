@@ -4,9 +4,7 @@
 	#include <Arduino.h>
 #endif
 
-#include <chrono>
 #include <cstdint>
-#include <memory>
 
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"

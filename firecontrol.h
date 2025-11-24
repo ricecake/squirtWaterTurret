@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
-#include <queue>
 
 #include "command.h"
 #include "state.h"
