@@ -112,13 +112,13 @@ public:
 		uint64_t cross_sq_2Q = (uint64_t)(cX_1Q * cX_1Q + cY_1Q * cY_1Q + cZ_1Q * cZ_1Q);
 
 		// 5. Square Root
-		// Input is 2Q, so Output is 1Q.
-		uint32_t cross_mag_raw = integer_sqrt(cross_sq_2Q); // Why is sqrt(160369865) 0? 542170?
+		// The input (cross_sq_2Q) is a Q32 value (squared Q16). The output of the
+		// sqrt will be a Q16 value, which we store in a fixed type directly.
+		fixed cross_magnitude_1Q = integer_sqrt(cross_sq_2Q);
 
 		// 6. Final Angle
-		// Ensure dot product is also 1Q
+		// Ensure dot product is also Q16
 		fixed dot_product_1Q = fixed::from_raw_value(dot_raw >> fixed::FixedBits);
-		fixed cross_magnitude_1Q = fixed::from_raw_value(cross_mag_raw);
 
 		return atan2(cross_magnitude_1Q, dot_product_1Q) * rad2DegFactor;
 	}

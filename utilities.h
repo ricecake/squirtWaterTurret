@@ -202,6 +202,7 @@ const int                    motorInterfaceType = 1;                     ///< St
 const int                    maxSpeed = 1000;                            ///< Maximum speed for the motors.
 const int                    acceleration = 3000;                        ///< Acceleration for the motors.
 constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131); ///< Conversion factor from radians to degrees.
+constexpr static fixed_16_16 deg2RadFactor = fixed_16_16(0.01745329251); ///< Conversion factor from degrees to radians.
 const fixed_16_16            Gz = -9.80665;                              ///< Acceleration due to gravity.
 const int                    altitude = 1320;                            ///< Default altitude for calculations.
 const fixed_16_16            projectileSpeed = 20;                       ///< Speed of the projectile.
