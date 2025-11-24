@@ -121,4 +121,7 @@ namespace logger {
 		defaultLogger.DEBUG(src, std::forward<Ts>(flags)...);
 	};
 
+	// What if these were classes, whose initializers did the logging?  A lot more would be definitively known at
+	// compile time...
+
 }; // namespace logger

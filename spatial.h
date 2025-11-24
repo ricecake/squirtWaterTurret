@@ -113,7 +113,7 @@ public:
 
 		// 5. Square Root
 		// Input is 2Q, so Output is 1Q.
-		uint32_t cross_mag_raw = integer_sqrt(cross_sq_2Q);
+		uint32_t cross_mag_raw = integer_sqrt(cross_sq_2Q); // Why is sqrt(160369865) 0? 542170?
 
 		// 6. Final Angle
 		// Ensure dot product is also 1Q
@@ -215,7 +215,8 @@ public:
 		if (!(Z_coord || mag)) {
 			return 0;
 		}
-		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor; }
+		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor;
+	}
 
 	NumericType yaw() const {
 		if (!(X_coord || Y_coord)) {
@@ -223,7 +224,6 @@ public:
 		}
 		return atan2(X_coord, Y_coord) * rad2DegFactor;
 	}
-
 
 private:
 	// -- Private Attributes --

@@ -12,7 +12,7 @@ CXXFLAGS = \
 	-fsanitize=undefined \
 	-fsanitize=signed-integer-overflow \
 	-fsanitize=bounds \
-	-fprofile-arcs \
+# 	-fprofile-arcs \
 # 	-pg
 # 	-O3
 

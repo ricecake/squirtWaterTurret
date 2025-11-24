@@ -4,7 +4,8 @@
 TEST_CASE("Stateful Radar Mock") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
-	LD2450                            radar_mock;
+	mock_clock += std::chrono::seconds(1);
+	LD2450 radar_mock(12345); // Use a fixed seed for reproducibility
 
 	// --- Target 0 (Random Walk) ---
 	// Just check that it moves. Its movement is unpredictable by design.
@@ -19,16 +20,16 @@ TEST_CASE("Stateful Radar Mock") {
 	// --- Target 2 (Continuous Patrol) ---
 	SUBCASE("Target 2 - Continuous Patrol") {
 		for (int i = 0; i < 3; ++i) {
-			auto  current_pos = radar_mock.getTarget(2);
-			auto& mock_target_before_step = radar_mock.mock_targets[2];
+			auto   current_pos = radar_mock.getTarget(2);
+			auto&  mock_target_before_step = radar_mock.mock_targets[2];
 			double dest_x_before = mock_target_before_step.dest_x;
 			double dest_y_before = mock_target_before_step.dest_y;
 			double initial_dist = std::hypot(dest_x_before - current_pos.x, dest_y_before - current_pos.y);
 
 			mock_clock += std::chrono::seconds(1);
 
-			auto  new_pos = radar_mock.getTarget(2);
-			auto& mock_target_after_step = radar_mock.mock_targets[2];
+			auto   new_pos = radar_mock.getTarget(2);
+			auto&  mock_target_after_step = radar_mock.mock_targets[2];
 			double dest_x_after = mock_target_after_step.dest_x;
 			double dest_y_after = mock_target_after_step.dest_y;
 

@@ -1,5 +1,6 @@
 #include <climits>
 #include <cstdint>
+#include <cstdlib>
 #include <ranges>
 #include <vector>
 
@@ -172,7 +173,7 @@ void readSerialCommands() {
 /*
 Depending on the source and the mode (persistent, closest, farthest, random, least, most, etc (basically how we pick the
 target from the set of sources)), we pick the new target.  Should have a new target source "scan", that just does an
-idle sentry scan, and a mode for "aggressive" that will have it test fire. Also changes the fire cadenece in other
+idle sentry scan, and a mode for "aggressive" that will have it test fire. Also changes the fire cadence in other
 modes. Scan will issue a command that moves around and re-queues itself.  It will stop if it sees that a target has been
 selected or sources have changed. Select target is now what will be used to actually put a change of target order into
 the queue at the back.  It will change sources and everything
@@ -181,6 +182,7 @@ the queue at the back.  It will change sources and everything
 
 struct Target* selectTarget() {
 	if (dptState.currentTarget()->actionable()) {
+		logger::DEBUG("Current target actionable!");
 		return nullptr;
 	}
 
@@ -194,13 +196,8 @@ struct Target* selectTarget() {
 	auto targets = filter(dptState.currentTargetArray());
 
 	if (targets.empty()) {
+		logger::DEBUG("No targets?");
 		return nullptr;
-	}
-
-	for (auto& targ : targets) {
-		if (targ.idleExceeds(seconds(5))) {
-			targ.valid = false;
-		}
 	}
 
 	// A helper lambda to find the best target using a custom projection
@@ -211,37 +208,43 @@ struct Target* selectTarget() {
 		return &(*std::ranges::min_element(targets, std::less<>{}, projection));
 	};
 
-	switch (dptState.currentStrategey()) {
+	Target* nextTarget;
+	switch (dptState.currentStrategy()) {
 	case TurretStrategy::CLOSEST:
-		return find_best(&Target::Distance);
+		nextTarget = find_best(&Target::Distance);
+		break;
 	case TurretStrategy::FURTHEST:
-		return find_best(&Target::Distance, true);
+		nextTarget = find_best(&Target::Distance, true);
+		break;
 	case TurretStrategy::LEAST_RECENT:
-		return find_best(&Target::last_action);
+		nextTarget = find_best(&Target::last_action);
+		break;
 	case TurretStrategy::MOST_RECENT:
-		return find_best(&Target::last_action, true);
+		nextTarget = find_best(&Target::last_action, true);
+		break;
 	// case TurretStrategy::LEAST_HIT:
 	// 	return find_best(&Target::action_count);
 	// case TurretStrategy::MOST_HIT:
 	// 	return find_best(&Target::action_count, true);
 	// case TurretStrategy::SMALLEST_TRAVEL:
 	// There's something to be done to consider calculating most of the distance calc up front, and then solving for
-	// each target indivudually.  Later optimization though.
+	// each target individually.  Later optimization though.
 	// 	return find_best([&](const Target& t) { return
 	// calculateTravelDistance(t); }); case TurretStrategy::LONGEST_TRAVEL: 	return find_best([&](const Target& t) {
 	// return calculateTravelDistance(t); }, true);
-	// case TurretStrategy::RANDOM: {
-	// 	// This is a bit more complex, so we'll handle it separately.
-	// 	std::random_device                    rd;
-	// 	std::mt19937                          gen(rd());
-	// 	std::uniform_int_distribution<size_t> dist(0, std::ranges::distance(targets) - 1);
-	// 	auto                                  it = targets.begin();
-	// 	std::advance(it, dist(gen));
-	// 	return &(*it);
-	// }
-	default:
-		return &(*targets.begin());
+	case TurretStrategy::RANDOM: {
+		// This is a bit more complex, so we'll handle it separately.
+		nextTarget = &dptState.currentTargetArray()[std::rand() % dptState.size()];
+		break;
 	}
+	default:
+		nextTarget = &(*targets.begin());
+		break;
+	}
+	if (nextTarget == dptState.currentTarget()) {
+		return nullptr;
+	}
+	return nextTarget;
 }
 
 void generateFireActions() {
@@ -313,7 +316,7 @@ void setup() {
 	if (!ld2450.waitForSensorMessage(true)) {
 		logger::LOG("SENSOR CONNECTION SEEMS OK");
 	} else {
-		logger::LOG("SENSOR TEST: GOT NO VALID SENSORDATA - PLEASE CHECK CONNECTION!");
+		logger::LOG("SENSOR TEST: GOT NO VALID SENSOR DATA - PLEASE CHECK CONNECTION!");
 	}
 
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);

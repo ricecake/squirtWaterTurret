@@ -6,13 +6,13 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"
 #include "spatial.h"
 #include "utilities.h"
 #include "vector.hpp"
-#include <memory>
 
 using fixed = fixed_16_16;
 
@@ -84,7 +84,6 @@ inline const PositionVector Target::InterceptAimpoint() {
 	}
 	return *last_aimpoint;
 }
-
 
 /**
  * @brief Constructs a Target with a given position and velocity.

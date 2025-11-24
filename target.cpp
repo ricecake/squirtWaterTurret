@@ -96,5 +96,11 @@ std::shared_ptr<const PositionVector> Target::interceptPosition() const {
 	const auto z_vel_num = diff.Z_coord + target_velocity.Z_coord * intercept_t -
 		localFixed::from_raw_value(L) * intercept_t * intercept_t;
 
-	return std::make_shared<PositionVector>(x_vel_num / intercept_t, y_vel_num / intercept_t, z_vel_num / intercept_t);
+	auto result = std::make_shared<PositionVector>(
+		x_vel_num / intercept_t,
+		y_vel_num / intercept_t,
+		z_vel_num / intercept_t
+	);
+	// *result = result->normalize();
+	return result;
 };

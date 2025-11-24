@@ -31,7 +31,8 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(1, 0, 0), Veloc
 	// p.Z_coord = config.turret_height;
 	// staticTarget.Update(p);
 
-	selectedTarget = &staticTarget;
+	// selectedTarget = &staticTarget;
+	selectedTarget = &radarTarget[0];
 
 	size_t idx = 0;
 	for (auto& t : cvTarget) {
@@ -78,12 +79,12 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 		selectedTarget = &staticTarget;
 		break;
 	}
-	targetChangeProcessing = false;
 	trackingSpeed = speed;
 
 	if (previousSelectedTarget != selectedTarget) {
 		needTrackingUpdate = true;
 	}
+	targetChangeProcessing = false;
 }
 
 void SystemState::setFire(bool active) {
@@ -123,6 +124,7 @@ bool SystemState::shouldCheckTargetValidity() {
 }
 
 bool SystemState::shouldCheckFiringConditions() {
+	logger::DEBUG("Fire in flight?", fireOrderProcessing);
 	return !fireOrderProcessing;
 }
 
@@ -183,9 +185,8 @@ void SystemState::actualizePosition() {
 
 	auto target = currentTarget();
 
-	if (needTrackingUpdate){//} && target.valid) {
+	if (needTrackingUpdate) { //} && target.valid) {
 		needTrackingUpdate = false;
-		logger::LOG("Adjusting target", target->index);
 		// Calculate the aimpoint using the target's intercept position
 		if (target->Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
 			return;
@@ -208,7 +209,7 @@ void SystemState::actualizePosition() {
 		stepperA.moveTo(delta_A);
 		stepperB.moveTo(delta_B);
 
-		logger::DEBUG("POSITION DETAIL", target.Position(), aimpoint, pitch, yaw);
+		logger::DEBUG("POSITION DETAIL", target->Position(), aimpoint, pitch, yaw);
 	}
 
 	// Continuously run the motors to move towards the target

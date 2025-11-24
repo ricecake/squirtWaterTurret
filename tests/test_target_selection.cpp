@@ -20,7 +20,9 @@ TEST_SUITE("Target Selection Command") {
 	}
 
 	// Test that the next target selection is queued
-	TEST_CASE("TargetSelection queues next" * doctest::expected_failures(1) * doctest::no_breaks() *doctest::no_output()) {
+	TEST_CASE(
+		"TargetSelection queues next" * doctest::expected_failures(1) * doctest::no_breaks() * doctest::no_output()
+	) {
 		SystemState state;
 		state.target_source = TargetSource::CV;
 		// Ensure target is invalid so the timeout is 0
@@ -42,7 +44,10 @@ TEST_SUITE("Target Selection Command") {
 	}
 
 	// Test that a valid target queues the next selection with a timeout
-	TEST_CASE("TargetSelection queues next with timeout for valid target" * doctest::expected_failures(1) * doctest::no_breaks() *doctest::no_output()) {
+	TEST_CASE(
+		"TargetSelection queues next with timeout for valid target" * doctest::expected_failures(1) *
+		doctest::no_breaks() * doctest::no_output()
+	) {
 		SystemState state;
 		state.target_source = TargetSource::CV;
 		mock_clock.reset();
@@ -75,7 +80,10 @@ TEST_SUITE("Target Selection Command") {
 	}
 
 	// Test that an idle valid target is marked as invalid
-	TEST_CASE("TargetSelection invalidates idle target" * doctest::expected_failures(2) * doctest::no_breaks() *doctest::no_output()) {
+	TEST_CASE(
+		"TargetSelection invalidates idle target" * doctest::expected_failures(2) * doctest::no_breaks() *
+		doctest::no_output()
+	) {
 		mock_clock.reset();
 		TestClock::ScopedDeterministicClock det_clock;
 		SystemState                         state;

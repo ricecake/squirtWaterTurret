@@ -117,7 +117,7 @@ public:
 	const fixed currentYaw();
 	const fixed currentPitch();
 
-	TurretStrategy currentStrategey() const { return strategy; }
+	TurretStrategy currentStrategy() const { return strategy; }
 
 private:
 	// -- Private Methods --
@@ -141,7 +141,7 @@ private:
 	bool fireOrderProcessing = false;
 
 	uint8_t        trackingSpeed = 255; ///< The speed for tracking movements.
-	TurretStrategy strategy = TurretStrategy::CLOSEST;
+	TurretStrategy strategy = TurretStrategy::RANDOM;
 	TurretStance   stance;
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
@@ -160,7 +160,7 @@ inline void SystemState::updateTarget(
 	const uint8_t   idx,
 	const bool      valid,
 	PositionVector& newPosition,
-	const uint16_t//  indifferenceMargin
+	const uint16_t //  indifferenceMargin
 ) {
 	bool doUpdate = true;
 	bool activeTarget = false;

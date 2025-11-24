@@ -88,7 +88,9 @@ TEST_CASE("FireControl already inactive") {
 }
 
 // Test case for when action idle time has not been exceeded
-TEST_CASE("FireControl activation too soon" * doctest::expected_failures(1) * doctest::no_breaks() *doctest::no_output()) {
+TEST_CASE(
+	"FireControl activation too soon" * doctest::expected_failures(1) * doctest::no_breaks() * doctest::no_output()
+) {
 	SystemState state;
 	state.setFire(false);
 	Target& target = *state.currentTarget();

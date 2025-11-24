@@ -149,8 +149,7 @@ TEST_CASE("Target InterceptAimpoint") {
 		);
 
 		// 2. Calculate the time of flight based on the relative speed in the X direction.
-		fixed time_of_flight =
-			initial_target_pos.X_coord / (initial_proj_vel.X_coord - target_vel.X_coord);
+		fixed time_of_flight = initial_target_pos.X_coord / (initial_proj_vel.X_coord - target_vel.X_coord);
 
 		// 3. Calculate the target's position at the time of flight.
 		PositionVector final_target_pos = initial_target_pos + target_vel * time_of_flight;
