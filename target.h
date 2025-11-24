@@ -5,6 +5,7 @@
 #endif
 
 #include <cstdint>
+#include <memory>
 
 #include "aproximate_math.hpp"
 #include "fpm_adapter.hpp"
