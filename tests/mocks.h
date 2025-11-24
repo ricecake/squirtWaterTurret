@@ -123,8 +123,9 @@ public:
 
 	explicit LD2450(unsigned int seed):
 		rng(seed), angle_dist(0, 2 * M_PI), radius_dist(0, MAX_RADIUS), pause_dist(2, 7) {
-		mock_targets.emplace_back(MockTarget{0, 0, 1000, 0.0, 1000.0, 0, 1000, Clock::now(), Clock::now()});
-		mock_targets.emplace_back(MockTarget{1, -1000, 2000, -1000.0, 2000.0, -1000, 2000, Clock::now(), Clock::now()});
+		// Initial dest must be different from initial pos for the test to pass.
+		mock_targets.emplace_back(MockTarget{0, 0, 1000, 0.0, 1000.0, 1000, 1000, Clock::now(), Clock::now()});
+		mock_targets.emplace_back(MockTarget{1, -1000, 2000, -1000.0, 2000.0, -2000, 1000, Clock::now(), Clock::now()});
 		mock_targets.emplace_back(MockTarget{2, 1000, 2000, 1000.0, 2000.0, 5000, 5000, Clock::now(), Clock::now()});
 	}
 
@@ -155,25 +156,29 @@ private:
 
 	void update_target(MockTarget& target) {
 		auto now = Clock::now();
-		auto time_delta = std::chrono::duration_cast<std::chrono::microseconds>(now - target.last_updated).count();
-		target.last_updated = now;
-		double delta_t = time_delta / 1000000.0; // Convert to seconds
 
-		if (now < target.pause_until) {
-			// Target is paused, do nothing.
-		} else {
-			double dist_to_dest = std::hypot(target.dest_x - target.true_x, target.dest_y - target.true_y);
-			double move_dist = TARGET_SPEED * delta_t;
+		// Only update position if not paused.
+		if (now >= target.pause_until) {
+			auto   time_delta = std::chrono::duration_cast<std::chrono::microseconds>(now - target.last_updated).count();
+			double delta_t = time_delta / 1000000.0; // Convert to seconds
 
-			// If we are very close, or would overshoot, just arrive at the destination.
-			if (dist_to_dest < move_dist) {
-				target.true_x = target.dest_x;
-				target.true_y = target.dest_y;
-			} else {
-				// Move towards the destination
-				target.true_x += (target.dest_x - target.true_x) / dist_to_dest * move_dist;
-				target.true_y += (target.dest_y - target.true_y) / dist_to_dest * move_dist;
+			if (delta_t > 0) {
+				double dist_to_dest = std::hypot(target.dest_x - target.true_x, target.dest_y - target.true_y);
+				double move_dist = TARGET_SPEED * delta_t;
+
+				// If we are very close, would overshoot, or there's no distance to cover, just arrive.
+				if (dist_to_dest < move_dist || dist_to_dest == 0) {
+					target.true_x = target.dest_x;
+					target.true_y = target.dest_y;
+				} else {
+					// Move towards the destination
+					target.true_x += (target.dest_x - target.true_x) / dist_to_dest * move_dist;
+					target.true_y += (target.dest_y - target.true_y) / dist_to_dest * move_dist;
+				}
 			}
+			// Important: Only update the clock when a move was possible.
+			// This makes the next delta calculation account for the entire paused duration.
+			target.last_updated = now;
 		}
 
 		// Check for arrival and update behavior

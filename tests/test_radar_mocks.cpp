@@ -4,8 +4,8 @@
 TEST_CASE("Stateful Radar Mock") {
 	mock_clock.reset();
 	TestClock::ScopedDeterministicClock det_clock;
-	mock_clock += std::chrono::seconds(1);
 	LD2450 radar_mock(12345); // Use a fixed seed for reproducibility
+	mock_clock += std::chrono::seconds(1);
 
 	// --- Target 0 (Random Walk) ---
 	// Just check that it moves. Its movement is unpredictable by design.
@@ -68,7 +68,8 @@ TEST_CASE("Stateful Radar Mock") {
 			auto pos_after_move = radar_mock.getTarget(1);
 
 			// It's possible it reached its destination. If it didn't, it must be closer.
-			if (dest_x == target_state.dest_x && dest_y == target_state.dest_y) {
+			// Also, if a pause has started, it means it reached its destination and is waiting.
+			if (dest_x == target_state.dest_x && dest_y == target_state.dest_y && target_state.pause_until < now) {
 				double dist_after = std::hypot(dest_x - pos_after_move.x, dest_y - pos_after_move.y);
 				INFO("Target 1, Iteration " << i);
 				CHECK(dist_after < dist_before);
