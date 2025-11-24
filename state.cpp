@@ -225,14 +225,17 @@ fixed SystemState::targetTravelDistance() {
 		return INT_MAX;
 	}
 
-	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
-	auto pitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
+	auto yaw_rad = currentYaw() * deg2RadFactor;
+	auto pitch_rad = currentPitch() * deg2RadFactor;
 
-	auto delta_yaw = aimpoint.Yaw() - yaw;
+	// Create a Cartesian unit vector from the spherical coordinates
+	auto x = cos(pitch_rad) * sin(yaw_rad);
+	auto y = cos(pitch_rad) * cos(yaw_rad);
+	auto z = sin(pitch_rad);
 
-	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
+	PositionVector newVectorFromPitchAndYaw(x, y, z);
 
-	return acos(cos_alpha);
+	return aimpoint.angleTo(newVectorFromPitchAndYaw);
 }
 
 PositionVector SystemState::getAimpoint() {
