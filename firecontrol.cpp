@@ -1,7 +1,7 @@
 #include "firecontrol.h"
 
 #include <cstdint>
-
+#include <functional>
 #include "utilities.h"
 
 /**
@@ -29,16 +29,17 @@ void FireControl::Execute(SystemState* state) {
 		return;
 	}
 
-	Target& target = state->currentTarget();
+	Target* target = state->currentTarget();
+	auto    actionable = target->actionable();
 
 	// Activate firing if the target has been idle longer than the action interval
-	if (active && target.actionIdleExceeds(fireActionInterval)) {
+	if (active && actionable) {
 		state->setFire(active);
 		state->queueCeaseFire(duration);
 	}
 	// Deactivate firing after the specified duration and increment the action counter
-	else if (!active && target.actionIdleExceeds(milliseconds(duration))) {
-		state->setFire(active);
-		target.IncrementAction();
+	else if (!active && target->actionIdleExceeds(milliseconds(duration))) {
+		state->clearFire(active);
+		target->IncrementAction();
 	}
 }

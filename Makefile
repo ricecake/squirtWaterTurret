@@ -12,8 +12,8 @@ CXXFLAGS = \
 	-fsanitize=undefined \
 	-fsanitize=signed-integer-overflow \
 	-fsanitize=bounds \
-	-fprofile-arcs \
-	-pg
+# 	-fprofile-arcs \
+# 	-pg
 # 	-O3
 
 # Directories
@@ -38,7 +38,7 @@ TEST_SRCS := $(wildcard tests/*.cpp)
 OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRCS))
 TEST_OBJS = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(TEST_SRCS))
 SKETCH_OBS = $(patsubst %.ino,$(BUILD_DIR)/%.o,$(SKETCH))
-DEPS = $(OBJS:.o=.d) $(TEST_OBJS:.o=.d)
+DEPS = $(OBJS:.o=.d) $(TEST_OBJS:.o=.d) $(SKETCH_OBS:.o=.d)
 
 # Target executable
 TARGET = $(BUILD_DIR)/test_runner
@@ -57,12 +57,12 @@ $(TARGET): $(OBJS) $(TEST_OBJS)
 # Compile source files
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $< -o $@
 
 # Compile test files
 $(BUILD_DIR)/tests/%.o: tests/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $< -o $@
 
 # Link the sketch
 $(SKETCH_TARGET): $(OBJS) $(SKETCH_OBS)
@@ -72,7 +72,7 @@ $(SKETCH_TARGET): $(OBJS) $(SKETCH_OBS)
 # Compile sketch
 $(BUILD_DIR)/%.o: %.ino
 	@mkdir -p $(@D)
-	$(CXX) -x c++ $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -c $< -o $@
+	$(CXX) -x c++ $(CXXFLAGS) -MMD -MP -MF $(@:.o=.d) -MT $@ -c $< -o $@
 
 # Run the tests
 test: $(TARGET)

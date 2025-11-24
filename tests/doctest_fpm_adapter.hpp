@@ -2,7 +2,7 @@
 
 #include <sstream> // For StringMaker
 
-#include "doctest/doctest.h"
+#include "common.h"
 #include "fpm/fixed.hpp"
 
 template <class FixedType>

@@ -1,10 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <queue>
 #include <span>
 
 #ifdef ARDUINO
@@ -13,13 +10,14 @@
 	#include <AccelStepper.h>
 	#include <Arduino.h>
 #else
-	#include "tests/mocks.h"
+	// Forward declare the non-arduino types
+	class AccelStepper;
 #endif
 
 #include "command.h"
 #include "command_queue.h"
 #include "fpm_adapter.hpp"
-#include "serializer.hpp"
+#include "logger.h"
 #include "shared_types.h"
 #include "target.h"
 #include "utilities.h"
@@ -27,6 +25,9 @@
 
 using fixed = fixed_16_16;
 class Command;
+namespace cerializer {
+	class Config;
+}
 
 /**
  * @brief A struct to hold tunable configuration parameters for the system.
@@ -55,7 +56,7 @@ public:
 	SystemState();
 
 	// -- Public Methods --
-	Target&           currentTarget();
+	Target*           currentTarget();
 	std::span<Target> currentTargetArray();
 	inline size_t     size();
 
@@ -77,12 +78,16 @@ public:
 	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
 	void    setTarget(TargetSource source, uint8_t index, uint8_t speed = 0xFF);
 	void    setFire(bool active);
+	void    clearFire(bool active);
 	void    setMove(bool active);
 	void    setStrategy(TurretStrategy strategy);
 	void    setStance(TurretStance stance);
 	bool    getFireState();
 	bool    getMoveState();
-	void    queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds);
+	bool    shouldCheckTargetValidity();
+	bool    shouldCheckFiringConditions();
+	bool    targetIsPotentiallyValid();
+	void    queueSelectTarget(TargetSource source, uint8_t index);
 	void    queueFire(uint16_t milliseconds);
 	void    queueCeaseFire(uint16_t milliseconds);
 	void    updateConfig(cerializer::Config* config);
@@ -110,6 +115,13 @@ public:
 	std::array<Target, 3>  radarTarget;
 	Target                 staticTarget;
 
+	Target* selectedTarget = &staticTarget; //< A reference to the currently selected target
+
+	const fixed currentYaw();
+	const fixed currentPitch();
+
+	TurretStrategy currentStrategy() const { return strategy; }
+
 private:
 	// -- Private Methods --
 	void           triggerTrackingUpdate() {
@@ -128,12 +140,14 @@ private:
 	const int dirPinB = 26;           ///< Direction pin for stepper motor B.
 	const int firePin = 2;            ///< Pin for the firing mechanism.
 
-	bool           moveState = true;               ///< Flag indicating if movement is enabled.
-	bool           fireState = false;              ///< Flag indicating the current firing state.
-	bool           needTrackingUpdate = false;     ///< Flag indicating if a tracking update is required.
-	uint8_t        trackingSpeed = 255;            ///< The speed for tracking movements.
-	Target*        selectedTarget = &staticTarget; //< A reference to the currently selected target
-	TurretStrategy strategy;
+	bool moveState = true;           ///< Flag indicating if movement is enabled.
+	bool fireState = false;          ///< Flag indicating the current firing state.
+	bool needTrackingUpdate = false; ///< Flag indicating if a tracking update is required.
+	bool targetChangeProcessing = false;
+	bool fireOrderProcessing = false;
+
+	uint8_t        trackingSpeed = 255; ///< The speed for tracking movements.
+	TurretStrategy strategy = TurretStrategy::RANDOM;
 	TurretStance   stance;
 
 	CommandQueue commandQueue; ///< Priority queue for pending commands.
@@ -152,24 +166,35 @@ inline void SystemState::updateTarget(
 	const uint8_t   idx,
 	const bool      valid,
 	PositionVector& newPosition,
-	const uint16_t  indifferenceMargin
+	const uint16_t //  indifferenceMargin
 ) {
 	bool doUpdate = true;
-	if (indifferenceMargin > 0) {
-		auto oldTarget = targetArray[idx];
-		auto oldTargetPos = oldTarget.Position();
-		if (oldTarget.valid && oldTargetPos) {
-			auto travelAngle = abs(oldTargetPos.angleTo(newPosition)) / angleToStep;
-			doUpdate = (travelAngle) > indifferenceMargin;
-		}
+	bool activeTarget = false;
+	if (selectedTarget == &targetArray[idx]) {
+		// logger::DEBUG("UPDATING ACTIVE TARGET");
+		activeTarget = true;
 	}
+
+	// if (activeTarget && indifferenceMargin > 0) {
+	// 	logger::DEBUG("Checking indifference");
+	// 	auto oldTarget = targetArray[idx];
+	// 	auto oldTargetPos = oldTarget.Position();
+	// 	if (oldTarget.valid && oldTargetPos) {
+	// 		auto travelAngle = oldTargetPos.angleTo(newPosition);// / angleToStep;
+	// 		doUpdate = (travelAngle) > indifferenceMargin;
+	// 		logger::DEBUG("TRAVEL STEPs", travelAngle);
+	// 	}
+	// }
 
 	if (doUpdate) {
 		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that
 		// are real
 		targetArray[idx].Update(newPosition);
 		targetArray[idx].valid = valid;
-		needTrackingUpdate = true;
+		if (activeTarget) {
+			// logger::DEBUG("SETTING TRACKING FOR ACTIVE TARGET");
+			needTrackingUpdate = true;
+		}
 	}
 }
 
@@ -218,4 +243,17 @@ inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point)
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
 	return std::ranges::distance(currentTargetArray().begin(), res);
+}
+
+inline bool SystemState::targetIsPotentiallyValid() {
+	auto target = currentTarget();
+	return target->valid && (target->Position().magnitude() <= config.projectile_max_range * fixed(1.1));
+}
+
+inline const fixed SystemState::currentYaw() {
+	return angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
+}
+
+inline const fixed SystemState::currentPitch() {
+	return angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
 }
