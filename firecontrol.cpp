@@ -1,7 +1,7 @@
 #include "firecontrol.h"
 
 #include <cstdint>
-
+#include <functional>
 #include "utilities.h"
 
 /**

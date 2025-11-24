@@ -1,8 +1,16 @@
 #include "command_queue.h"
 
 #include <iostream>
+#include <memory>
+#include <mutex>
+#include <queue>
 #include <sstream>
+#include <string>
+#include <vector>
 
+#ifndef ARDUINO
+	#include "tests/mocks.h"
+#endif
 #include "logger.h"
 #include "state.h"
 #include "utilities.h"

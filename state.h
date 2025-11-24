@@ -1,10 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <queue>
 #include <span>
 
 #ifdef ARDUINO
@@ -13,14 +10,14 @@
 	#include <AccelStepper.h>
 	#include <Arduino.h>
 #else
-	#include "tests/mocks.h"
+	// Forward declare the non-arduino types
+	class AccelStepper;
 #endif
 
 #include "command.h"
 #include "command_queue.h"
 #include "fpm_adapter.hpp"
 #include "logger.h"
-#include "serializer.hpp"
 #include "shared_types.h"
 #include "target.h"
 #include "utilities.h"
@@ -28,6 +25,9 @@
 
 using fixed = fixed_16_16;
 class Command;
+namespace cerializer {
+	class Config;
+}
 
 /**
  * @brief A struct to hold tunable configuration parameters for the system.

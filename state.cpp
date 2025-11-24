@@ -2,15 +2,20 @@
 
 #ifdef ARDUINO
 	#include "HardwareSerial.h"
+#else
+	#include "tests/mocks.h"
 #endif
 #include <algorithm>
 #include <chrono>
+#include <functional>
+#include <queue>
 #include <ratio>
 
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
 #include "fpm_adapter.hpp"
 #include "logger.h"
+#include "serializer.hpp"
 #include "target.h"
 #include "target_selection.h"
 #include "utilities.h"
