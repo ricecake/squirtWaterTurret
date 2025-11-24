@@ -4,7 +4,6 @@
 	#include <Arduino.h>
 #endif
 
-#include <chrono>
 #include <cstdint>
 
 #include "aproximate_math.hpp"
@@ -48,18 +47,22 @@ public:
 	TimeInterval         timeSinceLastSeen() const;
 	bool                 actionIdleExceeds(const ChronoDuration auto limit) const;
 	bool                 idleExceeds(const ChronoDuration auto limit) const;
+	bool                 actionable() const;
 	void                 IncrementAction();
 	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval);
-	const PositionVector interceptPosition() const;
+	const PositionVector InterceptAimpoint();
 
 	// -- Public Attributes --
 	bool      valid = false;
-	uint8_t   index;
-	uint8_t   id;
+	uint8_t   index = 0;
+	uint32_t  id = 0;
 	TimePoint seen;
 	TimePoint last_action;
 
 private:
+	std::shared_ptr<const PositionVector> interceptPosition() const;
+
+	std::shared_ptr<const PositionVector> last_aimpoint = nullptr;
 	// -- Private Attributes --
 	TimePoint      last_seen;
 	PositionVector position;
@@ -72,6 +75,13 @@ private:
 // ======================================================================================
 
 // -- Target --
+
+inline const PositionVector Target::InterceptAimpoint() {
+	if (last_aimpoint == nullptr) {
+		last_aimpoint = interceptPosition();
+	}
+	return *last_aimpoint;
+}
 
 /**
  * @brief Constructs a Target with a given position and velocity.
@@ -123,6 +133,10 @@ inline const PositionVector Target::Position() const {
 	return position;
 }
 
+inline fixed Target::Distance() {
+	return position.Distance();
+}
+
 /**
  * @brief Calculates the time elapsed since the last action was performed on this target.
  * @return The time interval since the last action.
@@ -144,4 +158,8 @@ inline TimeInterval Target::timeSinceLastSeen() const {
  */
 inline void Target::IncrementAction() {
 	last_action = Clock::now();
+}
+
+inline bool Target::actionable() const {
+	return valid && actionIdleExceeds(fireActionInterval);
 }

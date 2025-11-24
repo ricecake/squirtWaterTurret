@@ -2,7 +2,4 @@
 #include <iostream>
 #include <ostream>
 
-#include "doctest/doctest.h"
-#include "mock_time.h"
-
-TestClock mock_clock;
+#include "common.h"

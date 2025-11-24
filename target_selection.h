@@ -10,7 +10,7 @@
  * currently selected target. The radar identifies potential targets, and this
  * command is used to specify which one to track and engage.
  */
-class TargetSelection: public Command {
+class TargetSelection: virtual public Command, public AutoCommand<TargetSelection> {
 public:
 	// -- Constructors --
 	TargetSelection(TargetSource, uint8_t, int, int64_t);

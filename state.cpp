@@ -2,21 +2,27 @@
 
 #ifdef ARDUINO
 	#include "HardwareSerial.h"
+#else
+	#include "tests/mocks.h"
 #endif
 #include <algorithm>
 #include <chrono>
+#include <functional>
+#include <queue>
 #include <ratio>
 
 #include "aproximate_math.hpp"
 #include "firecontrol.h"
 #include "fpm_adapter.hpp"
+#include "logger.h"
+#include "serializer.hpp"
 #include "target.h"
 #include "target_selection.h"
 #include "utilities.h"
 
 constexpr fixed gravity = 9.814;
 
-SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.01), VelocityVector(0, 0, 0)) {
+SystemState::SystemState(): staticTarget(0, true, PositionVector(1, 0, 0), VelocityVector(0, 0, 0)) {
 	stepperA = AccelStepper(motorInterfaceType, stepPinA, dirPinA);
 	stepperB = AccelStepper(motorInterfaceType, stepPinB, dirPinB);
 
@@ -25,12 +31,22 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(0.01, 0.01, 0.0
 
 	pinMode(firePin, OUTPUT);
 
-	target_source = TargetSource::STATIC;
-	auto p = staticTarget.Position();
-	p.Z_coord = config.turret_height;
-	staticTarget.Update(p);
+	target_source = TargetSource::RADAR;
+	// auto p = staticTarget.Position();
+	// p.Z_coord = config.turret_height;
+	// staticTarget.Update(p);
 
-	selectedTarget = &staticTarget;
+	// selectedTarget = &staticTarget;
+	selectedTarget = &radarTarget[0];
+
+	size_t idx = 0;
+	for (auto& t : cvTarget) {
+		t.index = idx;
+	}
+	idx = 0;
+	for (auto& t : radarTarget) {
+		t.index = idx;
+	}
 }
 
 /// @brief Return the current target array, based on which target system is active.
@@ -47,14 +63,15 @@ std::span<Target> SystemState::currentTargetArray() {
 	}
 }
 
-Target& SystemState::currentTarget() {
-	return *selectedTarget;
+Target* SystemState::currentTarget() {
+	return selectedTarget;
 }
 
 void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	if (source != target_source) {
 		return; // No-op because we've changed sources
 	}
+	auto previousSelectedTarget = selectedTarget;
 
 	switch (target_source) {
 	case TargetSource::CV:
@@ -66,16 +83,25 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	case TargetSource::STATIC:
 		selectedTarget = &staticTarget;
 		break;
-	default:
-		return;
 	}
-
 	trackingSpeed = speed;
-	needTrackingUpdate = true;
+
+	if (previousSelectedTarget != selectedTarget) {
+		needTrackingUpdate = true;
+	}
+	targetChangeProcessing = false;
 }
 
 void SystemState::setFire(bool active) {
-	fireState = active;
+	fireState = true;
+	// fireOrderProcessing = false;
+	logger::LOG("Changing fire status on", active);
+}
+
+void SystemState::clearFire(bool active) {
+	fireState = false;
+	fireOrderProcessing = false;
+	logger::LOG("Changing fire status off", active);
 }
 
 void SystemState::setMove(bool active) {
@@ -98,7 +124,17 @@ bool SystemState::getMoveState() {
 	return moveState;
 }
 
+bool SystemState::shouldCheckTargetValidity() {
+	return !targetChangeProcessing;
+}
+
+bool SystemState::shouldCheckFiringConditions() {
+	logger::DEBUG("Fire in flight?", fireOrderProcessing);
+	return !fireOrderProcessing;
+}
+
 void SystemState::queueFire(uint16_t fireDuration) {
+	fireOrderProcessing = true;
 	commandQueue.addCommand<FireControl>(true, fireDuration, 0);
 }
 
@@ -107,8 +143,9 @@ void SystemState::queueCeaseFire(uint16_t fireDuration) {
 	commandQueue.addCommand<FireControl>(false, fireDuration, end.microseconds());
 }
 
-void SystemState::queueSelectTarget(TargetSource source, uint8_t index, uint16_t milliseconds) {
-	commandQueue.addCommand<TargetSelection>(source, index, 0xFF, milliseconds * 1000);
+void SystemState::queueSelectTarget(TargetSource source, uint8_t index) {
+	targetChangeProcessing = true;
+	commandQueue.addCommandAfter<TargetSelection>(source, index, 0xFF);
 }
 
 void SystemState::updateConfig(cerializer::Config* config) {
@@ -152,12 +189,14 @@ void SystemState::actualizePosition() {
 	}
 
 	auto target = currentTarget();
-	if (needTrackingUpdate && target.valid) {
+
+	if (needTrackingUpdate) { //} && target.valid) {
+		needTrackingUpdate = false;
 		// Calculate the aimpoint using the target's intercept position
-		if (target.Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
+		if (target->Position().magnitude() > config.projectile_max_range * fixed(1.1)) {
 			return;
 		}
-		auto aimpoint = target.interceptPosition();
+		auto aimpoint = target->InterceptAimpoint();
 		auto pitch = long(std::min(std::max(aimpoint.Pitch(), fixed(-60)), fixed(60)) / angleToStep);
 		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
 
@@ -175,7 +214,7 @@ void SystemState::actualizePosition() {
 		stepperA.moveTo(delta_A);
 		stepperB.moveTo(delta_B);
 
-		needTrackingUpdate = false;
+		logger::DEBUG("POSITION DETAIL", target->Position(), aimpoint, pitch, yaw);
 	}
 
 	// Continuously run the motors to move towards the target
@@ -191,24 +230,23 @@ fixed SystemState::targetTravelDistance() {
 		return INT_MAX;
 	}
 
-	auto yaw = angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
-	auto pitch = angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
+	auto yaw_rad = currentYaw() * deg2RadFactor;
+	auto pitch_rad = currentPitch() * deg2RadFactor;
 
-	auto delta_yaw = aimpoint.Yaw() - yaw;
+	// Create a Cartesian unit vector from the spherical coordinates
+	auto x = cos(pitch_rad) * sin(yaw_rad);
+	auto y = cos(pitch_rad) * cos(yaw_rad);
+	auto z = sin(pitch_rad);
 
-	auto cos_alpha = sin(pitch) * sin(aimpoint.Pitch()) + cos(pitch) * cos(aimpoint.Pitch()) * cos(delta_yaw);
+	PositionVector newVectorFromPitchAndYaw(x, y, z);
 
-	return acos(cos_alpha);
-}
-
-PositionVector SystemState::targetAimpoint() {
-	return getAimpoint();
+	return aimpoint.angleTo(newVectorFromPitchAndYaw);
 }
 
 PositionVector SystemState::getAimpoint() {
 	auto target = currentTarget();
-	if (!target.valid || (target.Position().magnitude() > config.projectile_max_range * fixed(1.1))) {
+	if (!targetIsPotentiallyValid()) {
 		return PositionVector(0, 0, 0);
 	}
-	return target.interceptPosition();
+	return target->InterceptAimpoint();
 }

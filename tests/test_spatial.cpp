@@ -1,9 +1,12 @@
-#include "doctest/doctest.h"
-#include "doctest_fpm_adapter.hpp"
-#include "mock_time.h"
+#include "common.h"
 #include "spatial.h"
 
 extern TestClock mock_clock;
+
+TEST_CASE("SPECIAL OPERATORS") {
+	auto root = PositionVector::integer_sqrt(uint64_t(fixed_16_16(16).raw_value()) << 16);
+	CHECK(root == 4);
+}
 
 TEST_CASE("PositionVector") {
 	mock_clock.reset();

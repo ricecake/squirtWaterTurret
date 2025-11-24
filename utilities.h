@@ -1,7 +1,11 @@
 #pragma once
 
+#include <array> // std::array
 #include <chrono>
 #include <functional>
+#include <string>
+#include <string_view>
+#include <utility> // std::index_sequence
 
 #include "fpm_adapter.hpp"
 
@@ -198,9 +202,46 @@ const int                    motorInterfaceType = 1;                     ///< St
 const int                    maxSpeed = 1000;                            ///< Maximum speed for the motors.
 const int                    acceleration = 3000;                        ///< Acceleration for the motors.
 constexpr static fixed_16_16 rad2DegFactor = fixed_16_16(57.2957795131); ///< Conversion factor from radians to degrees.
+constexpr static fixed_16_16 deg2RadFactor = fixed_16_16(0.01745329251); ///< Conversion factor from degrees to radians.
 const fixed_16_16            Gz = -9.80665;                              ///< Acceleration due to gravity.
 const int                    altitude = 1320;                            ///< Default altitude for calculations.
 const fixed_16_16            projectileSpeed = 20;                       ///< Speed of the projectile.
 
 /// @brief The interval after which a fire action can be repeated.
 const auto fireActionInterval = seconds(3);
+
+template <typename T>
+consteval std::string_view type_name() {
+	using namespace std::literals; // required for ""sv
+// Format is usually: "constexpr std::string_view type_name() [with T = Name]"
+// We need to slice it. This logic is compiler specific.
+#if defined(__clang__) || defined(__GNUC__) || defined(_MSC_VER)
+	#if defined(__clang__) || defined(__GNUC__)
+
+	std::string_view name = __PRETTY_FUNCTION__;
+	std::string_view prefix = "T = ";
+	std::string_view suffix = "; ";
+
+	#elif defined(_MSC_VER)
+
+	std::string_view prefix = "type_name<";
+	std::string_view suffix = ", ";
+	std::string_view name = __FUNCSIG__;
+
+	#endif
+
+	auto start = name.find(prefix);
+	auto end = name.find(suffix, start);
+	if (end == std::string_view::npos) {
+		end = name.rfind(">(void)"sv, start);
+	}
+	if (start != std::string_view::npos && end != std::string_view::npos) {
+		start += prefix.size();
+		return name.substr(start, end - start);
+	}
+	return name;
+
+#else
+	return "UnknownType";
+#endif
+}

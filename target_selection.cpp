@@ -13,19 +13,6 @@
  */
 void TargetSelection::Execute(SystemState* state) {
 	state->setTarget(target_source, target_id, speed);
-	auto& currTarget = state->currentTarget();
-
-	uint16_t timeout = 1; // Default to a small delay
-	if (currTarget.valid) {
-		if (currTarget.idleExceeds(seconds(5))) {
-			currTarget.valid = false;
-		} else {
-			timeout = 3 * 1000;
-		}
-	}
-
-	// Queue the next target selection to create a round-robin evaluation
-	state->queueSelectTarget(target_source, ((target_id + 1) % state->size()), timeout);
 }
 
 /**
