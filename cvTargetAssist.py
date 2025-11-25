@@ -26,7 +26,6 @@ configured to run in different modes (e.g., 'POSE' vs. 'FACE') and states (e.g.,
 import os
 import sys
 import select
-import struct
 import time
 import argparse
 from math import atan2, degrees
@@ -44,6 +43,12 @@ from depthai_nodes import ImgDetectionsExtended, ImgDetectionExtended
 from depthai_nodes.node import ParsingNeuralNetwork, GatherData
 from depthai_nodes.message.keypoints import Keypoint
 
+from serial_protocol import (
+    TargetMessage,
+    SetTargetSourceMessage,
+    # StaticTargetMessage,
+    TargetSource
+)
 # ======================================================================================
 # --- Configuration ---
 # ======================================================================================
@@ -223,14 +228,6 @@ rec_nn_archive = dai.NNArchive(
 )
 recognition_model_width = rec_nn_archive.getInputWidth() or -1
 recognition_model_height = rec_nn_archive.getInputHeight() or -1
-
-
-from serial_protocol import (
-    TargetMessage,
-    SetTargetSourceMessage,
-    StaticTargetMessage,
-    TargetSource
-)
 
 
 # ======================================================================================
@@ -610,19 +607,19 @@ class IdentificationNode(dai.node.HostNode):
         elif match_type == 'medium':
             emit_target_event = True
             create_new_link = True
-            save_image_file = not link_is_validated # Save if the matched link was not yet validated
+            save_image_file = not link_is_validated  # Save if the matched link was not yet validated
         elif match_type == 'far':
             save_image_file = True
             if link_is_validated:
-                create_new_link = True # Known person, but poor match. Add a new vector for review.
+                create_new_link = True  # Known person, but poor match. Add a new vector for review.
             else:
-                create_new_person = True # Unvalidated link, poor match. Assume it's a new person.
+                create_new_person = True  # Unvalidated link, poor match. Assume it's a new person.
         elif match_type == 'miss':
             save_image_file = True
             create_new_person = True
 
         if create_new_person:
-            create_new_link = True # A new person always gets a new link.
+            create_new_link = True  # A new person always gets a new link.
 
         # Crucial final check: only emit a "valid target" event for a valid person
         # that was matched with a previously validated embedding link.
