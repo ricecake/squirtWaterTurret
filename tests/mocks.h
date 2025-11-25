@@ -124,8 +124,8 @@ public:
 	explicit LD2450(unsigned int seed):
 		rng(seed), angle_dist(0, 2 * M_PI), radius_dist(0, MAX_RADIUS), pause_dist(2, 7) {
 		// Initial dest must be different from initial pos for the test to pass.
-		mock_targets.emplace_back(MockTarget{0, 0, 1000, 0.0, 1000.0, 1000, 1000, Clock::now(), Clock::now()});
-		mock_targets.emplace_back(MockTarget{1, -1000, 2000, -1000.0, 2000.0, -2000, 1000, Clock::now(), Clock::now()});
+		mock_targets.emplace_back(MockTarget{0, -1000, 2000, -1000.0, 2000.0, -2000, 1000, Clock::now(), Clock::now()});
+		mock_targets.emplace_back(MockTarget{1, 0, 1000, 0.0, 1000.0, 1000, 1000, Clock::now(), Clock::now()});
 		mock_targets.emplace_back(MockTarget{2, 1000, 2000, 1000.0, 2000.0, 5000, 5000, Clock::now(), Clock::now()});
 	}
 
@@ -159,7 +159,7 @@ private:
 
 		// Only update position if not paused.
 		if (now >= target.pause_until) {
-			auto   time_delta = std::chrono::duration_cast<std::chrono::microseconds>(now - target.last_updated).count();
+			auto time_delta = std::chrono::duration_cast<std::chrono::microseconds>(now - target.last_updated).count();
 			double delta_t = time_delta / 1000000.0; // Convert to seconds
 
 			if (delta_t > 0) {
@@ -185,12 +185,12 @@ private:
 		double final_dist_to_dest = std::hypot(target.dest_x - target.true_x, target.dest_y - target.true_y);
 		if (final_dist_to_dest < 1.0) { // Arrived
 			switch (target.id) {
-			case 0: // Random Walk
-			case 2: // Continuous Patrol
+			case 0: // Walk and Pause
+				target.pause_until = now + std::chrono::seconds(pause_dist(rng));
 				random_point_in_circle(target.dest_x, target.dest_y);
 				break;
-			case 1: // Walk and Pause
-				target.pause_until = now + std::chrono::seconds(pause_dist(rng));
+			case 1: // Random Walk
+			case 2: // Continuous Patrol
 				random_point_in_circle(target.dest_x, target.dest_y);
 				break;
 			}

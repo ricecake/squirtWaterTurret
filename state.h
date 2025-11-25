@@ -10,8 +10,8 @@
 	#include <AccelStepper.h>
 	#include <Arduino.h>
 #else
-	// Forward declare the non-arduino types
-	class AccelStepper;
+// Forward declare the non-arduino types
+class AccelStepper;
 #endif
 
 #include "command.h"
@@ -25,6 +25,7 @@
 
 using fixed = fixed_16_16;
 class Command;
+
 namespace cerializer {
 	class Config;
 }
@@ -160,25 +161,22 @@ inline void SystemState::updateTarget(
 	const uint8_t   idx,
 	const bool      valid,
 	PositionVector& newPosition,
-	const uint16_t //  indifferenceMargin
+	const uint16_t  indifferenceMargin
 ) {
 	bool doUpdate = true;
 	bool activeTarget = false;
 	if (selectedTarget == &targetArray[idx]) {
-		// logger::DEBUG("UPDATING ACTIVE TARGET");
 		activeTarget = true;
 	}
 
-	// if (activeTarget && indifferenceMargin > 0) {
-	// 	logger::DEBUG("Checking indifference");
-	// 	auto oldTarget = targetArray[idx];
-	// 	auto oldTargetPos = oldTarget.Position();
-	// 	if (oldTarget.valid && oldTargetPos) {
-	// 		auto travelAngle = oldTargetPos.angleTo(newPosition);// / angleToStep;
-	// 		doUpdate = (travelAngle) > indifferenceMargin;
-	// 		logger::DEBUG("TRAVEL STEPs", travelAngle);
-	// 	}
-	// }
+	if (activeTarget && indifferenceMargin > 0) {
+		auto oldTarget = targetArray[idx];
+		auto oldTargetPos = oldTarget.Position();
+		if (oldTarget.valid && oldTargetPos) {
+			auto travelAngle = oldTargetPos.angleTo(newPosition) / angleToStep;
+			doUpdate = (travelAngle) > indifferenceMargin;
+		}
+	}
 
 	if (doUpdate) {
 		// Need something that can indicate that this is a reduced dimension measurement, so we only update fields that
@@ -186,7 +184,6 @@ inline void SystemState::updateTarget(
 		targetArray[idx].Update(newPosition);
 		targetArray[idx].valid = valid;
 		if (activeTarget) {
-			// logger::DEBUG("SETTING TRACKING FOR ACTIVE TARGET");
 			needTrackingUpdate = true;
 		}
 	}

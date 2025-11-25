@@ -41,11 +41,11 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(1, 0, 0), Veloc
 
 	size_t idx = 0;
 	for (auto& t : cvTarget) {
-		t.index = idx;
+		t.index = idx++;
 	}
 	idx = 0;
 	for (auto& t : radarTarget) {
-		t.index = idx;
+		t.index = idx++;
 	}
 }
 
@@ -129,7 +129,6 @@ bool SystemState::shouldCheckTargetValidity() {
 }
 
 bool SystemState::shouldCheckFiringConditions() {
-	logger::DEBUG("Fire in flight?", fireOrderProcessing);
 	return !fireOrderProcessing;
 }
 
@@ -213,8 +212,6 @@ void SystemState::actualizePosition() {
 		// Move motors to the new target position
 		stepperA.moveTo(delta_A);
 		stepperB.moveTo(delta_B);
-
-		logger::DEBUG("POSITION DETAIL", target->Position(), aimpoint, pitch, yaw);
 	}
 
 	// Continuously run the motors to move towards the target

@@ -182,7 +182,6 @@ the queue at the back.  It will change sources and everything
 
 struct Target* selectTarget() {
 	if (dptState.currentTarget()->actionable()) {
-		logger::DEBUG("Current target actionable!");
 		return nullptr;
 	}
 
@@ -196,7 +195,6 @@ struct Target* selectTarget() {
 	auto targets = filter(dptState.currentTargetArray());
 
 	if (targets.empty()) {
-		logger::DEBUG("No targets?");
 		return nullptr;
 	}
 

@@ -27,7 +27,7 @@ namespace logger {
 		const LogLevel         level = LogLevel::LOG;
 		const std::string_view message;       // View of the original message
 		const std::string_view file_name;     // View of the const char*
-		const std::string_view function_name; // View of the const char*
+		// const std::string_view function_name; // View of the const char*
 		const std::string      tags;
 		const unsigned int     line_number;
 	};
@@ -38,7 +38,11 @@ namespace logger {
 		if (!msg.tags.empty()) {
 			str << " " << msg.tags;
 		}
-		str << " (" << msg.file_name << ":" << msg.line_number << " :: " << msg.function_name << ")";
+		str << " (" << msg.file_name << ":" << msg.line_number << ")";
+
+		// if (msg.file_name.length() && bool(msg.line_number) && msg.function_name.length()) {
+		// 	str << " (" << msg.file_name << ":" << msg.line_number << " :: " << msg.function_name << ")";
+		// }
 		return str.str();
 	}
 
@@ -63,7 +67,7 @@ namespace logger {
 		template <typename StringType>
 		constexpr LogSource(const StringType& m, const std::source_location& l = std::source_location::current()):
 			msg(m), loc(l) {}
-	};
+		};
 
 	template <class B>
 		requires std::derived_from<B, Backend>
@@ -72,35 +76,36 @@ namespace logger {
 
 		template <typename... Ts>
 		void
-		doLogging(const LogLevel level, const std::string_view& msg, const std::source_location& loc, Ts&&... flags) {
+		doLogging(const LogLevel& level, const LogSource& src, Ts&&... flags) {
 			std::stringstream tags;
 			((tags << "[" << flags << "] "), ...);
 			LogMessage log{
 				.level = level,
-				.message = msg,
-				.file_name = loc.file_name(),
-				.function_name = loc.function_name(),
+				.message = src.msg,
+				.file_name = src.loc.file_name(),
+				// .function_name = src.loc.function_name(),
 				.tags = tags.str(),
-				.line_number = loc.line(),
+				.line_number = src.loc.line(),
 			};
+
 			std::string logStr = format(log);
 			backend.render(logStr);
 		}
 
 	public:
 		template <typename... Ts>
-		void LOG(LogSource src, Ts&&... flags) {
-			doLogging(LogLevel::LOG, src.msg, src.loc, std::forward<Ts>(flags)...);
+		void LOG(LogSource& src, Ts&&... flags) {
+			doLogging(LogLevel::LOG, src, std::forward<Ts>(flags)...);
 		};
 
 		template <typename... Ts>
-		void ERROR(LogSource src, Ts&&... flags) {
-			doLogging(LogLevel::ERROR, src.msg, src.loc, std::forward<Ts>(flags)...);
+		void ERROR(LogSource& src, Ts&&... flags) {
+			doLogging(LogLevel::ERROR, src, std::forward<Ts>(flags)...);
 		};
 
 		template <typename... Ts>
-		void DEBUG(LogSource src, Ts&&... flags) {
-			doLogging(LogLevel::DEBUG, src.msg, src.loc, std::forward<Ts>(flags)...);
+		void DEBUG(LogSource& src, Ts&&... flags) {
+			doLogging(LogLevel::DEBUG, src, std::forward<Ts>(flags)...);
 		};
 	};
 

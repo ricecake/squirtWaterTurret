@@ -16,44 +16,29 @@ class DistanceVector;
 class VelocityVector;
 
 /**
- * @brief Represents a 3D distance vector.
+ * @brief A 3D vector class with specialized fixed-point arithmetic.
  *
- * This class is used to define a displacement in 3D space.
+ * This class provides optimized implementations for magnitude, dot product,
+ * cross product, and other vector operations using fixed-point numbers to
+ * avoid floating-point arithmetic and improve performance on embedded systems.
+ * It uses the Curiously Recurring Template Pattern (CRTP) to allow derived
+ * classes to customize behavior while reusing the base implementation.
+ *
+ * @tparam Derived The derived class type for CRTP.
  */
-class DistanceVector: public Vector3D<fixed, DistanceVector> {
+template <typename Derived>
+class FixedVector3D: public Vector3D<fixed, Derived> {
 public:
 	// -- Type Definitions --
-	using Vec = Vector3D<fixed, DistanceVector>;
-
-	// -- Constructors --
-	DistanceVector() = default;
-	DistanceVector(const DistanceVector& other) = default;
-	constexpr DistanceVector(fixed x, fixed y, fixed z);
-	DistanceVector(VelocityVector v, ChronoDuration auto interval);
-};
-
-/**
- * @brief Represents a 3D position vector.
- *
- * This class defines a specific point in 3D space and provides methods
- * to calculate pitch, yaw, and distance.
- */
-class PositionVector: public Vector3D<fixed, PositionVector> {
-public:
-	// -- Type Definitions --
-	using Vec = Vector3D<fixed, PositionVector>;
-
-	// -- Constructors --
-	PositionVector() = default;
-	PositionVector(const PositionVector& other) = default;
-	constexpr PositionVector(fixed x, fixed y, fixed z);
-	PositionVector(PositionVector, DistanceVector);
-	PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval);
+	using Vec = Vector3D<fixed, Derived>;
+	using typename Vec::NumericType;
+	using Vec::rad2DegFactor;
+	using Vec::Vec;
+	using Vec::X_coord;
+	using Vec::Y_coord;
+	using Vec::Z_coord;
 
 	// -- Public Methods --
-	fixed Pitch();
-	fixed Yaw();
-	fixed Distance();
 
 	static fixed integer_sqrt(uint64_t n) {
 		if (n < 2)
@@ -138,7 +123,7 @@ public:
 		return fixed::from_raw_value((dot_product_raw >> fixed::FixedBits));
 	}
 
-	PositionVector cross(const VectorCompatible<fixed> auto& other) const {
+	Derived cross(const VectorCompatible<fixed> auto& other) const {
 		int64_t aX = X_coord.raw_value();
 		int64_t aY = Y_coord.raw_value();
 		int64_t aZ = Z_coord.raw_value();
@@ -150,10 +135,10 @@ public:
 		int64_t cY_raw = (int64_t)aZ * bX - (int64_t)aX * bZ;
 		int64_t cZ_raw = (int64_t)aX * bY - (int64_t)aY * bX;
 
-		return PositionVector(
-			fixed::from_raw_value(cX_raw),
-			fixed::from_raw_value(cY_raw),
-			fixed::from_raw_value(cZ_raw)
+		return Derived(
+			fixed::from_raw_value(cX_raw >> fixed::FixedBits),
+			fixed::from_raw_value(cY_raw >> fixed::FixedBits),
+			fixed::from_raw_value(cZ_raw >> fixed::FixedBits)
 		);
 	}
 
@@ -202,12 +187,12 @@ public:
 		return integer_sqrt(dot_product_raw);
 	}
 
-	PositionVector normalize() const {
+	Derived normalize() const {
 		fixed mag = magnitude();
 		if (mag != 0) {
-			return PositionVector(X_coord / mag, Y_coord / mag, Z_coord / mag);
+			return Derived(X_coord / mag, Y_coord / mag, Z_coord / mag);
 		}
-		return PositionVector(X_coord, Y_coord, Z_coord);
+		return Derived(X_coord, Y_coord, Z_coord);
 	}
 
 	NumericType pitch() const {
@@ -224,6 +209,47 @@ public:
 		}
 		return atan2(X_coord, Y_coord) * rad2DegFactor;
 	}
+};
+
+/**
+ * @brief Represents a 3D distance vector.
+ *
+ * This class is used to define a displacement in 3D space.
+ */
+class DistanceVector: public FixedVector3D<DistanceVector> {
+public:
+	// -- Type Definitions --
+	using Vec = FixedVector3D<DistanceVector>;
+
+	// -- Constructors --
+	DistanceVector() = default;
+	DistanceVector(const DistanceVector& other) = default;
+	constexpr DistanceVector(fixed x, fixed y, fixed z);
+	DistanceVector(VelocityVector v, ChronoDuration auto interval);
+};
+
+/**
+ * @brief Represents a 3D position vector.
+ *
+ * This class defines a specific point in 3D space and provides methods
+ * to calculate pitch, yaw, and distance.
+ */
+class PositionVector: public FixedVector3D<PositionVector> {
+public:
+	// -- Type Definitions --
+	using Vec = FixedVector3D<PositionVector>;
+
+	// -- Constructors --
+	PositionVector() = default;
+	PositionVector(const PositionVector& other) = default;
+	constexpr PositionVector(fixed x, fixed y, fixed z);
+	PositionVector(PositionVector, DistanceVector);
+	PositionVector(PositionVector p, VelocityVector v, ChronoDuration auto interval);
+
+	// -- Public Methods --
+	fixed Pitch();
+	fixed Yaw();
+	fixed Distance();
 
 private:
 	// -- Private Attributes --
@@ -237,10 +263,10 @@ private:
  *
  * This class is used to define the rate of change of position.
  */
-class VelocityVector: public Vector3D<fixed, VelocityVector> {
+class VelocityVector: public FixedVector3D<VelocityVector> {
 public:
 	// -- Type Definitions --
-	using Vec = Vector3D<fixed, VelocityVector>;
+	using Vec = FixedVector3D<VelocityVector>;
 
 	// -- Constructors --
 	VelocityVector() = default;
