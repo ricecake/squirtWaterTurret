@@ -43,7 +43,12 @@ namespace Approximate {
 	small_root(const std::function<T(const T&)> func, const T error = T(0.001), const uint8_t rounds = 16) {
 		try {
 			T leftInput = T(0);
-			T rightInput = T(0.01);
+			T rightInput;
+			if constexpr (std::numeric_limits<T>::is_integer) {
+				rightInput = 1;
+			} else {
+				rightInput = std::numeric_limits<T>::epsilon();
+			}
 			T midInput;
 
 			T leftValue = func(leftInput);

@@ -27,7 +27,8 @@
 template <typename B, typename I, unsigned int F, bool E = true>
 class FixedAdapter: public fpm::fixed<B, I, F, E> {
 public:
-	using IntermediateType = I;
+	using intermediate_type = I;
+	using base_type = B;
 	static const int FixedBits = F;
 
 	inline FixedAdapter() noexcept = default;
@@ -85,8 +86,8 @@ namespace fpm {
 	/**
 	 * @brief Specialization of fpm::is_fixed for the FixedAdapter type.
 	 */
-	template <typename BaseType, typename IntermediateType, unsigned int FractionBits, bool EnableRounding>
-	struct is_fixed<FixedAdapter<BaseType, IntermediateType, FractionBits, EnableRounding>>: std::true_type {};
+	template <typename BaseType, typename intermediate_type, unsigned int FractionBits, bool EnableRounding>
+	struct is_fixed<FixedAdapter<BaseType, intermediate_type, FractionBits, EnableRounding>>: std::true_type {};
 
 	template <typename FixedType, typename NonFixedType>
 		requires IsFixedPoint<FixedType> && std::is_floating_point_v<NonFixedType>

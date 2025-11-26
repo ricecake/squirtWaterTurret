@@ -204,10 +204,10 @@ void SystemState::actualizePosition() {
 		int delta_B = pitch - yaw;
 
 		// Set motor speed based on tracking speed
-		double iterMaxSpeed = trackingSpeed / double(0xFF) * maxSpeed * stepFraction;
+		// double iterMaxSpeed = trackingSpeed / double(0xFF) * maxSpeed * stepFraction;
 
-		stepperA.setMaxSpeed(iterMaxSpeed);
-		stepperB.setMaxSpeed(iterMaxSpeed);
+		stepperA.setMaxSpeed(maxSpeed * stepFraction);
+		stepperB.setMaxSpeed(maxSpeed * stepFraction);
 
 		// Move motors to the new target position
 		stepperA.moveTo(delta_A);
