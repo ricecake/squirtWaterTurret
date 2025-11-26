@@ -71,7 +71,7 @@ namespace Approximate {
 			while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds)) {
 				leftInput = rightInput;
 				leftValue = rightValue;
-				rightInput += 4*(closestNonZero+round);
+				rightInput += 4 * (closestNonZero + round);
 				rightValue = func(rightInput);
 				round++; //-- TODO: evaluate the impact of this check.
 			}

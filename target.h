@@ -38,17 +38,26 @@ public:
 	);
 
 	// -- Public Methods --
-	void                 Update(PositionVector P);
+	void Update(PositionVector P);
+
+	// -- Getters --
+	const PositionVector Position() const;
+	const VelocityVector Velocity() const;
+	fixed                Distance();
 	fixed                Pitch();
 	fixed                Yaw();
-	fixed                Distance();
-	const VelocityVector Velocity() const;
-	const PositionVector Position() const;
-	TimeInterval         timeSinceLastAction() const;
-	TimeInterval         timeSinceLastSeen() const;
-	bool                 actionIdleExceeds(const ChronoDuration auto limit) const;
-	bool                 idleExceeds(const ChronoDuration auto limit) const;
-	bool                 actionable() const;
+
+	// -- Time & State Queries --
+	TimeInterval timeSinceLastAction() const;
+	TimeInterval timeSinceLastSeen() const;
+	bool         actionable() const;
+
+	// -- Time-based Checks (use operators: clock_now() - last_action > milliseconds(100)) --
+	bool idleExceeds(const ChronoDuration auto limit) const { return timeSinceLastSeen() > limit; }
+
+	bool actionIdleExceeds(const ChronoDuration auto limit) const { return timeSinceLastAction() > limit; }
+
+	// -- Setters & Mutations --
 	void                 IncrementAction();
 	PositionVector       PredictedPositionAtTime(ChronoDuration auto interval);
 	const PositionVector InterceptAimpoint();
@@ -101,21 +110,14 @@ inline Target::Target(PositionVector P, VelocityVector V): position(P), velocity
 inline Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V):
 	valid(valid), index(index), position(P), velocity(V) {}
 
+// -- Getters --
+
 /**
- * @brief Predicts the target's position at a future time.
- * @param interval The time interval for the prediction.
- * @return The predicted position vector.
+ * @brief Gets the position of the target.
+ * @return The position vector.
  */
-inline PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
-	return PositionVector(position, velocity, interval);
-}
-
-inline bool Target::actionIdleExceeds(const ChronoDuration auto limit) const {
-	return timeSinceLastAction() > limit;
-}
-
-inline bool Target::idleExceeds(const ChronoDuration auto limit) const {
-	return timeSinceLastSeen() > limit;
+inline const PositionVector Target::Position() const {
+	return position;
 }
 
 /**
@@ -126,17 +128,11 @@ inline const VelocityVector Target::Velocity() const {
 	return velocity;
 }
 
-/**
- * @brief Gets the position of the target.
- * @return The position vector.
- */
-inline const PositionVector Target::Position() const {
-	return position;
-}
-
 inline fixed Target::Distance() {
 	return position.Distance();
 }
+
+// -- Time & State Queries --
 
 /**
  * @brief Calculates the time elapsed since the last action was performed on this target.
@@ -154,6 +150,12 @@ inline TimeInterval Target::timeSinceLastSeen() const {
 	return TimeInterval(Clock::now() - seen);
 }
 
+inline bool Target::actionable() const {
+	return valid && actionIdleExceeds(fireActionInterval);
+}
+
+// -- Setters & Mutations --
+
 /**
  * @brief Increments the action counter by updating the last action timestamp.
  */
@@ -161,6 +163,11 @@ inline void Target::IncrementAction() {
 	last_action = Clock::now();
 }
 
-inline bool Target::actionable() const {
-	return valid && actionIdleExceeds(fireActionInterval);
+/**
+ * @brief Predicts the target's position at a future time.
+ * @param interval The time interval for the prediction.
+ * @return The predicted position vector.
+ */
+inline PositionVector Target::PredictedPositionAtTime(ChronoDuration auto interval) {
+	return PositionVector(position, velocity, interval);
 }

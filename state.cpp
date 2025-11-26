@@ -92,9 +92,18 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	targetChangeProcessing = false;
 }
 
+void SystemState::setStrategy(TurretStrategy strategy) {
+	this->strategy = strategy;
+}
+
+void SystemState::setStance(TurretStance stance) {
+	this->stance = stance;
+}
+
+// -- Fire Control Getter/Setter Pair --
+
 void SystemState::setFire(bool active) {
 	fireState = true;
-	// fireOrderProcessing = false;
 	logger::LOG("Changing fire status on", active);
 }
 
@@ -104,25 +113,21 @@ void SystemState::clearFire(bool active) {
 	logger::LOG("Changing fire status off", active);
 }
 
-void SystemState::setMove(bool active) {
-	moveState = active;
-}
-
-void SystemState::setStrategy(TurretStrategy strategy) {
-	this->strategy = strategy;
-}
-
-void SystemState::setStance(TurretStance stance) {
-	this->stance = stance;
-}
-
 bool SystemState::getFireState() {
 	return fireState;
+}
+
+// -- Movement Control Getter/Setter Pair --
+
+void SystemState::setMove(bool active) {
+	moveState = active;
 }
 
 bool SystemState::getMoveState() {
 	return moveState;
 }
+
+// -- State Validation Queries --
 
 bool SystemState::shouldCheckTargetValidity() {
 	return !targetChangeProcessing;
@@ -131,6 +136,8 @@ bool SystemState::shouldCheckTargetValidity() {
 bool SystemState::shouldCheckFiringConditions() {
 	return !fireOrderProcessing;
 }
+
+// -- Command Queue Methods --
 
 void SystemState::queueFire(uint16_t fireDuration) {
 	fireOrderProcessing = true;
@@ -156,6 +163,10 @@ void SystemState::updateConfig(cerializer::Config* config) {
 	stepperB.setMaxSpeed(config->max_speed);
 	stepperB.setAcceleration(config->acceleration);
 }
+
+// ======================================================================================
+// --- Command Queue & State Actualization (Complex Logic) ---
+// ======================================================================================
 
 /**
  * @brief Processes the command queue, executing any commands that are due.
@@ -221,6 +232,13 @@ void SystemState::actualizePosition() {
 	}
 }
 
+// ======================================================================================
+// --- Physics & Calculation Methods ---
+// ======================================================================================
+
+/**
+ * @brief Calculates the distance the turret needs to travel to reach the target.
+ */
 fixed SystemState::targetTravelDistance() {
 	auto aimpoint = getAimpoint();
 	if (aimpoint.magnitude() == 0) {
@@ -240,6 +258,9 @@ fixed SystemState::targetTravelDistance() {
 	return aimpoint.angleTo(newVectorFromPitchAndYaw);
 }
 
+/**
+ * @brief Gets the target's intercept aimpoint, or (0,0,0) if invalid.
+ */
 PositionVector SystemState::getAimpoint() {
 	auto target = currentTarget();
 	if (!targetIsPotentiallyValid()) {

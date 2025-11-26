@@ -53,11 +53,12 @@ public:
 	// -- Constructors --
 	SystemState();
 
-	// -- Public Methods --
+	// -- Query Methods --
 	Target*           currentTarget();
 	std::span<Target> currentTargetArray();
 	inline size_t     size();
 
+	// -- Target Update Methods (similar logic grouped together) --
 	void updateTarget(
 		auto&           targetArray,
 		const uint8_t   idx,
@@ -72,29 +73,49 @@ public:
 		PositionVector& newPosition,
 		const uint16_t  indifferenceMargin = 0
 	);
-	void    updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
-	void    updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
-	void    setTarget(TargetSource source, uint8_t index, uint8_t speed = 0xFF);
-	void    setFire(bool active);
-	void    clearFire(bool active);
-	void    setMove(bool active);
-	void    setStrategy(TurretStrategy strategy);
-	void    setStance(TurretStance stance);
-	bool    getFireState();
-	bool    getMoveState();
-	bool    shouldCheckTargetValidity();
-	bool    shouldCheckFiringConditions();
-	bool    targetIsPotentiallyValid();
-	void    queueSelectTarget(TargetSource source, uint8_t index);
-	void    queueFire(uint16_t milliseconds);
-	void    queueCeaseFire(uint16_t milliseconds);
-	void    updateConfig(cerializer::Config* config);
-	void    processCommandQueue();
-	void    actualizeState();
+	void updateNearestTarget(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+	void updateNearestTarget2d(const bool valid, PositionVector& newPosition, const uint16_t indifferenceMargin = 0);
+
+	// -- Target Selection & State Getters/Setters (grouped in pairs) --
+	void setTarget(TargetSource source, uint8_t index, uint8_t speed = 0xFF);
+	void setStrategy(TurretStrategy strategy);
+	void setStance(TurretStance stance);
+
+	TurretStrategy currentStrategy() const { return strategy; }
+
+	// -- Fire Control Getters/Setters (grouped in pairs) --
+	void setFire(bool active);
+	void clearFire(bool active);
+	bool getFireState();
+
+	// -- Movement Control Getters/Setters (grouped in pairs) --
+	void setMove(bool active);
+	bool getMoveState();
+
+	// -- State Validation Queries --
+	bool shouldCheckTargetValidity();
+	bool shouldCheckFiringConditions();
+	bool targetIsPotentiallyValid();
+
+	// -- Command Queue Methods --
+	void queueSelectTarget(TargetSource source, uint8_t index);
+	void queueFire(uint16_t milliseconds);
+	void queueCeaseFire(uint16_t milliseconds);
+	void processCommandQueue();
+
+	// -- Configuration & State Actualization --
+	void updateConfig(cerializer::Config* config);
+	void actualizeState();
+
+	// -- Target Search/Fetch Methods (similar logic grouped) --
 	Target& fetchTarget(const uint8_t idx);
 	uint8_t fetchNearestTargetIdx(const PositionVector& point);
 	uint8_t fetchNearestTarget2dIdx(const PositionVector& point);
-	fixed   targetTravelDistance();
+
+	// -- Physics & Calculation Methods (complex logic grouped) --
+	fixed       targetTravelDistance();
+	const fixed currentYaw();
+	const fixed currentPitch();
 
 	// -- Public Attributes --
 	const int   stepFraction = 16;   ///< Microstep fraction for the stepper motors.
@@ -115,17 +136,12 @@ public:
 
 	Target* selectedTarget = &staticTarget; //< A reference to the currently selected target
 
-	const fixed currentYaw();
-	const fixed currentPitch();
-
-	TurretStrategy currentStrategy() const { return strategy; }
-
 private:
-	// -- Private Methods --
+	// -- Internal State Actualization (complex logic) --
 	void           actualizePosition();
 	void           actualizeFiring();
-	PositionVector targetAimpoint();
 	PositionVector getAimpoint();
+	PositionVector targetAimpoint();
 
 	// -- Private Attributes --
 	const int motorInterfaceType = 1; ///< Stepper motor driver interface type.
@@ -155,6 +171,23 @@ private:
 inline size_t SystemState::size() {
 	return currentTargetArray().size();
 }
+
+// -- Query Methods --
+
+inline const fixed SystemState::currentYaw() {
+	return angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
+}
+
+inline const fixed SystemState::currentPitch() {
+	return angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
+}
+
+inline bool SystemState::targetIsPotentiallyValid() {
+	auto target = currentTarget();
+	return target->valid && (target->Position().magnitude() <= config.projectile_max_range * fixed(1.1));
+}
+
+// -- Target Update Methods --
 
 inline void SystemState::updateTarget(
 	auto&           targetArray,
@@ -213,6 +246,8 @@ inline void SystemState::updateTargetById(
 	targetArray[found->index].id = id;
 };
 
+// -- Target Search/Fetch Methods --
+
 inline Target& SystemState::fetchTarget(const uint8_t idx) {
 	return currentTargetArray()[idx];
 }
@@ -234,17 +269,4 @@ inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point)
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
 	return std::ranges::distance(currentTargetArray().begin(), res);
-}
-
-inline bool SystemState::targetIsPotentiallyValid() {
-	auto target = currentTarget();
-	return target->valid && (target->Position().magnitude() <= config.projectile_max_range * fixed(1.1));
-}
-
-inline const fixed SystemState::currentYaw() {
-	return angleToStep * (stepperA.currentPosition() + stepperB.currentPosition()) / 2;
-}
-
-inline const fixed SystemState::currentPitch() {
-	return angleToStep * (stepperA.currentPosition() - stepperB.currentPosition()) / 2;
 }
