@@ -102,13 +102,13 @@ inline Target::Target(PositionVector P, VelocityVector V): position(P), velocity
 
 /**
  * @brief Constructs a Target with an index, validity, position, and velocity.
- * @param index The index of the target.
- * @param valid The validity of the target.
+ * @param idx The index of the target.
+ * @param is_valid The validity of the target.
  * @param P The position vector.
  * @param V The velocity vector.
  */
-inline Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V):
-	valid(valid), index(index), position(P), velocity(V) {}
+inline Target::Target(uint8_t idx, bool is_valid, PositionVector P, VelocityVector V):
+	valid(is_valid), index(idx), position(P), velocity(V) {}
 
 // -- Getters --
 

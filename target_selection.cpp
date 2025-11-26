@@ -22,5 +22,10 @@ void TargetSelection::Execute(SystemState* state) {
  * @param speed The tracking speed to use.
  * @param run_after The time delay (in microseconds) after which the command should run.
  */
-TargetSelection::TargetSelection(TargetSource target_source, uint8_t target_id, int speed, int64_t run_after):
-	Command(run_after), target_source(target_source), target_id(target_id), speed(speed) {}
+TargetSelection::TargetSelection(
+	TargetSource init_target_source,
+	uint8_t      init_target_id,
+	uint8_t      init_speed,
+	uint64_t     init_run_after
+):
+	Command(init_run_after), target_source(init_target_source), target_id(init_target_id), speed(init_speed) {}

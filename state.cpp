@@ -39,7 +39,7 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(1, 0, 0), Veloc
 	// selectedTarget = &staticTarget;
 	selectedTarget = &radarTarget[0];
 
-	size_t idx = 0;
+	uint8_t idx = 0;
 	for (auto& t : cvTarget) {
 		t.index = idx++;
 	}
@@ -92,25 +92,25 @@ void SystemState::setTarget(TargetSource source, uint8_t index, uint8_t speed) {
 	targetChangeProcessing = false;
 }
 
-void SystemState::setStrategy(TurretStrategy strategy) {
-	this->strategy = strategy;
+void SystemState::setStrategy(TurretStrategy new_strategy) {
+	this->strategy = new_strategy;
 }
 
-void SystemState::setStance(TurretStance stance) {
-	this->stance = stance;
+void SystemState::setStance(TurretStance new_stance) {
+	this->stance = new_stance;
 }
 
 // -- Fire Control Getter/Setter Pair --
 
 void SystemState::setFire(bool active) {
 	fireState = true;
-	logger::LOG("Changing fire status on", active);
+	logger::Log("Changing fire status on", active);
 }
 
 void SystemState::clearFire(bool active) {
 	fireState = false;
 	fireOrderProcessing = false;
-	logger::LOG("Changing fire status off", active);
+	logger::Log("Changing fire status off", active);
 }
 
 bool SystemState::getFireState() {
@@ -154,14 +154,14 @@ void SystemState::queueSelectTarget(TargetSource source, uint8_t index) {
 	commandQueue.addCommandAfter<TargetSelection>(source, index, 0xFF);
 }
 
-void SystemState::updateConfig(cerializer::Config* config) {
-	this->config.projectile_speed = fixed(config->projectile_speed);
-	this->config.turret_height = fixed(config->turret_height);
+void SystemState::updateConfig(cerializer::Config* newConfig) {
+	this->config.projectile_speed = fixed(newConfig->projectile_speed);
+	this->config.turret_height = fixed(newConfig->turret_height);
 	this->config.projectile_max_range = pow(this->config.projectile_speed, 2) / gravity; // V^2 / g
-	stepperA.setMaxSpeed(config->max_speed);
-	stepperA.setAcceleration(config->acceleration);
-	stepperB.setMaxSpeed(config->max_speed);
-	stepperB.setAcceleration(config->acceleration);
+	stepperA.setMaxSpeed(newConfig->max_speed);
+	stepperA.setAcceleration(newConfig->acceleration);
+	stepperB.setMaxSpeed(newConfig->max_speed);
+	stepperB.setAcceleration(newConfig->acceleration);
 }
 
 // ======================================================================================
@@ -211,8 +211,8 @@ void SystemState::actualizePosition() {
 		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
 
 		// Convert pitch and yaw to motor steps
-		int delta_A = yaw + pitch;
-		int delta_B = pitch - yaw;
+		long delta_A = yaw + pitch;
+		long delta_B = pitch - yaw;
 
 		// Set motor speed based on tracking speed
 		// double iterMaxSpeed = trackingSpeed / double(0xFF) * maxSpeed * stepFraction;

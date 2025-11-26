@@ -1,5 +1,10 @@
 #pragma once
 
+// Suppress conversion and narrowing warnings for mock implementations
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -234,3 +239,5 @@ static inline void xTaskCreatePinnedToCore(auto task, const char*, int, void* pa
 }
 
 #define portTICK_PERIOD_MS 1
+
+#pragma GCC diagnostic pop

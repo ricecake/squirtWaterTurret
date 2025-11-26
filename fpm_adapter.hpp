@@ -14,9 +14,16 @@
 #include <stdexcept>   // For std::overflow_error, std::underflow_error
 #include <type_traits> // For std::is_same_v, std::is_signed_v
 
+// The fpm library has inherent shadowing and sign-conversion issues.
+// Suppress these warnings when including fpm headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "fpm/fixed.hpp"
 #include "fpm/ios.hpp"
 #include "fpm/math.hpp"
+#pragma GCC diagnostic pop
 
 /**
  * @brief A wrapper class for `fpm::fixed` to provide enhanced functionality.

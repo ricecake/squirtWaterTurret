@@ -11,23 +11,22 @@
  * Initializes the command with a unique ID based on the current time and calculates
  * the absolute time at which it should be executed.
  *
- * @param run_after The time delay (in microseconds) after which the command should be executed.
+ * @param delay_us The time delay (in microseconds) after which the command should be executed.
  */
-Command::Command(uint64_t run_after) {
+Command::Command(uint64_t delay_us) {
 	// Assign a unique ID using the current timer value
 	id = id_counter++;
 	// Calculate the absolute execution time
-	this->run_after = microSinceEpoch() + run_after;
+	run_after = microSinceEpoch() + delay_us;
 }
 
-SetStrategyCommand::SetStrategyCommand(TurretStrategy strategy, uint64_t run_after):
-	Command(run_after), strategy(strategy) {}
+SetStrategyCommand::SetStrategyCommand(TurretStrategy s, uint64_t delay_us): Command(delay_us), strategy(s) {}
 
 void SetStrategyCommand::Execute(SystemState* state) {
 	state->setStrategy(strategy);
 }
 
-SetStanceCommand::SetStanceCommand(TurretStance stance, uint64_t run_after): Command(run_after), stance(stance) {}
+SetStanceCommand::SetStanceCommand(TurretStance st, uint64_t delay_us): Command(delay_us), stance(st) {}
 
 void SetStanceCommand::Execute(SystemState* state) {
 	state->setStance(stance);

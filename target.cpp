@@ -49,14 +49,14 @@ std::shared_ptr<const PositionVector> Target::interceptPosition() const {
 		return std::make_shared<PositionVector>(position);
 	}
 
-	const int64_t P = target_velocity.X_coord.raw_value();
-	const int64_t Q = target_velocity.Z_coord.raw_value();
-	const int64_t R = target_velocity.Y_coord.raw_value();
+	const int64_t P = target_velocity.x.raw_value();
+	const int64_t Q = target_velocity.z.raw_value();
+	const int64_t R = target_velocity.y.raw_value();
 
 	const auto    diff = target_pos - proj_pos;
-	const int64_t H = diff.X_coord.raw_value();
-	const int64_t J = diff.Z_coord.raw_value();
-	const int64_t K = diff.Y_coord.raw_value();
+	const int64_t H = diff.x.raw_value();
+	const int64_t J = diff.z.raw_value();
+	const int64_t K = diff.y.raw_value();
 
 	const int64_t L = (localFixed(-0.5) * G).raw_value();
 	const int64_t S = proj_speed.raw_value();
@@ -90,11 +90,11 @@ std::shared_ptr<const PositionVector> Target::interceptPosition() const {
 	// Quartic Coefficients
 	// Apply scaling shift to all coefficients uniformly
 	// This preserves the roots of the polynomial f(t) = 0
-	const localFixed c4 = localFixed::from_raw_value(c4_raw >> shift_amount);
-	const localFixed c3 = localFixed::from_raw_value(c3_raw >> shift_amount);
-	const localFixed c2 = localFixed::from_raw_value(c2_raw >> shift_amount);
-	const localFixed c1 = localFixed::from_raw_value(c1_raw >> shift_amount);
-	const localFixed c0 = localFixed::from_raw_value(c0_raw >> shift_amount);
+	const localFixed c4 = localFixed::from_raw_value(static_cast<localFixed::base_type>(c4_raw >> shift_amount));
+	const localFixed c3 = localFixed::from_raw_value(static_cast<localFixed::base_type>(c3_raw >> shift_amount));
+	const localFixed c2 = localFixed::from_raw_value(static_cast<localFixed::base_type>(c2_raw >> shift_amount));
+	const localFixed c1 = localFixed::from_raw_value(static_cast<localFixed::base_type>(c1_raw >> shift_amount));
+	const localFixed c0 = localFixed::from_raw_value(static_cast<localFixed::base_type>(c0_raw >> shift_amount));
 
 	const std::function<localFixed(const localFixed&)> movingTargetInterceptQuartic =
 		[=](const localFixed& t1) -> localFixed {
@@ -106,19 +106,19 @@ std::shared_ptr<const PositionVector> Target::interceptPosition() const {
 	const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);
 
 	if (!converged || intercept == 0) {
-		return std::make_shared<PositionVector>(diff.X_coord, diff.Y_coord, diff.Z_coord);
+		return std::make_shared<PositionVector>(diff.x, diff.y, diff.z);
 	}
 
 	const localFixed intercept_t = intercept;
 
-	const auto x_vel_num = diff.X_coord + target_velocity.X_coord * intercept_t;
-	const auto y_vel_num = diff.Y_coord + target_velocity.Y_coord * intercept_t;
+	const auto x_vel_num = diff.x + target_velocity.x * intercept_t;
+	const auto y_vel_num = diff.y + target_velocity.y * intercept_t;
 
 	// We want Vp.z = (diff.z + V_t.z*t - 0.5*g*t^2)/t
 	// L = -0.5*g
 	// So we want (diff.z + V_t.z*t + L*t^2)/t
-	const auto z_vel_num = diff.Z_coord + target_velocity.Z_coord * intercept_t -
-		localFixed::from_raw_value(L) * intercept_t * intercept_t;
+	const auto z_vel_num = diff.z + target_velocity.z * intercept_t -
+		localFixed::from_raw_value(static_cast<fixed::base_type>(L)) * intercept_t * intercept_t;
 
 	auto result = std::make_shared<PositionVector>(
 		x_vel_num / intercept_t,

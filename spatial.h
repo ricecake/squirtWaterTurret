@@ -34,11 +34,17 @@ public:
 	using typename Vec::NumericType;
 	using Vec::rad2DegFactor;
 	using Vec::Vec;
-	using Vec::X_coord;
-	using Vec::Y_coord;
-	using Vec::Z_coord;
+	using Vec::x;
+	using Vec::y;
+	using Vec::z;
 
 	// -- Public Methods --
+
+	// Fixed-point math functions have inherent sign conversion issues;
+	// suppressing these warnings since the conversions are intentional and safe.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
 
 	static fixed integer_sqrt(uint64_t n) {
 		if (n < 2)
@@ -65,17 +71,19 @@ public:
 		return fixed::from_raw_value((uint32_t)root);
 	}
 
+#pragma GCC diagnostic pop
+
 	fixed angleTo(const VectorCompatible<fixed> auto& other) const {
 		if (!(*this && other)) {
 			return NumericType(0);
 		}
 		// 1. Raw Coordinates (Scale: 1Q)
-		int64_t aX = X_coord.raw_value();
-		int64_t aY = Y_coord.raw_value();
-		int64_t aZ = Z_coord.raw_value();
-		int64_t bX = other.X_coord.raw_value();
-		int64_t bY = other.Y_coord.raw_value();
-		int64_t bZ = other.Z_coord.raw_value();
+		int64_t aX = x.raw_value();
+		int64_t aY = y.raw_value();
+		int64_t aZ = z.raw_value();
+		int64_t bX = other.x.raw_value();
+		int64_t bY = other.y.raw_value();
+		int64_t bZ = other.z.raw_value();
 
 		// 2. Dot Product (Scale: 2Q)
 		int64_t dot_raw = aX * bX + aY * bY + aZ * bZ;
@@ -103,7 +111,7 @@ public:
 
 		// 6. Final Angle
 		// Ensure dot product is also Q16
-		fixed dot_product_1Q = fixed::from_raw_value(dot_raw >> fixed::FixedBits);
+		fixed dot_product_1Q = fixed::from_raw_value(static_cast<fixed::base_type>(dot_raw >> fixed::FixedBits));
 
 		return atan2(cross_magnitude_1Q, dot_product_1Q) * rad2DegFactor;
 	}
@@ -113,42 +121,46 @@ public:
 			return NumericType(0);
 		}
 
-		int64_t aX = X_coord.raw_value();
-		int64_t aY = Y_coord.raw_value();
-		int64_t aZ = Z_coord.raw_value();
-		int64_t bX = other.X_coord.raw_value();
-		int64_t bY = other.Y_coord.raw_value();
-		int64_t bZ = other.Z_coord.raw_value();
+		int64_t aX = x.raw_value();
+		int64_t aY = y.raw_value();
+		int64_t aZ = z.raw_value();
+		int64_t bX = other.x.raw_value();
+		int64_t bY = other.y.raw_value();
+		int64_t bZ = other.z.raw_value();
 		int64_t dot_product_raw = (int64_t)aX * bX + (int64_t)aY * bY + (int64_t)aZ * bZ;
-		return fixed::from_raw_value((dot_product_raw >> fixed::FixedBits));
+		return fixed::from_raw_value(static_cast<fixed::base_type>(dot_product_raw >> fixed::FixedBits));
 	}
 
 	Derived cross(const VectorCompatible<fixed> auto& other) const {
-		int64_t aX = X_coord.raw_value();
-		int64_t aY = Y_coord.raw_value();
-		int64_t aZ = Z_coord.raw_value();
-		int64_t bX = other.X_coord.raw_value();
-		int64_t bY = other.Y_coord.raw_value();
-		int64_t bZ = other.Z_coord.raw_value();
+		int64_t aX = x.raw_value();
+		int64_t aY = y.raw_value();
+		int64_t aZ = z.raw_value();
+		int64_t bX = other.x.raw_value();
+		int64_t bY = other.y.raw_value();
+		int64_t bZ = other.z.raw_value();
 
 		int64_t cX_raw = (int64_t)aY * bZ - (int64_t)aZ * bY;
 		int64_t cY_raw = (int64_t)aZ * bX - (int64_t)aX * bZ;
 		int64_t cZ_raw = (int64_t)aX * bY - (int64_t)aY * bX;
 
 		return Derived(
-			fixed::from_raw_value(cX_raw >> fixed::FixedBits),
-			fixed::from_raw_value(cY_raw >> fixed::FixedBits),
-			fixed::from_raw_value(cZ_raw >> fixed::FixedBits)
+			fixed::from_raw_value(static_cast<fixed::base_type>(cX_raw >> fixed::FixedBits)),
+			fixed::from_raw_value(static_cast<fixed::base_type>(cY_raw >> fixed::FixedBits)),
+			fixed::from_raw_value(static_cast<fixed::base_type>(cZ_raw >> fixed::FixedBits))
 		);
 	}
+
+	// Magnitude calculations involve fixed-point sign conversions; suppress warnings.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 
 	fixed magnitude() const {
 		if (!(*this)) {
 			return NumericType(0);
 		}
-		int64_t aX = X_coord.raw_value();
-		int64_t aY = Y_coord.raw_value();
-		int64_t aZ = Z_coord.raw_value();
+		int64_t aX = x.raw_value();
+		int64_t aY = y.raw_value();
+		int64_t aZ = z.raw_value();
 
 		int64_t dot_product_raw = aX * aX + aY * aY + aZ * aZ;
 		return integer_sqrt(dot_product_raw);
@@ -158,8 +170,8 @@ public:
 		if (!(*this)) {
 			return NumericType(0);
 		}
-		int64_t aX = X_coord.raw_value();
-		int64_t aY = Y_coord.raw_value();
+		int64_t aX = x.raw_value();
+		int64_t aY = y.raw_value();
 
 		int64_t dot_product_raw = aX * aX + aY * aY;
 		return integer_sqrt(dot_product_raw);
@@ -169,8 +181,8 @@ public:
 		if (!(*this)) {
 			return NumericType(0);
 		}
-		int64_t aX = X_coord.raw_value();
-		int64_t aZ = Z_coord.raw_value();
+		int64_t aX = x.raw_value();
+		int64_t aZ = z.raw_value();
 
 		int64_t dot_product_raw = aX * aX + aZ * aZ;
 		return integer_sqrt(dot_product_raw);
@@ -180,34 +192,36 @@ public:
 		if (!(*this)) {
 			return NumericType(0);
 		}
-		int64_t aY = Y_coord.raw_value();
-		int64_t aZ = Z_coord.raw_value();
+		int64_t aY = y.raw_value();
+		int64_t aZ = z.raw_value();
 
 		int64_t dot_product_raw = aY * aY + aZ * aZ;
 		return integer_sqrt(dot_product_raw);
 	}
 
+#pragma GCC diagnostic pop
+
 	Derived normalize() const {
 		fixed mag = magnitude();
 		if (mag != 0) {
-			return Derived(X_coord / mag, Y_coord / mag, Z_coord / mag);
+			return Derived(x / mag, y / mag, z / mag);
 		}
-		return Derived(X_coord, Y_coord, Z_coord);
+		return Derived(x, y, z);
 	}
 
 	NumericType pitch() const {
 		auto mag = magnitudeXY();
-		if (!(Z_coord || mag)) {
+		if (!(z || mag)) {
 			return 0;
 		}
-		return atan2(Z_coord, magnitudeXY()) * rad2DegFactor;
+		return atan2(z, magnitudeXY()) * rad2DegFactor;
 	}
 
 	NumericType yaw() const {
-		if (!(X_coord || Y_coord)) {
+		if (!(x || y)) {
 			return 0;
 		}
-		return atan2(X_coord, Y_coord) * rad2DegFactor;
+		return atan2(x, y) * rad2DegFactor;
 	}
 };
 
@@ -280,7 +294,7 @@ public:
 // ======================================================================================
 
 // -- DistanceVector --
-constexpr DistanceVector::DistanceVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+constexpr DistanceVector::DistanceVector(fixed dx, fixed dy, fixed dz): Vec(dx, dy, dz) {}
 
 /**
  * @brief Constructs a DistanceVector from a VelocityVector and a time interval.
@@ -292,16 +306,14 @@ inline DistanceVector::DistanceVector(VelocityVector v, ChronoDuration auto inte
 }
 
 // -- PositionVector --
-constexpr PositionVector::PositionVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+constexpr PositionVector::PositionVector(fixed px, fixed py, fixed pz): Vec(px, py, pz) {}
 
 /**
  * @brief Constructs a PositionVector by adding a DistanceVector to a PositionVector.
  * @param p The initial position vector.
  * @param d The distance vector to add.
  */
-inline PositionVector::PositionVector(PositionVector p, DistanceVector d) {
-	*this = p + d;
-}
+inline PositionVector::PositionVector(PositionVector p, DistanceVector d): Vec(p.x + d.x, p.y + d.y, p.z + d.z) {}
 
 /**
  * @brief Constructs a PositionVector by applying a VelocityVector over a time interval to a PositionVector.
@@ -347,7 +359,7 @@ inline fixed PositionVector::Distance() {
 }
 
 // -- VelocityVector --
-constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z) {}
+constexpr VelocityVector::VelocityVector(fixed vx, fixed vy, fixed vz): Vec(vx, vy, vz) {}
 
 /**
  * @brief Constructs a VelocityVector from a DistanceVector and a time interval.
@@ -356,9 +368,9 @@ constexpr VelocityVector::VelocityVector(fixed x, fixed y, fixed z): Vec(x, y, z
  */
 inline VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval) {
 	if (interval.count()) {
-		X_coord = dist.X_coord / interval.count();
-		Y_coord = dist.Y_coord / interval.count();
-		Z_coord = dist.Z_coord / interval.count();
+		x = dist.x / interval.count();
+		y = dist.y / interval.count();
+		z = dist.z / interval.count();
 	}
 }
 
@@ -368,18 +380,18 @@ inline VelocityVector::VelocityVector(DistanceVector dist, TimeInterval interval
 
 constexpr const VelocityVector operator/(const DistanceVector& D, const ChronoDuration auto& interval) {
 	auto scale = interval.count();
-	return VelocityVector(D.X_coord / scale, D.Y_coord / scale, D.Z_coord / scale);
+	return VelocityVector(D.x / scale, D.y / scale, D.z / scale);
 }
 
 constexpr const DistanceVector operator*(const VelocityVector& V, const ChronoDuration auto& interval) {
 	auto scale = static_cast<fixed>(interval.count());
-	return DistanceVector(V.X_coord, V.Y_coord, V.Z_coord) * scale;
+	return DistanceVector(V.x, V.y, V.z) * scale;
 }
 
 constexpr const PositionVector operator+(const PositionVector& A, const DistanceVector& B) {
-	return PositionVector(A.X_coord + B.X_coord, A.Y_coord + B.Y_coord, A.Z_coord + B.Z_coord);
+	return PositionVector(A.x + B.x, A.y + B.y, A.z + B.z);
 }
 
 constexpr const DistanceVector operator-(const PositionVector& A, const PositionVector& B) {
-	return DistanceVector(A.X_coord - B.X_coord, A.Y_coord - B.Y_coord, A.Z_coord - B.Z_coord);
+	return DistanceVector(A.x - B.x, A.y - B.y, A.z - B.z);
 }

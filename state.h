@@ -229,17 +229,17 @@ inline void SystemState::updateTargetById(
 	PositionVector& newPosition,
 	const uint16_t  indifferenceMargin
 ) {
-	auto pred = [&](const Target& item) { return item.id == id; };
-	auto found = std::ranges::find_if(targetArray, pred);
+	auto pred_by_id = [&](const Target& item) { return item.id == id; };
+	auto found = std::ranges::find_if(targetArray, pred_by_id);
 
 	if (found == targetArray.end()) {
-		auto pred = [&](const Target& item) { return item.valid == false; };
-		found = std::ranges::find_if(targetArray, pred);
+		auto pred_by_invalid = [&](const Target& item) { return item.valid == false; };
+		found = std::ranges::find_if(targetArray, pred_by_invalid);
 	}
 
 	if (found == targetArray.end()) {
-		auto pred = [&](const Target& item) { return item.seen; };
-		found = std::ranges::min_element(targetArray, std::ranges::less{}, pred);
+		auto pred_by_seen = [&](const Target& item) { return item.seen; };
+		found = std::ranges::min_element(targetArray, std::ranges::less{}, pred_by_seen);
 	}
 
 	updateTarget(targetArray, found->index, valid, newPosition, indifferenceMargin);
@@ -255,18 +255,17 @@ inline Target& SystemState::fetchTarget(const uint8_t idx) {
 inline uint8_t SystemState::fetchNearestTargetIdx(const PositionVector& point) {
 	auto distance = [&](Target& item) {
 		auto pos = item.Position();
-		return pow(pos.X_coord - point.X_coord, 2) + pow(pos.Y_coord - point.Y_coord, 2) +
-			pow(pos.Z_coord - point.Z_coord, 2);
+		return pow(pos.x - point.x, 2) + pow(pos.y - point.y, 2) + pow(pos.z - point.z, 2);
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
-	return std::ranges::distance(currentTargetArray().begin(), res);
+	return static_cast<uint8_t>(std::ranges::distance(currentTargetArray().begin(), res));
 }
 
 inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point) {
 	auto distance = [&](Target& item) {
 		auto pos = item.Position();
-		return pow(pos.X_coord - point.X_coord, 2) + pow(pos.Y_coord - point.Y_coord, 2);
+		return pow(pos.x - point.x, 2) + pow(pos.y - point.y, 2);
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
-	return std::ranges::distance(currentTargetArray().begin(), res);
+	return static_cast<uint8_t>(std::ranges::distance(currentTargetArray().begin(), res));
 }

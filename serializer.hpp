@@ -7,6 +7,13 @@
  * type-safe and extensible.
  */
 #pragma once
+
+// Serialization templates involve inherent type conversions and narrowing;
+// suppress warnings for this entire file.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
+
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -531,8 +538,9 @@ namespace cerializer {
 		 * @param y The y-coordinate of the target.
 		 * @param z The z-coordinate of the target.
 		 */
-		constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept:
-			id(id), valid(valid), x(x), y(y), z(z) {
+		constexpr inline Target(uint32_t id_val, bool is_valid, uint16_t x_val, uint16_t y_val, uint16_t z_val) noexcept
+			:
+			id(id_val), valid(is_valid), x(x_val), y(y_val), z(z_val) {
 			assert(registered);
 		}
 
@@ -566,15 +574,15 @@ namespace cerializer {
 		 * @param acceleration The acceleration of the motors.
 		 */
 		constexpr inline Config(
-			float    projectile_speed,
-			float    turret_height,
-			uint16_t max_speed,
-			uint16_t acceleration
+			float    init_projectile_speed,
+			float    init_turret_height,
+			uint16_t init_max_speed,
+			uint16_t init_acceleration
 		) noexcept:
-			projectile_speed(projectile_speed),
-			turret_height(turret_height),
-			max_speed(max_speed),
-			acceleration(acceleration) {
+			projectile_speed(init_projectile_speed),
+			turret_height(init_turret_height),
+			max_speed(init_max_speed),
+			acceleration(init_acceleration) {
 			assert(registered);
 		}
 
@@ -602,7 +610,9 @@ namespace cerializer {
 		 * @brief Constructs a new SetTargetSourceMessage.
 		 * @param source The target source to be set.
 		 */
-		constexpr inline SetTargetSourceMessage(TargetSource source) noexcept: source(source) { assert(registered); }
+		constexpr inline SetTargetSourceMessage(TargetSource new_source) noexcept: source(new_source) {
+			assert(registered);
+		}
 
 		/**
 		 * @brief Encodes the message fields into a character array.
@@ -630,7 +640,8 @@ namespace cerializer {
 		_           * @param y The y-coordinate of the static target.
 		_           * @param z The z-coordinate of the static target.
 		 */
-		constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept: x(x), y(y), z(z) {
+		constexpr inline StaticTargetMessage(uint16_t x_val, uint16_t y_val, uint16_t z_val) noexcept:
+			x(x_val), y(y_val), z(z_val) {
 			assert(registered);
 		}
 
@@ -649,7 +660,7 @@ namespace cerializer {
 		const TurretStrategy strategy;
 
 	public:
-		constexpr inline SetStrategyMessage(TurretStrategy strategy) noexcept: strategy(strategy) {
+		constexpr inline SetStrategyMessage(TurretStrategy new_strategy) noexcept: strategy(new_strategy) {
 			assert(registered);
 		}
 
@@ -664,7 +675,7 @@ namespace cerializer {
 		const TurretStance stance;
 
 	public:
-		constexpr inline SetStanceMessage(TurretStance stance) noexcept: stance(stance) { assert(registered); }
+		constexpr inline SetStanceMessage(TurretStance new_stance) noexcept: stance(new_stance) { assert(registered); }
 
 		constexpr std::array<char, Size()> encode() const { return pack(stance); }
 	};
@@ -846,7 +857,7 @@ namespace cerializer {
 				}
 				}
 
-				auto result = findToken(std::span<char>(offset, end_offset), std::span(token), fail, success);
+				result = findToken(std::span<char>(offset, end_offset), std::span(token), fail, success);
 				state = std::get<0>(result);
 				read_size = std::get<1>(result);
 				offset = std::get<2>(result).base();
@@ -898,3 +909,5 @@ namespace cerializer {
 		}
 	};
 } // namespace cerializer
+
+#pragma GCC diagnostic pop

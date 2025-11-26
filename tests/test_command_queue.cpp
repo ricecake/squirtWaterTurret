@@ -7,7 +7,7 @@
 // Mock command for testing
 class MockCommand: virtual public Command, public AutoCommand<MockCommand> {
 public:
-	MockCommand(int payload, uint64_t run_after): Command(run_after), payload(payload) {}
+	MockCommand(int init_payload, uint64_t init_run_after): Command(init_run_after), payload(init_payload) {}
 
 	void Execute(SystemState*) override { execution_count++; }
 

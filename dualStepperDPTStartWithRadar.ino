@@ -49,7 +49,7 @@ struct IOWrapper {
 
 	bool good() { return bool(io); };
 
-	IOWrapper(HardwareSerial& io): io(io) {};
+	IOWrapper(HardwareSerial& port): io(port) {};
 };
 
 HardwareSerial RadarSerial(1);
@@ -83,7 +83,7 @@ void refreshRadarTargets() {
 				);
 				dptState.updateTarget(
 					dptState.radarTarget,
-					result_target.id,
+					static_cast<uint8_t>(result_target.id),
 					result_target.valid,
 					newPositionObservation,
 					8
@@ -115,7 +115,13 @@ void readSerialCommands() {
 					fixed(target->z) / 1000
 				);
 
-				dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
+				dptState.updateTargetById(
+					dptState.cvTarget,
+					static_cast<uint8_t>(target->id),
+					target->valid,
+					newPositionObservation,
+					8
+				);
 				break;
 			}
 			case cerializer::Config::Type(): {
@@ -232,7 +238,7 @@ struct Target* selectTarget() {
 	// return calculateTravelDistance(t); }, true);
 	case TurretStrategy::RANDOM: {
 		// This is a bit more complex, so we'll handle it separately.
-		nextTarget = &dptState.currentTargetArray()[std::rand() % dptState.size()];
+		nextTarget = &dptState.currentTargetArray()[static_cast<size_t>(std::rand()) % dptState.size()];
 		break;
 	}
 	default:
@@ -312,21 +318,21 @@ void setup() {
 	ld2450.begin(RadarSerial, false);
 
 	if (!ld2450.waitForSensorMessage(true)) {
-		logger::LOG("SENSOR CONNECTION SEEMS OK");
+		logger::Log("SENSOR CONNECTION SEEMS OK");
 	} else {
-		logger::LOG("SENSOR TEST: GOT NO VALID SENSOR DATA - PLEASE CHECK CONNECTION!");
+		logger::Log("SENSOR TEST: GOT NO VALID SENSOR DATA - PLEASE CHECK CONNECTION!");
 	}
 
 	testSerial.begin(9600, SERIAL_8N1, 19, 18);
 	randomSeed(analogRead(0));
 
-	logger::LOG("SETUP_FINISHED");
+	logger::Log("SETUP_FINISHED");
 
-	logger::LOG("Ready!");
+	logger::Log("Ready!");
 
 	delay(1000);
 
-	logger::LOG("Starting!");
+	logger::Log("Starting!");
 
 	xTaskCreatePinnedToCore(targetingLoop, "Targeting", 10000, NULL, 1, &targeting, 0);
 

@@ -13,34 +13,34 @@ TEST_CASE("Vector addition") {
 	Vector3D<fixed> v1{1, 2, 3};
 	Vector3D<fixed> v2{4, 5, 6};
 	auto            result = v1 + v2;
-	CHECK(result.X_coord == fixed(5));
-	CHECK(result.Y_coord == fixed(7));
-	CHECK(result.Z_coord == fixed(9));
+	CHECK(result.x == fixed(5));
+	CHECK(result.y == fixed(7));
+	CHECK(result.z == fixed(9));
 }
 
 TEST_CASE("Vector subtraction") {
 	Vector3D<fixed> v1{4, 5, 6};
 	Vector3D<fixed> v2{1, 2, 3};
 	auto            result = v1 - v2;
-	CHECK(result.X_coord == fixed(3));
-	CHECK(result.Y_coord == fixed(3));
-	CHECK(result.Z_coord == fixed(3));
+	CHECK(result.x == fixed(3));
+	CHECK(result.y == fixed(3));
+	CHECK(result.z == fixed(3));
 }
 
 TEST_CASE("Vector scalar multiplication") {
 	Vector3D<fixed> v{1, 2, 3};
 	auto            result = v * fixed(2);
-	CHECK(result.X_coord == fixed(2));
-	CHECK(result.Y_coord == fixed(4));
-	CHECK(result.Z_coord == fixed(6));
+	CHECK(result.x == fixed(2));
+	CHECK(result.y == fixed(4));
+	CHECK(result.z == fixed(6));
 }
 
 TEST_CASE("Vector scalar division") {
 	Vector3D<fixed> v{2, 4, 6};
 	auto            result = v / fixed(2);
-	CHECK(result.X_coord == fixed(1));
-	CHECK(result.Y_coord == fixed(2));
-	CHECK(result.Z_coord == fixed(3));
+	CHECK(result.x == fixed(1));
+	CHECK(result.y == fixed(2));
+	CHECK(result.z == fixed(3));
 }
 
 TEST_CASE("Vector dot product") {
@@ -54,9 +54,9 @@ TEST_CASE("Vector cross product") {
 	Vector3D<fixed> v1{1, 0, 0};           // i
 	Vector3D<fixed> v2{0, 1, 0};           // j
 	auto            result = v1.cross(v2); // should be k (0, 0, 1)
-	CHECK(result.X_coord == fixed(0));
-	CHECK(result.Y_coord == fixed(0));
-	CHECK(result.Z_coord == fixed(1));
+	CHECK(result.x == fixed(0));
+	CHECK(result.y == fixed(0));
+	CHECK(result.z == fixed(1));
 }
 
 TEST_CASE("Vector magnitude") {
@@ -71,9 +71,9 @@ TEST_CASE("Vector normalization") {
 	// magnitude should be 1
 	CHECK(result.magnitude() == fixed(1));
 	// direction should be the same
-	CHECK(result.X_coord == fixed(0.6));
-	CHECK(result.Y_coord == fixed(0.8));
-	CHECK(result.Z_coord == fixed(0));
+	CHECK(result.x == fixed(0.6));
+	CHECK(result.y == fixed(0.8));
+	CHECK(result.z == fixed(0));
 }
 
 TEST_CASE("Vector angular computation") {

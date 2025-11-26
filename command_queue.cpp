@@ -45,7 +45,7 @@ void CommandQueue::process(SystemState* state) {
 	// command scheduling.
 	for (const auto& comm : runnable_commands) {
 		if (comm) {
-			logger::LOG("Evaluating command", comm->Type());
+			logger::Log("Evaluating command", comm->Type());
 			comm->Execute(state);
 		}
 	}

@@ -29,9 +29,9 @@ TEST_CASE("FixedVector3D") {
 		PositionVector v1(1, 0, 0);
 		PositionVector v2(0, 1, 0);
 		PositionVector v3 = v1.cross(v2);
-		CHECK(v3.X_coord == 0);
-		CHECK(v3.Y_coord == 0);
-		CHECK(v3.Z_coord == 1);
+		CHECK(v3.x == 0);
+		CHECK(v3.y == 0);
+		CHECK(v3.z == 1);
 	}
 
 	SUBCASE("magnitude") {
@@ -47,9 +47,9 @@ TEST_CASE("FixedVector3D") {
 	SUBCASE("normalize") {
 		PositionVector v(3, 4, 0);
 		PositionVector normalized = v.normalize();
-		CHECK(normalized.X_coord == doctest::Approx(0.6));
-		CHECK(normalized.Y_coord == doctest::Approx(0.8));
-		CHECK(normalized.Z_coord == 0);
+		CHECK(normalized.x == doctest::Approx(0.6));
+		CHECK(normalized.y == doctest::Approx(0.8));
+		CHECK(normalized.z == 0);
 	}
 
 	SUBCASE("pitch") {

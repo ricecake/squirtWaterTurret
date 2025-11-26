@@ -13,7 +13,7 @@
 class TargetSelection: virtual public Command, public AutoCommand<TargetSelection> {
 public:
 	// -- Constructors --
-	TargetSelection(TargetSource, uint8_t, int, int64_t);
+	TargetSelection(TargetSource, uint8_t, uint8_t, uint64_t);
 
 	// -- Public Methods --
 	void Execute(SystemState* state) override;
@@ -22,5 +22,5 @@ private:
 	// -- Private Attributes --
 	TargetSource target_source;
 	uint8_t      target_id;    ///< The ID of the target to be selected.
-	int          speed = 0xFF; ///< The tracking speed to use for the selected target.
+	uint8_t      speed = 0xFF; ///< The tracking speed to use for the selected target.
 };
