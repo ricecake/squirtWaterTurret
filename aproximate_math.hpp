@@ -42,13 +42,15 @@ namespace Approximate {
 	constexpr ApproximateResult<T>
 	small_root(const std::function<T(const T&)> func, const T error = T(0.001), const uint8_t rounds = 16) {
 		try {
-			T leftInput = T(0);
-			T rightInput;
+			T closestNonZero;
 			if constexpr (std::numeric_limits<T>::is_integer) {
-				rightInput = 1;
+				closestNonZero = 1;
 			} else {
-				rightInput = std::numeric_limits<T>::epsilon();
+				closestNonZero = std::numeric_limits<T>::epsilon();
 			}
+
+			T leftInput = T(0);
+			T rightInput = closestNonZero;
 			T midInput;
 
 			T leftValue = func(leftInput);
@@ -69,19 +71,64 @@ namespace Approximate {
 			while ((sign_bit(leftValue) == sign_bit(rightValue)) && (round < rounds)) {
 				leftInput = rightInput;
 				leftValue = rightValue;
-				rightInput *= 4;
+				rightInput += 4*(closestNonZero+round);
 				rightValue = func(rightInput);
-				// round++; -- TODO: evaluate the impact of this check.
+				round++; //-- TODO: evaluate the impact of this check.
 			}
 
 			round = 0; // Reset round counter for the refinement loop
 			do {
 				// Secant method - zero of secant of function at best guess
-				midInput = rightInput - rightValue * ((rightInput - leftInput) / (rightValue - leftValue));
-				// If secant intersects outside our boundary, pick next best guess to be midpoint between edges instead.
-				if (midInput <= leftInput || midInput >= rightInput) {
-					midInput = leftInput + (rightInput - leftInput) / 2;
+				T deltaInput = rightInput - leftInput;
+				T deltaValue; // Declare the variable first
+
+				if constexpr (fpm::is_fixed<T>::value) {
+					// Cast raw values to int64_t for safe subtraction, preventing 32-bit overflow.
+					int64_t raw_right = rightValue.raw_value();
+					int64_t raw_left = leftValue.raw_value();
+					int64_t raw_delta = raw_right - raw_left;
+
+					// Retrieve the underlying raw type (likely int32_t) for clamping.
+					const int64_t min_raw = std::numeric_limits<T>::min();
+					const int64_t max_raw = std::numeric_limits<T>::max();
+
+					// Clamp the 64-bit result back into the safe 32-bit range of T.
+					if (raw_delta > max_raw) {
+						raw_delta = max_raw;
+					} else if (raw_delta < min_raw) {
+						raw_delta = min_raw;
+					}
+
+					// Assign the safely clamped value back to the fixed-point type T.
+					deltaValue = T::from_raw_value(static_cast<T::base_type>(raw_delta));
+				} else {
+					// For all other types (floating point, safe integers) use standard subtraction.
+					deltaValue = rightValue - leftValue;
 				}
+
+				// Check for potential overflow before multiplying.
+				bool willOverflow = false;
+				if (rightValue != 0 && deltaInput != 0) {
+					if (std::abs(deltaInput) > std::numeric_limits<T>::max() / std::abs(rightValue)) {
+						willOverflow = true;
+					}
+				}
+
+				bool secantFailure = false;
+				if (!willOverflow && deltaValue != 0) {
+					// Safe to use standard logic
+					midInput = rightInput - (rightValue * deltaInput) / deltaValue;
+					// If secant intersects outside our boundary, pick next best guess to be midpoint between edges
+					// instead.
+					if (midInput <= leftInput || midInput >= rightInput) {
+						secantFailure = true;
+					}
+				}
+				if (willOverflow || secantFailure || deltaValue == 0) {
+					// Fallback to Bisection if overflow is imminent, secant didn't work, or division by zero
+					midInput = leftInput + (deltaInput / 2);
+				}
+
 				midValue = func(midInput);
 
 				// Narrow the search interval based on the sign of the function value.
@@ -97,8 +144,6 @@ namespace Approximate {
 				if ((rightInput - leftInput) / rightInput <= error) {
 					return ApproximateResult<T>(true, midInput);
 				}
-				// TODO: Add a check for convergence rate to exit early if progress stalls.
-
 			} while (round++ < rounds);
 			return ApproximateResult<T>(false, midInput);
 		} catch (std::runtime_error& e) {

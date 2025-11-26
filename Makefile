@@ -12,6 +12,8 @@ CXXFLAGS = \
 	-fsanitize=undefined \
 	-fsanitize=signed-integer-overflow \
 	-fsanitize=bounds \
+	-fsanitize-undefined-trap-on-error \
+# 	-fsanitize-trap=all \
 # 	-fprofile-arcs \
 # 	-pg
 # 	-O3

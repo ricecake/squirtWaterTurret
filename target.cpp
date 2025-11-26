@@ -21,7 +21,7 @@ void Target::Update(PositionVector P) {
 	TimePoint    new_seen = Clock::now();
 	TimeInterval time_delta = TimeInterval(new_seen - seen);
 
-	if (time_delta.count() > 0) {
+	if (time_delta.count() > 0 && valid) {
 		// Calculate velocity from the displacement and time delta.
 		velocity = (P - position) / time_delta;
 	}
@@ -66,19 +66,41 @@ std::shared_ptr<const PositionVector> Target::interceptPosition() const {
 	const int64_t p_d_dot_v = (H * P + J * Q + K * R) >> localFixed::FixedBits;
 	const int64_t p_d_mag_sq = (H * H + J * J + K * K) >> localFixed::FixedBits;
 
+	int64_t c4_raw = p_d_mag_sq;
+	int64_t c3_raw = p_d_dot_v * 2;
+	int64_t c2_raw = v_mag_sq - s_mag_sq - ((2 * J * L) >> localFixed::FixedBits);
+	int64_t c1_raw = (-2 * Q * L) >> localFixed::FixedBits;
+	int64_t c0_raw = (L * L) >> localFixed::FixedBits;
+
+	// Find the maximum absolute magnitude to determine required shift
+	auto    safe_abs = [](int64_t v) { return v < 0 ? -v : v; };
+	int64_t max_val = std::max(
+		{safe_abs(c4_raw), safe_abs(c3_raw), safe_abs(c2_raw), safe_abs(c1_raw), safe_abs(c0_raw)}
+	);
+
+	// Max allowable value in 32-bit fixed point (leaving a bit of headroom for safety)
+	const int64_t MAX_FIXED = 0x3FFFFFFF;
+
+	int shift_amount = 0;
+	while (max_val > MAX_FIXED) {
+		max_val >>= 1;
+		shift_amount++;
+	}
+
 	// Quartic Coefficients
-	const localFixed c4 = localFixed::from_raw_value(p_d_mag_sq);
-	const localFixed c3 = localFixed::from_raw_value(p_d_dot_v * 2);
-	const localFixed c2 = localFixed::from_raw_value(v_mag_sq - s_mag_sq - ((2 * J * L) >> localFixed::FixedBits));
-	const localFixed c1 = localFixed::from_raw_value((-2 * Q * L) >> localFixed::FixedBits);
-	const localFixed c0 = localFixed::from_raw_value((L * L) >> localFixed::FixedBits);
+	// Apply scaling shift to all coefficients uniformly
+	// This preserves the roots of the polynomial f(t) = 0
+	const localFixed c4 = localFixed::from_raw_value(c4_raw >> shift_amount);
+	const localFixed c3 = localFixed::from_raw_value(c3_raw >> shift_amount);
+	const localFixed c2 = localFixed::from_raw_value(c2_raw >> shift_amount);
+	const localFixed c1 = localFixed::from_raw_value(c1_raw >> shift_amount);
+	const localFixed c0 = localFixed::from_raw_value(c0_raw >> shift_amount);
 
 	const std::function<localFixed(const localFixed&)> movingTargetInterceptQuartic =
-		[=](const localFixed& t) -> localFixed {
-		const auto t2 = t * t;
-		const auto t3 = t2 * t;
-		const auto t4 = t3 * t;
-		return c0 * t4 + c1 * t3 + c2 * t2 + c3 * t + c4;
+		[=](const localFixed& t1) -> localFixed {
+		// auto t1 = localFixed::from_raw_value(t);
+		// Parentheses are crucial here to enforce order of operations
+		return (((c0 * t1 + c1) * t1 + c2) * t1 + c3) * t1 + c4;
 	};
 
 	const auto [converged, intercept] = Approximate::small_root(movingTargetInterceptQuartic);

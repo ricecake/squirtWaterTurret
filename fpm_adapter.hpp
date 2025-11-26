@@ -41,6 +41,13 @@ public:
 	}
 
 	constexpr inline operator bool() const { return bool(this->raw_value()); }
+
+	double hax = 0;
+	auto operator=(auto& o) {
+		auto ret = this->fpm::fixed<B,I,F,E>::operator=(o);
+		hax = double(ret);
+		return ret;
+	}
 };
 
 template <typename T>
