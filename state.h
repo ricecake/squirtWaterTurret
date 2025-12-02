@@ -196,17 +196,17 @@ inline void SystemState::updateTargetById(
 	PositionVector& newPosition,
 	const uint16_t  indifferenceMargin
 ) {
-	auto pred = [&](const Target& item) { return item.id == id; };
-	auto found = std::ranges::find_if(targetArray, pred);
+	auto pred_id = [&](const Target& item) { return item.id == id; };
+	auto found = std::ranges::find_if(targetArray, pred_id);
 
 	if (found == targetArray.end()) {
-		auto pred = [&](const Target& item) { return item.valid == false; };
-		found = std::ranges::find_if(targetArray, pred);
+		auto pred_valid = [&](const Target& item) { return item.valid == false; };
+		found = std::ranges::find_if(targetArray, pred_valid);
 	}
 
 	if (found == targetArray.end()) {
-		auto pred = [&](const Target& item) { return item.seen; };
-		found = std::ranges::min_element(targetArray, std::ranges::less{}, pred);
+		auto pred_seen = [&](const Target& item) { return item.seen; };
+		found = std::ranges::min_element(targetArray, std::ranges::less{}, pred_seen);
 	}
 
 	updateTarget(targetArray, found->index, valid, newPosition, indifferenceMargin);
@@ -224,7 +224,7 @@ inline uint8_t SystemState::fetchNearestTargetIdx(const PositionVector& point) {
 			pow(pos.Z_coord - point.Z_coord, 2);
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
-	return std::ranges::distance(currentTargetArray().begin(), res);
+	return static_cast<uint8_t>(std::ranges::distance(currentTargetArray().begin(), res));
 }
 
 inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point) {
@@ -233,7 +233,7 @@ inline uint8_t SystemState::fetchNearestTarget2dIdx(const PositionVector& point)
 		return pow(pos.X_coord - point.X_coord, 2) + pow(pos.Y_coord - point.Y_coord, 2);
 	};
 	auto res = std::ranges::min_element(currentTargetArray(), std::ranges::less{}, distance);
-	return std::ranges::distance(currentTargetArray().begin(), res);
+	return static_cast<uint8_t>(std::ranges::distance(currentTargetArray().begin(), res));
 }
 
 inline bool SystemState::targetIsPotentiallyValid() {

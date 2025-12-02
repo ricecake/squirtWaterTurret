@@ -3,7 +3,14 @@
 #include <sstream> // For StringMaker
 
 #include "common.h"
+// The fpm library has inherent shadowing and sign-conversion issues.
+// Suppress these warnings when including fpm headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "fpm/fixed.hpp"
+#pragma GCC diagnostic pop
 
 template <class FixedType>
 concept FixedNumber = requires { fpm::is_fixed_v<FixedType> || std::is_floating_point_v<FixedType>; };

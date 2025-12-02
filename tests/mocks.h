@@ -22,17 +22,19 @@ struct AccelStepper {
 
 	AccelStepper(int = 0, int = 0, int = 0, int = 0, int = 0, bool = true) {}
 
-	void setAcceleration(int) {}
+	void setAcceleration(float) {}
 
-	void setMaxSpeed(double) {}
+	void setMaxSpeed(float) {}
 
 	void moveTo(long s) { target = s; }
 
-	long distanceToGo() { return abs(target - position); }
+	long distanceToGo() { return std::abs(target - position); }
 
 	void run() {
 		if (position != target) {
-			position += std::signbit(target - position) * std::max(1, abs(target / 5));
+			position += static_cast<long>(
+				std::signbit(target - position) * std::max(1, static_cast<int>(std::abs(target / 5)))
+			);
 		}
 	}
 
@@ -76,7 +78,7 @@ public:
 	size_t readBytes(char*, size_t) { return 0; }
 
 	size_t write(const uint8_t* buffer, size_t size) {
-		std::cout.write(reinterpret_cast<const char*>(buffer), size);
+		std::cout.write(reinterpret_cast<const char*>(buffer), static_cast<std::streamsize>(size));
 		return size;
 	}
 
@@ -134,13 +136,13 @@ public:
 	int read() { return 3; } // Return 1 to 3 targets
 
 	RadarTarget getTarget(int id) {
-		update_target(mock_targets[id]);
+		update_target(mock_targets[static_cast<size_t>(id)]);
 
 		RadarTarget target;
 		target.valid = true;
-		target.x = mock_targets[id].x;
-		target.y = mock_targets[id].y;
-		target.id = id;
+		target.x = mock_targets[static_cast<size_t>(id)].x;
+		target.y = mock_targets[static_cast<size_t>(id)].y;
+		target.id = static_cast<uint16_t>(id);
 		return target;
 	}
 
@@ -160,7 +162,7 @@ private:
 		// Only update position if not paused.
 		if (now >= target.pause_until) {
 			auto time_delta = std::chrono::duration_cast<std::chrono::microseconds>(now - target.last_updated).count();
-			double delta_t = time_delta / 1000000.0; // Convert to seconds
+			double delta_t = static_cast<double>(time_delta) / 1000000.0; // Convert to seconds
 
 			if (delta_t > 0) {
 				double dist_to_dest = std::hypot(target.dest_x - target.true_x, target.dest_y - target.true_y);

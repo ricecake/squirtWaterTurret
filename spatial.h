@@ -62,7 +62,7 @@ public:
 			}
 			bit >>= 2;
 		}
-		return fixed::from_raw_value((uint32_t)root);
+		return fixed::from_raw_value(static_cast<int>((uint32_t)root));
 	}
 
 	fixed angleTo(const VectorCompatible<fixed> auto& other) const {
@@ -103,7 +103,7 @@ public:
 
 		// 6. Final Angle
 		// Ensure dot product is also Q16
-		fixed dot_product_1Q = fixed::from_raw_value(dot_raw >> fixed::FixedBits);
+		fixed dot_product_1Q = fixed::from_raw_value(static_cast<int>(dot_raw >> fixed::FixedBits));
 
 		return atan2(cross_magnitude_1Q, dot_product_1Q) * rad2DegFactor;
 	}
@@ -120,7 +120,7 @@ public:
 		int64_t bY = other.Y_coord.raw_value();
 		int64_t bZ = other.Z_coord.raw_value();
 		int64_t dot_product_raw = (int64_t)aX * bX + (int64_t)aY * bY + (int64_t)aZ * bZ;
-		return fixed::from_raw_value((dot_product_raw >> fixed::FixedBits));
+		return fixed::from_raw_value(static_cast<int>(dot_product_raw >> fixed::FixedBits));
 	}
 
 	Derived cross(const VectorCompatible<fixed> auto& other) const {
@@ -136,9 +136,9 @@ public:
 		int64_t cZ_raw = (int64_t)aX * bY - (int64_t)aY * bX;
 
 		return Derived(
-			fixed::from_raw_value(cX_raw >> fixed::FixedBits),
-			fixed::from_raw_value(cY_raw >> fixed::FixedBits),
-			fixed::from_raw_value(cZ_raw >> fixed::FixedBits)
+			fixed::from_raw_value(static_cast<int>(cX_raw >> fixed::FixedBits)),
+			fixed::from_raw_value(static_cast<int>(cY_raw >> fixed::FixedBits)),
+			fixed::from_raw_value(static_cast<int>(cZ_raw >> fixed::FixedBits))
 		);
 	}
 
@@ -151,7 +151,7 @@ public:
 		int64_t aZ = Z_coord.raw_value();
 
 		int64_t dot_product_raw = aX * aX + aY * aY + aZ * aZ;
-		return integer_sqrt(dot_product_raw);
+		return integer_sqrt(static_cast<uint64_t>(dot_product_raw));
 	}
 
 	fixed magnitudeXY() const {
@@ -162,7 +162,7 @@ public:
 		int64_t aY = Y_coord.raw_value();
 
 		int64_t dot_product_raw = aX * aX + aY * aY;
-		return integer_sqrt(dot_product_raw);
+		return integer_sqrt(static_cast<uint64_t>(dot_product_raw));
 	}
 
 	fixed magnitudeXZ() const {
@@ -173,7 +173,7 @@ public:
 		int64_t aZ = Z_coord.raw_value();
 
 		int64_t dot_product_raw = aX * aX + aZ * aZ;
-		return integer_sqrt(dot_product_raw);
+		return integer_sqrt(static_cast<uint64_t>(dot_product_raw));
 	}
 
 	fixed magnitudeYZ() const {
@@ -184,7 +184,7 @@ public:
 		int64_t aZ = Z_coord.raw_value();
 
 		int64_t dot_product_raw = aY * aY + aZ * aZ;
-		return integer_sqrt(dot_product_raw);
+		return integer_sqrt(static_cast<uint64_t>(dot_product_raw));
 	}
 
 	Derived normalize() const {

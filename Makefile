@@ -12,7 +12,7 @@ FLAGS = -std=gnu++23 -g -O0\
 		-fsanitize=address,leak,undefined,bounds,signed-integer-overflow \
 		-fsanitize-undefined-trap-on-error
 
-CXXFLAGS = -std=gnu++23 $(BASE_INCLUDES) $(BASE_WARN) $(FLAGS)
+CXXFLAGS = -std=gnu++23 $(BASE_INCLUDES) $(BASE_WARN) $(TODO_WARN) $(FLAGS)
 
 # Directories
 BUILD_DIR = build

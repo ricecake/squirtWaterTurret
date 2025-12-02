@@ -13,7 +13,12 @@
 class TargetSelection: virtual public Command, public AutoCommand<TargetSelection> {
 public:
 	// -- Constructors --
-	TargetSelection(TargetSource, uint8_t, int, int64_t);
+	TargetSelection(
+		TargetSource initial_target_source,
+		uint8_t      initial_target_id,
+		int          initial_speed,
+		int64_t      initial_run_after
+	);
 
 	// -- Public Methods --
 	void Execute(SystemState* state) override;

@@ -106,7 +106,7 @@ namespace cerializer {
 	template <std::integral T, std::integral Y>
 	constexpr inline std::common_type<T, Y>::type postfixAdd(T& initial, const Y& add) {
 		T x = initial;
-		initial += add;
+		initial = static_cast<T>(initial + add);
 		return x;
 	}
 
@@ -134,7 +134,7 @@ namespace cerializer {
 				} else {
 					std::memcpy(dest.data() + offset, &args, sizeof(Ts));
 				}
-				offset += sizeof(Ts);
+				offset += static_cast<int>(sizeof(Ts));
 			}(),
 			...
 		);
@@ -188,7 +188,7 @@ namespace cerializer {
 		if constexpr (sizeof...(Ts) < 1) {
 			return unpack_one<Dest>(binaryData);
 		} else {
-			auto            offset = 0;
+			size_t          offset = 0;
 			std::span<char> dataView(binaryData);
 			return Dest{unpack_one<Ts>(dataView.subspan(postfixAdd(offset, sizeof(Ts)), sizeof(Ts)))...};
 		}
@@ -531,8 +531,14 @@ namespace cerializer {
 		 * @param y The y-coordinate of the target.
 		 * @param z The z-coordinate of the target.
 		 */
-		constexpr inline Target(uint32_t id, bool valid, uint16_t x, uint16_t y, uint16_t z) noexcept:
-			id(id), valid(valid), x(x), y(y), z(z) {
+		constexpr inline Target(
+			uint32_t initial_id,
+			bool     initial_valid,
+			uint16_t initial_x,
+			uint16_t initial_y,
+			uint16_t initial_z
+		) noexcept:
+			id(initial_id), valid(initial_valid), x(initial_x), y(initial_y), z(initial_z) {
 			assert(registered);
 		}
 
@@ -560,21 +566,21 @@ namespace cerializer {
 	public:
 		/**
 		 * @brief Constructs a new Config message.
-		 * @param projectile_speed The initial speed of the projectile.
-		 * @param turret_height The height of the turret from the ground.
-		 * @param max_speed The maximum rotational speed of the motors.
-		 * @param acceleration The acceleration of the motors.
+		 * @param initial_projectile_speed The initial speed of the projectile.
+		 * @param initial_turret_height The height of the turret from the ground.
+		 * @param initial_max_speed The maximum rotational speed of the motors.
+		 * @param initial_acceleration The acceleration of the motors.
 		 */
 		constexpr inline Config(
-			float    projectile_speed,
-			float    turret_height,
-			uint16_t max_speed,
-			uint16_t acceleration
+			float    initial_projectile_speed,
+			float    initial_turret_height,
+			uint16_t initial_max_speed,
+			uint16_t initial_acceleration
 		) noexcept:
-			projectile_speed(projectile_speed),
-			turret_height(turret_height),
-			max_speed(max_speed),
-			acceleration(acceleration) {
+			projectile_speed(initial_projectile_speed),
+			turret_height(initial_turret_height),
+			max_speed(initial_max_speed),
+			acceleration(initial_acceleration) {
 			assert(registered);
 		}
 
@@ -600,9 +606,11 @@ namespace cerializer {
 	public:
 		/**
 		 * @brief Constructs a new SetTargetSourceMessage.
-		 * @param source The target source to be set.
+		 * @param initial_source The target source to be set.
 		 */
-		constexpr inline SetTargetSourceMessage(TargetSource source) noexcept: source(source) { assert(registered); }
+		constexpr inline SetTargetSourceMessage(TargetSource initial_source) noexcept: source(initial_source) {
+			assert(registered);
+		}
 
 		/**
 		 * @brief Encodes the message fields into a character array.
@@ -626,11 +634,12 @@ namespace cerializer {
 	public:
 		/**
 		 * @brief Constructs a new StaticTargetMessage.
-		 * @param x The x-coordinate of the static target.
-		_           * @param y The y-coordinate of the static target.
-		_           * @param z The z-coordinate of the static target.
+		 * @param initial_x The x-coordinate of the static target.
+		 * @param initial_y The y-coordinate of the static target.
+		 * @param initial_z The z-coordinate of the static target.
 		 */
-		constexpr inline StaticTargetMessage(uint16_t x, uint16_t y, uint16_t z) noexcept: x(x), y(y), z(z) {
+		constexpr inline StaticTargetMessage(uint16_t initial_x, uint16_t initial_y, uint16_t initial_z) noexcept:
+			x(initial_x), y(initial_y), z(initial_z) {
 			assert(registered);
 		}
 
@@ -649,7 +658,7 @@ namespace cerializer {
 		const TurretStrategy strategy;
 
 	public:
-		constexpr inline SetStrategyMessage(TurretStrategy strategy) noexcept: strategy(strategy) {
+		constexpr inline SetStrategyMessage(TurretStrategy initial_strategy) noexcept: strategy(initial_strategy) {
 			assert(registered);
 		}
 
@@ -664,7 +673,9 @@ namespace cerializer {
 		const TurretStance stance;
 
 	public:
-		constexpr inline SetStanceMessage(TurretStance stance) noexcept: stance(stance) { assert(registered); }
+		constexpr inline SetStanceMessage(TurretStance initial_stance) noexcept: stance(initial_stance) {
+			assert(registered);
+		}
 
 		constexpr std::array<char, Size()> encode() const { return pack(stance); }
 	};
@@ -757,7 +768,8 @@ namespace cerializer {
 			} else if (buffer.size() >= value.size()) {
 				auto index = std::search(buffer.begin(), buffer.end(), value.begin(), value.end());
 				if (index == buffer.end()) {
-					next_offset = buffer.end() - (value.size() - 1);
+					next_offset =
+						buffer.end() - static_cast<typename std::span<char>::difference_type>(value.size() - 1);
 				} else {
 					next_offset = index;
 					next_state = success_state;
@@ -787,13 +799,13 @@ namespace cerializer {
 		void ParseStream(std::function<void(std::unique_ptr<Type>&)> callback) {
 			auto read = 0;
 
-			read = input.readsome(end_offset, read_size);
+			read = static_cast<int>(input.readsome(end_offset, static_cast<std::streamsize>(read_size)));
 			end_offset += read;
 
-			auto result = findToken(std::span(offset, end_offset), std::span(token), fail, success);
-			state = std::get<0>(result);
-			read_size = std::get<1>(result);
-			offset = std::get<2>(result).base();
+			auto result_1 = findToken(std::span(offset, end_offset), std::span(token), fail, success);
+			state = std::get<0>(result_1);
+			read_size = std::get<1>(result_1);
+			offset = std::get<2>(result_1).base();
 
 			while (input.good() && (read > 0 || state == EMIT)) {
 				switch (state) {
@@ -825,7 +837,7 @@ namespace cerializer {
 					fail = END;
 					break;
 				case EMIT: {
-					uint8_t typeCode = buf.begin()[2];
+					uint8_t typeCode = static_cast<uint8_t>(buf.begin()[2]);
 					char*   message_end_ptr = offset + sizeof(footer_bytes);
 					auto    found = MessageMaker::Create(typeCode, std::span(buf.begin(), message_end_ptr));
 
@@ -846,12 +858,12 @@ namespace cerializer {
 				}
 				}
 
-				auto result = findToken(std::span<char>(offset, end_offset), std::span(token), fail, success);
-				state = std::get<0>(result);
-				read_size = std::get<1>(result);
-				offset = std::get<2>(result).base();
+				auto result_2 = findToken(std::span<char>(offset, end_offset), std::span(token), fail, success);
+				state = std::get<0>(result_2);
+				read_size = std::get<1>(result_2);
+				offset = std::get<2>(result_2).base();
 
-				read = input.readsome(end_offset, read_size);
+				read = static_cast<int>(input.readsome(end_offset, static_cast<std::streamsize>(read_size)));
 				end_offset += read;
 			}
 		}
