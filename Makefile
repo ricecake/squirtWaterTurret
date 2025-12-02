@@ -4,19 +4,15 @@
 CXX = g++
 # Use C++20 for concepts and other modern features.
 # -I. adds the root directory to the include path.
-CXXFLAGS = \
-	-std=gnu++23 -I. -Iexternal -Wall -Wextra -Werror \
-	-g \
-	-fsanitize=address \
-	-fsanitize=leak \
-	-fsanitize=undefined \
-	-fsanitize=signed-integer-overflow \
-	-fsanitize=bounds \
-	-fsanitize-undefined-trap-on-error \
-# 	-fsanitize-trap=all \
-# 	-fprofile-arcs \
-# 	-pg
-# 	-O3
+BASE_INCLUDES = -isystem fpm -isystem external -I.
+BASE_WARN = -Wall -Wextra -Werror -Wformat-security -Wnull-dereference -Wnon-virtual-dtor
+TODO_WARN = -Wshadow -Wconversion -Wsign-conversion
+FLAGS = -std=gnu++23 -g -O0\
+		-fstack-protector-strong -D_FORTIFY_SOURCE=2 -fno-omit-frame-pointer \
+		-fsanitize=address,leak,undefined,bounds,signed-integer-overflow \
+		-fsanitize-undefined-trap-on-error
+
+CXXFLAGS = -std=gnu++23 $(BASE_INCLUDES) $(BASE_WARN) $(FLAGS)
 
 # Directories
 BUILD_DIR = build
