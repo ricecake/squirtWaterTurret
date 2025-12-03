@@ -14,7 +14,7 @@
 class FireControl: virtual public Command, public AutoCommand<FireControl> {
 public:
 	// -- Constructors --
-	FireControl(bool, uint16_t, int64_t);
+	FireControl(bool initial_active, uint16_t initial_duration, int64_t initial_run_after);
 
 	// -- Public Methods --
 	void Execute(SystemState* state) override;

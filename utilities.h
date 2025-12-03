@@ -178,7 +178,7 @@ inline T unitSinceEpoch() {
  */
 inline uint64_t milliSinceEpoch() {
 	auto duration = unitSinceEpoch<std::chrono::milliseconds>();
-	return duration.count();
+	return static_cast<uint64_t>(duration.count());
 }
 
 /**
@@ -186,7 +186,7 @@ inline uint64_t milliSinceEpoch() {
  */
 inline uint64_t microSinceEpoch() {
 	auto duration = unitSinceEpoch<std::chrono::microseconds>();
-	return duration.count();
+	return static_cast<uint64_t>(duration.count());
 }
 
 /**
@@ -194,7 +194,7 @@ inline uint64_t microSinceEpoch() {
  */
 inline uint64_t nanoSinceEpoch() {
 	auto duration = unitSinceEpoch<std::chrono::nanoseconds>();
-	return duration.count();
+	return static_cast<uint64_t>(duration.count());
 }
 
 // System-wide constants

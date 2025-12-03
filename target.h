@@ -98,8 +98,8 @@ inline Target::Target(PositionVector P, VelocityVector V): position(P), velocity
  * @param P The position vector.
  * @param V The velocity vector.
  */
-inline Target::Target(uint8_t index, bool valid, PositionVector P, VelocityVector V):
-	valid(valid), index(index), position(P), velocity(V) {}
+inline Target::Target(uint8_t initial_index, bool initial_valid, PositionVector P, VelocityVector V):
+	valid(initial_valid), index(initial_index), position(P), velocity(V) {}
 
 /**
  * @brief Predicts the target's position at a future time.

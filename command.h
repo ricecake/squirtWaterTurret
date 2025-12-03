@@ -19,7 +19,7 @@ class Command {
 
 public:
 	// -- Constructors --
-	Command(uint64_t run_after = 0);
+	Command(uint64_t initial_run_after = 0);
 	virtual ~Command() = default;
 
 	// -- Public Methods --
@@ -63,7 +63,7 @@ constexpr auto operator<=>(const Command& left, const Command& right) {
 
 class SetStrategyCommand: virtual public Command, public AutoCommand<SetStrategyCommand> {
 public:
-	SetStrategyCommand(TurretStrategy strategy, uint64_t run_after);
+	SetStrategyCommand(TurretStrategy initial_strategy, uint64_t initial_run_after);
 	void Execute(SystemState* state) override;
 
 private:
@@ -72,7 +72,7 @@ private:
 
 class SetStanceCommand: virtual public Command, public AutoCommand<SetStanceCommand> {
 public:
-	SetStanceCommand(TurretStance stance, uint64_t run_after);
+	SetStanceCommand(TurretStance initial_stance, uint64_t initial_run_after);
 	void Execute(SystemState* state) override;
 
 private:

@@ -41,11 +41,11 @@ SystemState::SystemState(): staticTarget(0, true, PositionVector(1, 0, 0), Veloc
 
 	size_t idx = 0;
 	for (auto& t : cvTarget) {
-		t.index = idx++;
+		t.index = static_cast<uint8_t>(idx++);
 	}
 	idx = 0;
 	for (auto& t : radarTarget) {
-		t.index = idx++;
+		t.index = static_cast<uint8_t>(idx++);
 	}
 }
 
@@ -108,12 +108,12 @@ void SystemState::setMove(bool active) {
 	moveState = active;
 }
 
-void SystemState::setStrategy(TurretStrategy strategy) {
-	this->strategy = strategy;
+void SystemState::setStrategy(TurretStrategy new_strategy) {
+	this->strategy = new_strategy;
 }
 
-void SystemState::setStance(TurretStance stance) {
-	this->stance = stance;
+void SystemState::setStance(TurretStance new_stance) {
+	this->stance = new_stance;
 }
 
 bool SystemState::getFireState() {
@@ -147,14 +147,14 @@ void SystemState::queueSelectTarget(TargetSource source, uint8_t index) {
 	commandQueue.addCommandAfter<TargetSelection>(source, index, 0xFF);
 }
 
-void SystemState::updateConfig(cerializer::Config* config) {
-	this->config.projectile_speed = fixed(config->projectile_speed);
-	this->config.turret_height = fixed(config->turret_height);
+void SystemState::updateConfig(cerializer::Config* new_config) {
+	this->config.projectile_speed = fixed(new_config->projectile_speed);
+	this->config.turret_height = fixed(new_config->turret_height);
 	this->config.projectile_max_range = pow(this->config.projectile_speed, 2) / gravity; // V^2 / g
-	stepperA.setMaxSpeed(config->max_speed);
-	stepperA.setAcceleration(config->acceleration);
-	stepperB.setMaxSpeed(config->max_speed);
-	stepperB.setAcceleration(config->acceleration);
+	stepperA.setMaxSpeed(new_config->max_speed);
+	stepperA.setAcceleration(new_config->acceleration);
+	stepperB.setMaxSpeed(new_config->max_speed);
+	stepperB.setAcceleration(new_config->acceleration);
 }
 
 /**
@@ -200,14 +200,14 @@ void SystemState::actualizePosition() {
 		auto yaw = long(std::min(std::max(aimpoint.Yaw(), fixed(-70)), fixed(70)) / angleToStep);
 
 		// Convert pitch and yaw to motor steps
-		int delta_A = yaw + pitch;
-		int delta_B = pitch - yaw;
+		int delta_A = static_cast<int>(yaw + pitch);
+		int delta_B = static_cast<int>(pitch - yaw);
 
 		// Set motor speed based on tracking speed
 		// double iterMaxSpeed = trackingSpeed / double(0xFF) * maxSpeed * stepFraction;
 
-		stepperA.setMaxSpeed(maxSpeed * stepFraction);
-		stepperB.setMaxSpeed(maxSpeed * stepFraction);
+		stepperA.setMaxSpeed(static_cast<float>(maxSpeed * stepFraction));
+		stepperB.setMaxSpeed(static_cast<float>(maxSpeed * stepFraction));
 
 		// Move motors to the new target position
 		stepperA.moveTo(delta_A);

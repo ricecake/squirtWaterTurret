@@ -66,8 +66,8 @@ public:
 
 	constexpr explicit Vector3D(): X_coord(0), Y_coord(0), Z_coord(0) {}
 
-	constexpr Vector3D(NumericType X_coord, NumericType Y_coord, NumericType Z_coord):
-		X_coord(X_coord), Y_coord(Y_coord), Z_coord(Z_coord) {}
+	constexpr Vector3D(NumericType initial_X_coord, NumericType initial_Y_coord, NumericType initial_Z_coord):
+		X_coord(initial_X_coord), Y_coord(initial_Y_coord), Z_coord(initial_Z_coord) {}
 
 	constexpr ClassType FromPolarDegrees(NumericType Pitch, NumericType Yaw, NumericType Radius) {
 		return Vector3D(Pitch, Yaw, Radius);

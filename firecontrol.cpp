@@ -9,11 +9,11 @@
  * @brief Constructs a new FireControl object.
  *
  * @param active The desired state of the firing pin.
- * @param duration The duration for the firing state.
- * @param run_after The time delay (in microseconds) after which the command should run.
+ * @param initial_duration The duration for the firing state.
+ * @param initial_run_after The time delay (in microseconds) after which the command should run.
  */
-FireControl::FireControl(bool active, uint16_t duration, int64_t run_after):
-	Command(run_after), active(active), duration(duration) {}
+FireControl::FireControl(bool initial_active, uint16_t initial_duration, int64_t initial_run_after):
+	Command(static_cast<uint64_t>(initial_run_after)), active(initial_active), duration(initial_duration) {}
 
 /**
  * @brief Executes the fire control command, setting the firing state.
