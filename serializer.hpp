@@ -797,9 +797,9 @@ namespace cerializer {
 		 */
 		template <std::derived_from<BasePacket> Type>
 		void ParseStream(std::function<void(std::unique_ptr<Type>&)> callback) {
-			auto read = 0;
+			size_t read = 0;
 
-			read = static_cast<int>(input.readsome(end_offset, static_cast<std::streamsize>(read_size)));
+			read = static_cast<size_t>(input.readsome(end_offset, static_cast<std::streamsize>(read_size)));
 			end_offset += read;
 
 			auto result_1 = findToken(std::span(offset, end_offset), std::span(token), fail, success);
@@ -863,7 +863,7 @@ namespace cerializer {
 				read_size = std::get<1>(result_2);
 				offset = std::get<2>(result_2).base();
 
-				read = static_cast<int>(input.readsome(end_offset, static_cast<std::streamsize>(read_size)));
+				read = static_cast<size_t>(input.readsome(end_offset, static_cast<std::streamsize>(read_size)));
 				end_offset += read;
 			}
 		}

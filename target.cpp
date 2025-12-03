@@ -5,7 +5,14 @@
 #include <memory>
 
 #include "aproximate_math.hpp"
+// The fpm library has inherent shadowing and sign-conversion issues.
+// Suppress these warnings when including fpm headers.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "fpm_adapter.hpp"
+#pragma GCC diagnostic pop
 #include <math.h>
 #include <stdint.h>
 

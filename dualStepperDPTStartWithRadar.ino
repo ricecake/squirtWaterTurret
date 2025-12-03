@@ -37,10 +37,12 @@ int main() {
 struct IOWrapper {
 	HardwareSerial& io;
 
-	size_t readsome(char* buf, size_t count) {
+	std::streamsize readsome(char* buf, std::streamsize count) {
 		size_t available = io.available();
 		if (available > 0) {
-			return io.readBytes(buf, min(count, available));
+			return static_cast<std::streamsize>(
+				io.readBytes(buf, min(static_cast<size_t>(count), available))
+			);
 		}
 		return 0;
 	};
@@ -49,7 +51,7 @@ struct IOWrapper {
 
 	bool good() { return bool(io); };
 
-	IOWrapper(HardwareSerial& io): io(io) {};
+	IOWrapper(HardwareSerial& initial_io): io(initial_io) {};
 };
 
 HardwareSerial RadarSerial(1);
@@ -83,7 +85,7 @@ void refreshRadarTargets() {
 				);
 				dptState.updateTarget(
 					dptState.radarTarget,
-					result_target.id,
+					static_cast<uint8_t>(result_target.id),
 					result_target.valid,
 					newPositionObservation,
 					8
@@ -115,7 +117,13 @@ void readSerialCommands() {
 					fixed(target->z) / 1000
 				);
 
-				dptState.updateTargetById(dptState.cvTarget, target->id, target->valid, newPositionObservation, 8);
+				dptState.updateTargetById(
+					dptState.cvTarget,
+					static_cast<uint8_t>(target->id),
+					target->valid,
+					newPositionObservation,
+					8
+				);
 				break;
 			}
 			case cerializer::Config::Type(): {
@@ -232,7 +240,8 @@ struct Target* selectTarget() {
 	// return calculateTravelDistance(t); }, true);
 	case TurretStrategy::RANDOM: {
 		// This is a bit more complex, so we'll handle it separately.
-		nextTarget = &dptState.currentTargetArray()[std::rand() % dptState.size()];
+		nextTarget = &dptState.currentTargetArray()
+						  [static_cast<size_t>(std::rand()) % dptState.size()];
 		break;
 	}
 	default:
