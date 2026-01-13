@@ -1,0 +1,12 @@
+{
+    "enable_visualizer": true,
+    "serial_output": false,
+    "log_level": "INFO",
+    "fps": 15,
+    "height": 1000,
+    "close_match_threshold": 0.16,
+    "medium_match_threshold": 0.22,
+    "far_match_threshold": 0.30,
+    "mode": "POSE",
+    "state": "TEST"
+}
